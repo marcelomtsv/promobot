@@ -164,14 +164,20 @@ async function verifyChat(token, chatId) {
     const chatResponse = await apiClient.post(chatUrl, { chat_id: chatId });
     
     if (!chatResponse.data?.ok || !chatResponse.data.result) {
-      const errorCode = chatResponse.status || 400;
-      const description = chatResponse.data?.description || "Erro desconhecido";
-      const errorMessage = getErrorMessage(errorCode, description);
+      const description = chatResponse.data?.description || "";
       
-      return { 
-        hasAccess: false, 
-        error: errorMessage
-      };
+      // Mensagens simples e diretas
+      if (description.includes("chat not found") || description.includes("Chat not found")) {
+        return { hasAccess: false, error: "não encontrado" };
+      }
+      if (description.includes("not enough rights") || description.includes("Not enough rights")) {
+        return { hasAccess: false, error: "sem permissão" };
+      }
+      if (description.includes("bot is not a member")) {
+        return { hasAccess: false, error: "sem permissão" };
+      }
+      
+      return { hasAccess: false, error: "sem acesso" };
     }
 
     const chat = chatResponse.data.result;

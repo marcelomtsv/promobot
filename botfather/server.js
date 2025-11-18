@@ -153,43 +153,36 @@ app.post("/api/botfather/check", async (req, res) => {
       });
     }
     
-    // 1. Verificar TOKEN primeiro
+    // 1. Verificar TOKEN
     const tokenResult = await verifyToken(bot_token);
     if (!tokenResult.valid) {
       return res.json({
         success: true,
         valid: false,
-        message: tokenResult.error || "Token inválido",
-        errors: { token: tokenResult.error || "Token inválido" }
+        message: "Token inválido"
       });
     }
     
-    // Token válido - continuar
-    
-    // 2. Testar CHANNEL (se fornecido) - sequencial
+    // 2. Testar CHANNEL (se fornecido)
     if (channel) {
       const channelResult = await verifyChat(bot_token, channel);
       if (!channelResult.hasAccess) {
         return res.json({
           success: true,
           valid: false,
-          message: `Canal: ${channelResult.error || "Bot não tem acesso ao canal"}`,
-          errors: { channel: channelResult.error || "Bot não tem acesso ao canal" }
+          message: `Canal: ${channelResult.error || "sem acesso"}`
         });
       }
     }
     
-    // Channel válido (ou não fornecido) - continuar
-    
-    // 3. Testar GROUP (se fornecido) - sequencial
+    // 3. Testar GROUP (se fornecido)
     if (group) {
       const groupResult = await verifyChat(bot_token, group);
       if (!groupResult.hasAccess) {
         return res.json({
           success: true,
           valid: false,
-          message: `Grupo: ${groupResult.error || "Bot não tem acesso ao grupo"}`,
-          errors: { group: groupResult.error || "Bot não tem acesso ao grupo" }
+          message: `Grupo: ${groupResult.error || "sem acesso"}`
         });
       }
     }
