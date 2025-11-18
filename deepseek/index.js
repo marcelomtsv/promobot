@@ -2,7 +2,7 @@ import express from 'express';
 import { validateApiKey, processText } from './deepseek.js';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3002;
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -54,6 +54,7 @@ app.post('/chat', async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 DeepSeek API rodando na porta ${PORT}`);
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+app.listen(PORT, HOST, () => {
+    console.log(`🚀 DeepSeek API rodando em http://${HOST}:${PORT}`);
 });

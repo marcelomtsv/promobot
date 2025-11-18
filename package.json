@@ -1,0 +1,24 @@
+{
+  "name": "promobot",
+  "version": "1.0.0",
+  "description": "PromoBOT - Sistema completo com Website e APIs",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd website && npm install && cd ../botfather && npm install && cd ../deepseek && npm install",
+    "dev": "concurrently \"npm:dev:*\"",
+    "dev:website": "cd website && npm run dev",
+    "dev:botfather": "cd botfather && npm run dev",
+    "dev:deepseek": "cd deepseek && npm run dev",
+    "start": "concurrently \"npm:start:*\"",
+    "start:website": "cd website && npm start",
+    "start:botfather": "cd botfather && npm start",
+    "start:deepseek": "cd deepseek && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+

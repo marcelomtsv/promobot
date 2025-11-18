@@ -150,7 +150,9 @@ app.use((req, res) => {
   });
 });
 
-const server = app.listen(PORT, "0.0.0.0", () => {
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+const server = app.listen(PORT, HOST, () => {
+  console.log(`🚀 BotFather API rodando em http://${HOST}:${PORT}`);
   console.log(`🚀 BotFather API rodando na porta ${PORT}`);
   console.log(`✅ Pronto para receber múltiplas requisições simultâneas`);
   console.log(`🌐 Domínio: https://portalafiliado.com/api/botfather/`);
