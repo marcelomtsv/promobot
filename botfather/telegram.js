@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 const API_URL = "https://api.telegram.org/bot";
-const DEFAULT_TIMEOUT = 30000; // Aumentado para 30 segundos
+const DEFAULT_TIMEOUT = 15000; // 15 segundos - otimizado
 
 // Instância do axios com configuração padrão
 const apiClient = axios.create({
@@ -81,7 +81,7 @@ async function verifyToken(token) {
     }
 
     const url = `${API_URL}${token}/getMe`;
-    const response = await apiClient.get(url, { timeout: 30000 });
+    const response = await apiClient.get(url);
     
     if (response.data?.ok && response.data.result) {
       const bot = response.data.result;
@@ -161,7 +161,7 @@ async function verifyChat(token, chatId) {
 
     // Primeiro, verifica se o bot tem acesso ao chat
     const chatUrl = `${API_URL}${token}/getChat`;
-    const chatResponse = await apiClient.post(chatUrl, { chat_id: chatId }, { timeout: 30000 });
+    const chatResponse = await apiClient.post(chatUrl, { chat_id: chatId });
     
     if (!chatResponse.data?.ok || !chatResponse.data.result) {
       const errorCode = chatResponse.status || 400;
@@ -189,7 +189,7 @@ async function verifyChat(token, chatId) {
           const memberResponse = await apiClient.post(memberUrl, {
             chat_id: chatId,
             user_id: botInfo.bot.id
-          }, { timeout: 30000 });
+          });
           
           if (memberResponse.data?.ok && memberResponse.data.result) {
             const member = memberResponse.data.result;
@@ -253,7 +253,7 @@ async function verifyChat(token, chatId) {
           const memberResponse = await apiClient.post(memberUrl, {
             chat_id: chatId,
             user_id: botInfo.bot.id
-          }, { timeout: 30000 });
+          });
           
           if (memberResponse.data?.ok && memberResponse.data.result) {
             const member = memberResponse.data.result;

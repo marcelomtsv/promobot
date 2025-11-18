@@ -1140,7 +1140,7 @@ async function addDeepSeekApiKey() {
       body: JSON.stringify({
         api_key: apiKey
       }),
-      signal: createTimeoutSignal(60000), // 60 segundos para testes sequenciais
+      signal: createTimeoutSignal(20000), // 20 segundos - otimizado
       credentials: 'omit'
     });
     
@@ -1314,7 +1314,7 @@ async function addBotFatherConfig() {
         channel: channel,
         group: group
       }),
-      signal: createTimeoutSignal(60000), // 60 segundos para testes sequenciais
+      signal: createTimeoutSignal(20000), // 20 segundos - otimizado
       credentials: 'omit'
     });
     
@@ -1349,27 +1349,8 @@ async function addBotFatherConfig() {
       loadPlatforms();
       
     } else {
-      // Configuração inválida - usar mensagem específica da API
-      let errorMsg = data.message || 'Configuração inválida. Verifique o token, channel e group.';
-      
-      // Se a API retornou erros específicos, construir mensagem detalhada
-      if (data.errors) {
-        const errorParts = [];
-        if (data.errors.token) {
-          errorParts.push(`Token: ${data.errors.token}`);
-        }
-        if (data.errors.channel) {
-          errorParts.push(`Canal: ${data.errors.channel}`);
-        }
-        if (data.errors.group) {
-          errorParts.push(`Grupo: ${data.errors.group}`);
-        }
-        if (errorParts.length > 0) {
-          errorMsg = errorParts.join(' | ');
-        }
-      }
-      
-      throw new Error(errorMsg);
+      // Usar mensagem direta da API
+      throw new Error(data.message || 'Configuração inválida');
     }
   } catch (error) {
     // Reabilitar botão
@@ -1378,24 +1359,20 @@ async function addBotFatherConfig() {
       addBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Configuração';
     }
     
-    let errorMessage = 'Configuração inválida. Verifique o token, channel e group.';
+    let errorMessage = error.message || 'Configuração inválida';
+    
     if (error.name === 'AbortError') {
       errorMessage = 'Timeout: A verificação demorou muito. Tente novamente.';
     } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       errorMessage = 'Não foi possível conectar com a API. Verifique sua conexão.';
-    } else {
-      // Usar a mensagem de erro que já vem formatada da API
-      errorMessage = error.message;
     }
     
-    // Formatar mensagem de erro com destaque para channel/group
+    // Destacar Canal/Grupo se presente
     let errorHTML = errorMessage;
     if (errorMessage.includes('Canal:') || errorMessage.includes('Grupo:')) {
-      // Destacar erros específicos
       errorHTML = errorMessage
-        .replace(/Canal: ([^|]+)/g, '<strong style="color: var(--accent-color);">Canal:</strong> $1')
-        .replace(/Grupo: ([^|]+)/g, '<strong style="color: var(--accent-color);">Grupo:</strong> $1')
-        .replace(/\|/g, '<br>');
+        .replace(/Canal: (.+)/g, '<strong style="color: var(--accent-color);">Canal:</strong> $1')
+        .replace(/Grupo: (.+)/g, '<strong style="color: var(--accent-color);">Grupo:</strong> $1');
     }
     
     if (statusDiv) {
