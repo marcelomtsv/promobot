@@ -214,40 +214,32 @@ async function verifyChat(token, chatId) {
               canSendMessages = true;
               canDeleteMessages = false;
             } else if (status === "left" || status === "kicked") {
-              // Bot foi removido ou saiu do grupo
               return {
                 hasAccess: false,
-                error: "Bot não é membro do grupo. Adicione o bot ao grupo primeiro."
+                error: "sem permissão"
               };
             } else {
-              // Status desconhecido ou sem acesso
               return {
                 hasAccess: false,
-                error: `Bot não tem acesso ao grupo. Status: ${status}`
+                error: "sem permissão"
               };
             }
           } else {
-            // Não conseguiu obter informações do membro
             return {
               hasAccess: false,
-              error: "Não foi possível verificar se o bot é membro do grupo."
+              error: "sem permissão"
             };
           }
         } else {
           return {
             hasAccess: false,
-            error: "Token do bot inválido."
+            error: "sem permissão"
           };
         }
       } catch (error) {
-        // Se não conseguir verificar permissões, retorna erro específico
-        const errorCode = error.response?.status || 400;
-        const description = error.response?.data?.description || error.message;
-        const errorMessage = getErrorMessage(errorCode, description);
-        
         return {
           hasAccess: false,
-          error: errorMessage
+          error: "sem permissão"
         };
       }
     } else if (chat.type === "channel") {
@@ -271,34 +263,30 @@ async function verifyChat(token, chatId) {
             } else if (status === "left" || status === "kicked") {
               return {
                 hasAccess: false,
-                error: "Bot não é administrador do canal. Adicione o bot como administrador do canal primeiro."
+                error: "sem permissão"
               };
             } else {
               return {
                 hasAccess: false,
-                error: `Bot não tem acesso ao canal. Status: ${status}`
+                error: "sem permissão"
               };
             }
           } else {
             return {
               hasAccess: false,
-              error: "Não foi possível verificar se o bot é administrador do canal."
+              error: "sem permissão"
             };
           }
         } else {
           return {
             hasAccess: false,
-            error: "Token do bot inválido."
+            error: "sem permissão"
           };
         }
       } catch (error) {
-        const errorCode = error.response?.status || 400;
-        const description = error.response?.data?.description || error.message;
-        const errorMessage = getErrorMessage(errorCode, description);
-        
         return {
           hasAccess: false,
-          error: errorMessage
+          error: "sem permissão"
         };
       }
     }
