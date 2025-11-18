@@ -7,6 +7,27 @@ const PORT = process.env.PORT || 3001;
 // Configuração de proxy trust (importante para proxy reverso do Easypanel)
 app.set('trust proxy', true);
 
+// CORS - Necessário porque navegador considera portas diferentes como origens diferentes
+// Exemplo: localhost:3000 (website) → localhost:3001 (API) = cross-origin
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Permitir apenas localhost e 127.0.0.1 (desenvolvimento local)
+  if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  
+  // Responder a preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
 // Configurações para alta concorrência
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
