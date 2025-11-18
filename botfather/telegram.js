@@ -1,7 +1,7 @@
 const axios = require("axios");
 
 const API_URL = "https://api.telegram.org/bot";
-const DEFAULT_TIMEOUT = 15000;
+const DEFAULT_TIMEOUT = 30000; // Aumentado para 30 segundos
 
 // Instância do axios com configuração padrão
 const apiClient = axios.create({
@@ -81,7 +81,7 @@ async function verifyToken(token) {
     }
 
     const url = `${API_URL}${token}/getMe`;
-    const response = await apiClient.get(url, { timeout: 10000 });
+    const response = await apiClient.get(url, { timeout: 30000 });
     
     if (response.data?.ok && response.data.result) {
       const bot = response.data.result;
@@ -161,7 +161,7 @@ async function verifyChat(token, chatId) {
 
     // Primeiro, verifica se o bot tem acesso ao chat
     const chatUrl = `${API_URL}${token}/getChat`;
-    const chatResponse = await apiClient.post(chatUrl, { chat_id: chatId }, { timeout: 10000 });
+    const chatResponse = await apiClient.post(chatUrl, { chat_id: chatId }, { timeout: 30000 });
     
     if (!chatResponse.data?.ok || !chatResponse.data.result) {
       const errorCode = chatResponse.status || 400;

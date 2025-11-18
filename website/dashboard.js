@@ -1140,7 +1140,7 @@ async function addDeepSeekApiKey() {
       body: JSON.stringify({
         api_key: apiKey
       }),
-      signal: createTimeoutSignal(15000),
+      signal: createTimeoutSignal(60000), // 60 segundos para testes sequenciais
       credentials: 'omit'
     });
     
@@ -1314,7 +1314,7 @@ async function addBotFatherConfig() {
         channel: channel,
         group: group
       }),
-      signal: createTimeoutSignal(15000),
+      signal: createTimeoutSignal(60000), // 60 segundos para testes sequenciais
       credentials: 'omit'
     });
     
