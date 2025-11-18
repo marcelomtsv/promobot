@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - PromoBOT</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="login.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="logo">
+          <i class="fas fa-robot"></i>
+          <span>PromoBOT</span>
+        </div>
+        <h1>Bem-vindo de volta!</h1>
+        <p>Entre na sua conta para continuar economizando</p>
+      </div>
+
+      <div class="login-form" id="loginForm">
+        <form class="form" id="emailLoginForm">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <div class="input-group">
+              <i class="fas fa-envelope"></i>
+              <input type="email" id="email" name="email" placeholder="seu@email.com" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Senha</label>
+            <div class="input-group">
+              <i class="fas fa-lock"></i>
+              <input type="password" id="password" name="password" placeholder="Sua senha" required>
+              <button type="button" class="password-toggle" id="passwordToggle">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-options">
+            <label class="checkbox-label">
+              <input type="checkbox" id="rememberMe">
+              <span class="checkmark"></span>
+              Lembrar de mim
+            </label>
+            <a href="#" class="forgot-password" id="showForgotPassword">Esqueci minha senha</a>
+          </div>
+
+          <button type="submit" class="btn-primary btn-full">
+            <i class="fas fa-sign-in-alt"></i>
+            Entrar
+          </button>
+        </form>
+
+        <div class="divider">
+          <span>ou</span>
+        </div>
+
+        <button class="google-btn" id="googleLogin">
+          <i class="fab fa-google"></i>
+          Continuar com Google
+        </button>
+
+        <div class="signup-link">
+          <p>Não tem uma conta? <a href="#" id="showRegister">Criar conta</a></p>
+        </div>
+
+        <div class="back-to-home" style="text-align: center; margin-top: 20px;">
+          <a href="index.html" style="color: var(--text-light); text-decoration: none; font-size: 0.9rem;">
+            <i class="fas fa-home"></i>
+            Voltar à página inicial
+          </a>
+        </div>
+      </div>
+
+      <div class="register-form" id="registerForm" style="display: none;">
+        <form class="form" id="emailRegisterForm">
+          <div class="form-group">
+            <label for="registerName">Nome completo</label>
+            <div class="input-group">
+              <i class="fas fa-user"></i>
+              <input type="text" id="registerName" name="name" placeholder="Seu nome completo" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="registerEmail">Email</label>
+            <div class="input-group">
+              <i class="fas fa-envelope"></i>
+              <input type="email" id="registerEmail" name="email" placeholder="seu@email.com" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="registerPassword">Senha</label>
+            <div class="input-group">
+              <i class="fas fa-lock"></i>
+              <input type="password" id="registerPassword" name="password" placeholder="Mínimo 8 caracteres" required>
+              <button type="button" class="password-toggle" id="registerPasswordToggle">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <div class="password-strength" id="passwordStrength"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="confirmPassword">Confirmar senha</label>
+            <div class="input-group">
+              <i class="fas fa-lock"></i>
+              <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirme sua senha" required>
+              <button type="button" class="password-toggle" id="confirmPasswordToggle">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-options">
+            <label class="checkbox-label">
+              <input type="checkbox" id="acceptTerms" required>
+              <span class="checkmark"></span>
+              Aceito os <a href="#" class="terms-link">Termos de Uso</a> e <a href="#" class="terms-link">Política de Privacidade</a>
+            </label>
+          </div>
+
+          <button type="submit" class="btn-primary btn-full">
+            <i class="fas fa-user-plus"></i>
+            Criar conta
+          </button>
+        </form>
+
+        <div class="divider">
+          <span>ou</span>
+        </div>
+
+        <button class="google-btn" id="googleRegister">
+          <i class="fab fa-google"></i>
+          Continuar com Google
+        </button>
+
+        <div class="signup-link">
+          <p>Já tem uma conta? <a href="#" id="showLogin">Fazer login</a></p>
+        </div>
+
+        <div class="back-to-home" style="text-align: center; margin-top: 20px;">
+          <a href="index.html" style="color: var(--text-light); text-decoration: none; font-size: 0.9rem;">
+            <i class="fas fa-home"></i>
+            Voltar à página inicial
+          </a>
+        </div>
+      </div>
+
+      <div class="verification-form" id="verificationForm" style="display: none;">
+        <div class="verification-header">
+          <i class="fas fa-envelope-open"></i>
+          <h2>Verificação de Email</h2>
+          <p>Enviamos um email de verificação para <strong id="verificationEmail"></strong></p>
+        </div>
+
+        <div class="verification-content">
+          <p style="text-align: center; color: var(--text-light); margin-bottom: 20px;">
+            Clique no link de verificação que enviamos para seu email para ativar sua conta.
+          </p>
+          
+          <form class="form" id="emailVerificationForm">
+            <button type="submit" class="btn-primary btn-full">
+              <i class="fas fa-check"></i>
+              Já verifiquei meu email
+            </button>
+          </form>
+
+          <div class="resend-section" style="text-align: center; margin-top: 20px;">
+            <p>Não recebeu o email?</p>
+            <button type="button" class="btn-outline btn-full" id="resendCode" style="margin-top: 10px;">
+              <i class="fas fa-redo"></i>
+              Reenviar Email de Verificação
+            </button>
+            <div class="countdown" id="countdown" style="display: none; margin-top: 10px;">
+              Reenviar em <span id="countdownTimer">60</span>s
+            </div>
+          </div>
+          
+          <div class="back-to-login" style="text-align: center; margin-top: 20px;">
+            <a href="#" id="backToLoginFromVerification" style="color: var(--text-light); text-decoration: none; font-size: 0.9rem;">
+              <i class="fas fa-arrow-left"></i>
+              Voltar ao login
+            </a>
+          </div>
+
+          <div class="back-to-home" style="text-align: center; margin-top: 15px;">
+            <a href="index.html" style="color: var(--text-light); text-decoration: none; font-size: 0.9rem;">
+              <i class="fas fa-home"></i>
+              Voltar à página inicial
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="forgot-password-form" id="forgotPasswordForm" style="display: none;">
+        <div class="forgot-header">
+          <i class="fas fa-key"></i>
+          <h2>Recuperar senha</h2>
+          <p>Digite seu email para receber instruções de recuperação</p>
+        </div>
+
+        <form class="form" id="resetPasswordForm">
+          <div class="form-group">
+            <label for="resetEmail">Email</label>
+            <div class="input-group">
+              <i class="fas fa-envelope"></i>
+              <input type="email" id="resetEmail" name="email" placeholder="seu@email.com" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary btn-full">
+            <i class="fas fa-paper-plane"></i>
+            Enviar instruções de recuperação
+          </button>
+
+          <div class="back-to-login">
+            <a href="#" id="backToLogin">
+              <i class="fas fa-arrow-left"></i>
+              Voltar ao login
+            </a>
+          </div>
+
+          <div class="back-to-home" style="text-align: center; margin-top: 15px;">
+            <a href="index.html" style="color: var(--text-light); text-decoration: none; font-size: 0.9rem;">
+              <i class="fas fa-home"></i>
+              Voltar à página inicial
+            </a>
+          </div>
+          
+          <div class="help-text" style="margin-top: 20px; text-align: center; font-size: 0.85rem; color: var(--text-light);">
+            <p><strong>Não recebeu o email?</strong></p>
+            <ul style="text-align: left; margin: 10px 0; padding-left: 20px;">
+              <li>Verifique sua <strong>pasta de spam</strong> ou lixo eletrônico</li>
+              <li>No Gmail, verifique as abas: <strong>Promoções</strong> e <strong>Social</strong></li>
+              <li>Procure por emails de <strong>noreply@firebaseapp.com</strong></li>
+              <li>O email pode levar alguns minutos para chegar</li>
+            </ul>
+            <p style="margin-top: 10px;">
+              <a href="FIREBASE_EMAIL_SETUP.md" target="_blank" style="color: var(--primary-color); text-decoration: underline;">
+                📖 Ver guia de configuração de emails
+              </a>
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="login-footer">
+      <p>&copy; 2025 PromoBOT. Todos os direitos reservados.</p>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  
+  <!-- Configuração Firebase -->
+  <script src="firebase-config.js"></script>
+  
+  <!-- Sistema de Login -->
+  <script src="login.js"></script>
+</body>
+</html>
