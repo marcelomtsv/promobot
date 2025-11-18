@@ -84,45 +84,93 @@ app.post("/check", async (req, res) => {
       });
     }
     
-    // Verificar token
+    // 1. Verificar token primeiro
     const tokenResult = await verifyToken(bot_token);
     if (!tokenResult.valid) {
       return res.json({
         success: true,
         valid: false,
-        message: tokenResult.error || "Token inválido"
+        message: tokenResult.error || "Token inválido",
+        errors: {
+          token: tokenResult.error || "Token inválido"
+        }
       });
     }
     
-    // Se channel e group foram fornecidos, verificar acesso
-    if (channel || group) {
-      const chatId = channel || group;
-      const chatResult = await verifyChat(bot_token, chatId);
-      
-      if (!chatResult.hasAccess) {
-        return res.json({
-          success: true,
-          valid: false,
-          message: chatResult.error || "Bot não tem acesso ao grupo/canal"
-        });
+    const errors = {};
+    const results = {
+      token: { valid: true, bot: tokenResult.bot }
+    };
+    
+    // 2. Testar CHANNEL individualmente (se fornecido)
+    if (channel) {
+      try {
+        const channelResult = await verifyChat(bot_token, channel);
+        if (channelResult.hasAccess) {
+          results.channel = {
+            valid: true,
+            chat: channelResult.chat,
+            permissions: channelResult.permissions
+          };
+        } else {
+          errors.channel = channelResult.error || "Bot não tem acesso ao canal";
+          results.channel = { valid: false, error: errors.channel };
+        }
+      } catch (error) {
+        errors.channel = error.message || "Erro ao verificar canal";
+        results.channel = { valid: false, error: errors.channel };
+      }
+    }
+    
+    // 3. Testar GROUP individualmente (se fornecido)
+    if (group) {
+      try {
+        const groupResult = await verifyChat(bot_token, group);
+        if (groupResult.hasAccess) {
+          results.group = {
+            valid: true,
+            chat: groupResult.chat,
+            permissions: groupResult.permissions
+          };
+        } else {
+          errors.group = groupResult.error || "Bot não tem acesso ao grupo";
+          results.group = { valid: false, error: errors.group };
+        }
+      } catch (error) {
+        errors.group = error.message || "Erro ao verificar grupo";
+        results.group = { valid: false, error: errors.group };
+      }
+    }
+    
+    // 4. Retornar resultado
+    const hasErrors = Object.keys(errors).length > 0;
+    
+    if (hasErrors) {
+      // Construir mensagem de erro específica
+      let errorMessages = [];
+      if (errors.channel) {
+        errorMessages.push(`Canal: ${errors.channel}`);
+      }
+      if (errors.group) {
+        errorMessages.push(`Grupo: ${errors.group}`);
       }
       
       return res.json({
         success: true,
-        valid: true,
-        message: "Configuração válida",
-        bot: tokenResult.bot,
-        chat: chatResult.chat,
-        permissions: chatResult.permissions
+        valid: false,
+        message: errorMessages.join(" | "),
+        errors: errors,
+        results: results
       });
     }
     
-    // Apenas token verificado
+    // Tudo válido
     return res.json({
       success: true,
       valid: true,
-      message: "Token válido",
-      bot: tokenResult.bot
+      message: "Configuração válida",
+      bot: tokenResult.bot,
+      results: results
     });
   } catch (error) {
     res.status(500).json({
@@ -146,45 +194,93 @@ app.post("/api/botfather/check", async (req, res) => {
       });
     }
     
-    // Verificar token
+    // 1. Verificar token primeiro
     const tokenResult = await verifyToken(bot_token);
     if (!tokenResult.valid) {
       return res.json({
         success: true,
         valid: false,
-        message: tokenResult.error || "Token inválido"
+        message: tokenResult.error || "Token inválido",
+        errors: {
+          token: tokenResult.error || "Token inválido"
+        }
       });
     }
     
-    // Se channel e group foram fornecidos, verificar acesso
-    if (channel || group) {
-      const chatId = channel || group;
-      const chatResult = await verifyChat(bot_token, chatId);
-      
-      if (!chatResult.hasAccess) {
-        return res.json({
-          success: true,
-          valid: false,
-          message: chatResult.error || "Bot não tem acesso ao grupo/canal"
-        });
+    const errors = {};
+    const results = {
+      token: { valid: true, bot: tokenResult.bot }
+    };
+    
+    // 2. Testar CHANNEL individualmente (se fornecido)
+    if (channel) {
+      try {
+        const channelResult = await verifyChat(bot_token, channel);
+        if (channelResult.hasAccess) {
+          results.channel = {
+            valid: true,
+            chat: channelResult.chat,
+            permissions: channelResult.permissions
+          };
+        } else {
+          errors.channel = channelResult.error || "Bot não tem acesso ao canal";
+          results.channel = { valid: false, error: errors.channel };
+        }
+      } catch (error) {
+        errors.channel = error.message || "Erro ao verificar canal";
+        results.channel = { valid: false, error: errors.channel };
+      }
+    }
+    
+    // 3. Testar GROUP individualmente (se fornecido)
+    if (group) {
+      try {
+        const groupResult = await verifyChat(bot_token, group);
+        if (groupResult.hasAccess) {
+          results.group = {
+            valid: true,
+            chat: groupResult.chat,
+            permissions: groupResult.permissions
+          };
+        } else {
+          errors.group = groupResult.error || "Bot não tem acesso ao grupo";
+          results.group = { valid: false, error: errors.group };
+        }
+      } catch (error) {
+        errors.group = error.message || "Erro ao verificar grupo";
+        results.group = { valid: false, error: errors.group };
+      }
+    }
+    
+    // 4. Retornar resultado
+    const hasErrors = Object.keys(errors).length > 0;
+    
+    if (hasErrors) {
+      // Construir mensagem de erro específica
+      let errorMessages = [];
+      if (errors.channel) {
+        errorMessages.push(`Canal: ${errors.channel}`);
+      }
+      if (errors.group) {
+        errorMessages.push(`Grupo: ${errors.group}`);
       }
       
       return res.json({
         success: true,
-        valid: true,
-        message: "Configuração válida",
-        bot: tokenResult.bot,
-        chat: chatResult.chat,
-        permissions: chatResult.permissions
+        valid: false,
+        message: errorMessages.join(" | "),
+        errors: errors,
+        results: results
       });
     }
     
-    // Apenas token verificado
+    // Tudo válido
     return res.json({
       success: true,
       valid: true,
-      message: "Token válido",
-      bot: tokenResult.bot
+      message: "Configuração válida",
+      bot: tokenResult.bot,
+      results: results
     });
   } catch (error) {
     res.status(500).json({

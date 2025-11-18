@@ -1349,8 +1349,27 @@ async function addBotFatherConfig() {
       loadPlatforms();
       
     } else {
-      // Configuração inválida
-      throw new Error(data.message || 'Configuração inválida. Verifique o token, channel e group.');
+      // Configuração inválida - usar mensagem específica da API
+      let errorMsg = data.message || 'Configuração inválida. Verifique o token, channel e group.';
+      
+      // Se a API retornou erros específicos, construir mensagem detalhada
+      if (data.errors) {
+        const errorParts = [];
+        if (data.errors.token) {
+          errorParts.push(`Token: ${data.errors.token}`);
+        }
+        if (data.errors.channel) {
+          errorParts.push(`Canal: ${data.errors.channel}`);
+        }
+        if (data.errors.group) {
+          errorParts.push(`Grupo: ${data.errors.group}`);
+        }
+        if (errorParts.length > 0) {
+          errorMsg = errorParts.join(' | ');
+        }
+      }
+      
+      throw new Error(errorMsg);
     }
   } catch (error) {
     // Reabilitar botão
@@ -1364,14 +1383,23 @@ async function addBotFatherConfig() {
       errorMessage = 'Timeout: A verificação demorou muito. Tente novamente.';
     } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       errorMessage = 'Não foi possível conectar com a API. Verifique sua conexão.';
-    } else if (error.message.includes('inválida') || error.message.includes('Invalid') || error.message.includes('inválido')) {
-      errorMessage = error.message;
     } else {
+      // Usar a mensagem de erro que já vem formatada da API
       errorMessage = error.message;
     }
     
+    // Formatar mensagem de erro com destaque para channel/group
+    let errorHTML = errorMessage;
+    if (errorMessage.includes('Canal:') || errorMessage.includes('Grupo:')) {
+      // Destacar erros específicos
+      errorHTML = errorMessage
+        .replace(/Canal: ([^|]+)/g, '<strong style="color: var(--accent-color);">Canal:</strong> $1')
+        .replace(/Grupo: ([^|]+)/g, '<strong style="color: var(--accent-color);">Grupo:</strong> $1')
+        .replace(/\|/g, '<br>');
+    }
+    
     if (statusDiv) {
-      statusDiv.innerHTML = `<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--accent-color);"><i class="fas fa-times-circle"></i> ${errorMessage}</div>`;
+      statusDiv.innerHTML = `<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--accent-color);"><i class="fas fa-times-circle"></i> ${errorHTML}</div>`;
       statusDiv.style.display = 'block';
     }
   }
