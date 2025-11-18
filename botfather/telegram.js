@@ -189,7 +189,7 @@ async function verifyChat(token, chatId) {
           const memberResponse = await apiClient.post(memberUrl, {
             chat_id: chatId,
             user_id: botInfo.bot.id
-          }, { timeout: 10000 });
+          }, { timeout: 30000 });
           
           if (memberResponse.data?.ok && memberResponse.data.result) {
             const member = memberResponse.data.result;
@@ -253,7 +253,7 @@ async function verifyChat(token, chatId) {
           const memberResponse = await apiClient.post(memberUrl, {
             chat_id: chatId,
             user_id: botInfo.bot.id
-          }, { timeout: 10000 });
+          }, { timeout: 30000 });
           
           if (memberResponse.data?.ok && memberResponse.data.result) {
             const member = memberResponse.data.result;
