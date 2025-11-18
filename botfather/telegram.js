@@ -52,7 +52,6 @@ async function sendMessage(token, chatId, text, img = null) {
     
     return null;
   } catch (error) {
-    console.error("Erro ao enviar mensagem:", error.message);
     return null;
   }
 }
@@ -71,7 +70,6 @@ async function deleteMessage(token, chatId, messageId) {
     
     return response.data?.ok === true;
   } catch (error) {
-    console.error("Erro ao deletar mensagem:", error.message);
     return false;
   }
 }
@@ -100,7 +98,6 @@ async function verifyToken(token) {
     
     return { valid: false, bot: null, error: "Token inválido" };
   } catch (error) {
-    console.error("Erro ao verificar token:", error.message);
     return { valid: false, bot: null, error: error.message };
   }
 }
@@ -314,7 +311,6 @@ async function verifyChat(token, chatId) {
       }
     };
   } catch (error) {
-    console.error("Erro ao verificar chat:", error.message);
     const errorCode = error.response?.status || 500;
     const description = error.response?.data?.description || error.message;
     const errorMessage = getErrorMessage(errorCode, description);

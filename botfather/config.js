@@ -19,7 +19,7 @@ function loadConfig() {
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error("Erro ao carregar config:", error.message);
+    // Erro silencioso ao carregar config
   }
   return {};
 }
@@ -29,7 +29,6 @@ function saveConfig(config) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), "utf8");
     return true;
   } catch (error) {
-    console.error("Erro ao salvar config:", error.message);
     return false;
   }
 }

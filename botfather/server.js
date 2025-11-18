@@ -7,6 +7,32 @@ const PORT = process.env.PORT || 3001;
 // Configuração de proxy trust (importante para proxy reverso do Easypanel)
 app.set('trust proxy', true);
 
+// CORS - Permitir requisições do localhost e produção
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'https://promobot-website.meoy4a.easypanel.host'
+  ];
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
 // Configurações para alta concorrência
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -40,8 +66,138 @@ const sendSuccess = (res, data, status = 200) => {
   res.status(status).json({ success: true, ...data });
 };
 
+// Health check
 app.get("/api/botfather/health", (req, res) => {
   res.json({ status: "ok" });
+});
+
+// Health check simples (sem /api/botfather)
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+// Endpoint /check para verificar configuração completa
+app.post("/check", async (req, res) => {
+  try {
+    const { bot_token, channel, group } = req.body;
+    
+    if (!bot_token) {
+      return res.status(400).json({
+        success: false,
+        valid: false,
+        error: "Bot token é obrigatório"
+      });
+    }
+    
+    // Verificar token
+    const tokenResult = await verifyToken(bot_token);
+    if (!tokenResult.valid) {
+      return res.json({
+        success: true,
+        valid: false,
+        message: tokenResult.error || "Token inválido"
+      });
+    }
+    
+    // Se channel e group foram fornecidos, verificar acesso
+    if (channel || group) {
+      const chatId = channel || group;
+      const chatResult = await verifyChat(bot_token, chatId);
+      
+      if (!chatResult.hasAccess) {
+        return res.json({
+          success: true,
+          valid: false,
+          message: chatResult.error || "Bot não tem acesso ao grupo/canal"
+        });
+      }
+      
+      return res.json({
+        success: true,
+        valid: true,
+        message: "Configuração válida",
+        bot: tokenResult.bot,
+        chat: chatResult.chat,
+        permissions: chatResult.permissions
+      });
+    }
+    
+    // Apenas token verificado
+    return res.json({
+      success: true,
+      valid: true,
+      message: "Token válido",
+      bot: tokenResult.bot
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      valid: false,
+      error: error.message
+    });
+  }
+});
+
+// Endpoint /api/botfather/check (mesmo comportamento)
+app.post("/api/botfather/check", async (req, res) => {
+  try {
+    const { bot_token, channel, group } = req.body;
+    
+    if (!bot_token) {
+      return res.status(400).json({
+        success: false,
+        valid: false,
+        error: "Bot token é obrigatório"
+      });
+    }
+    
+    // Verificar token
+    const tokenResult = await verifyToken(bot_token);
+    if (!tokenResult.valid) {
+      return res.json({
+        success: true,
+        valid: false,
+        message: tokenResult.error || "Token inválido"
+      });
+    }
+    
+    // Se channel e group foram fornecidos, verificar acesso
+    if (channel || group) {
+      const chatId = channel || group;
+      const chatResult = await verifyChat(bot_token, chatId);
+      
+      if (!chatResult.hasAccess) {
+        return res.json({
+          success: true,
+          valid: false,
+          message: chatResult.error || "Bot não tem acesso ao grupo/canal"
+        });
+      }
+      
+      return res.json({
+        success: true,
+        valid: true,
+        message: "Configuração válida",
+        bot: tokenResult.bot,
+        chat: chatResult.chat,
+        permissions: chatResult.permissions
+      });
+    }
+    
+    // Apenas token verificado
+    return res.json({
+      success: true,
+      valid: true,
+      message: "Token válido",
+      bot: tokenResult.bot
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      valid: false,
+      error: error.message
+    });
+  }
 });
 
 app.post("/api/botfather/verify-token", validateRequired(["token"]), async (req, res) => {
@@ -133,7 +289,6 @@ app.delete("/api/botfather/message/:chatId/:messageId", validateRequired(["token
 
 // Middleware de tratamento de erros global
 app.use((err, req, res, next) => {
-  console.error("Erro na requisição:", err.message);
   if (!res.headersSent) {
     res.status(500).json({
       success: false,
@@ -162,11 +317,9 @@ server.keepAliveTimeout = 65000; // 65 segundos
 server.headersTimeout = 66000; // 66 segundos
 
 process.on("unhandledRejection", (error) => {
-  console.error("Unhandled Rejection:", error);
-  // Não encerra o processo, apenas loga o erro
+  // Erro silencioso - não encerra o processo
 });
 
 process.on("uncaughtException", (error) => {
-  console.error("Uncaught Exception:", error);
-  // Não encerra o processo imediatamente para manter disponibilidade
+  // Erro silencioso - não encerra o processo imediatamente para manter disponibilidade
 });

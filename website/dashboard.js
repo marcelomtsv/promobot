@@ -42,7 +42,10 @@ const TELEGRAM_WS_URL = localStorage.getItem('telegramWsUrl') || 'wss://promobot
 const DEEPSEEK_API_URL = localStorage.getItem('deepseekApiUrl') || 'https://promobot-deepseek.meoy4a.easypanel.host';
 
 // URL da API do Bot Father
-const BOTFATHER_API_URL = localStorage.getItem('botfatherApiUrl') || 'https://promobot-botfather.meoy4a.easypanel.host';
+const BOTFATHER_API_URL = localStorage.getItem('botfatherApiUrl') || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3001' 
+    : 'https://promobot-botfather.meoy4a.easypanel.host');
 // ==========================================
 
 // Inicialização
