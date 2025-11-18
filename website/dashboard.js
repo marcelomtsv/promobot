@@ -990,7 +990,6 @@ async function handleProfileUpdate(e) {
       alert('Perfil atualizado com sucesso!');
     }
   } catch (error) {
-    console.error('Erro ao atualizar perfil:', error);
     alert('Erro ao atualizar perfil. Tente novamente.');
   }
 }
@@ -1032,8 +1031,6 @@ async function handlePasswordChange(e) {
       alert('Firebase não configurado. Funcionalidade não disponível.');
     }
   } catch (error) {
-    console.error('Erro ao alterar senha:', error);
-    
     let errorMessage = 'Erro ao alterar senha. ';
     if (error.code === 'auth/wrong-password') {
       errorMessage += 'Senha atual incorreta.';
@@ -1178,8 +1175,6 @@ async function addDeepSeekApiKey() {
       throw new Error(data.message || 'API Key inválida ou expirada');
     }
   } catch (error) {
-    console.error('Erro ao adicionar API Key:', error);
-    
     // Reabilitar botão
     if (addBtn) {
       addBtn.disabled = false;
@@ -1355,8 +1350,6 @@ async function addBotFatherConfig() {
       throw new Error(data.message || 'Configuração inválida. Verifique o token, channel e group.');
     }
   } catch (error) {
-    console.error('Erro ao adicionar configuração do Bot Father:', error);
-    
     // Reabilitar botão
     if (addBtn) {
       addBtn.disabled = false;
@@ -1451,7 +1444,6 @@ async function testDeepSeekApiConnection() {
       });
     } catch (fetchError) {
       // Se falhar, tentar sem mode: 'cors' explicitamente
-      console.warn('Primeira tentativa falhou, tentando sem mode cors:', fetchError);
       response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -1471,8 +1463,6 @@ async function testDeepSeekApiConnection() {
       statusDiv.style.display = 'block';
     }
   } catch (error) {
-    console.error('Erro ao testar conexão:', error);
-    
     let errorMessage = 'Não foi possível conectar com a API.';
     let errorDetails = '';
     
@@ -1574,7 +1564,6 @@ async function verifyDeepSeekApiKey() {
       });
     } catch (fetchError) {
       // Se falhar, tentar sem mode: 'cors' explicitamente
-      console.warn('Primeira tentativa falhou, tentando sem mode cors:', fetchError);
       response = await fetch(`${apiUrl}/check`, {
         method: 'POST',
         headers: {
@@ -1622,9 +1611,6 @@ async function verifyDeepSeekApiKey() {
       saveBtn.style.opacity = '0.5';
     }
   } catch (error) {
-    console.error('Erro ao verificar API Key:', error);
-    console.error('URL da API:', DEEPSEEK_API_URL);
-    
     let errorMessage = 'Erro ao verificar API Key';
     let errorDetails = '';
     
@@ -1753,7 +1739,6 @@ async function handleDeepSeekConfig(e) {
       closeModal();
     }, 1000);
   } catch (error) {
-    console.error('Erro ao salvar configuração:', error);
     statusDiv.innerHTML = `<span style="color: var(--accent-color);"><i class="fas fa-times-circle"></i> Erro ao salvar: ${error.message}</span>`;
     statusDiv.style.display = 'block';
   } finally {
@@ -1819,7 +1804,7 @@ async function logout() {
       try {
         await window.firebaseAuth.signOut();
       } catch (error) {
-        console.error('Erro ao fazer logout:', error);
+        // Erro silencioso no logout
       }
     }
     
@@ -2056,7 +2041,6 @@ function initTelegramWebSocket() {
   telegramWebSocket = new WebSocket(wsUrl);
   
   telegramWebSocket.onopen = () => {
-    console.log('WebSocket conectado');
     addConsoleLine('info', '🔌 Conectado ao servidor de mensagens do Telegram');
   };
   
@@ -2081,17 +2065,15 @@ function initTelegramWebSocket() {
         addConsoleLine('found', `📨 [${sessionName}] Mensagem recebida de ${message.senderName}: ${message.message}`);
       }
     } catch (error) {
-      console.error('Erro ao processar mensagem WebSocket:', error);
+      // Erro silencioso ao processar mensagem WebSocket
     }
   };
   
   telegramWebSocket.onerror = (error) => {
-    console.error('Erro no WebSocket:', error);
     addConsoleLine('error', '❌ Erro na conexão WebSocket');
   };
   
   telegramWebSocket.onclose = () => {
-    console.log('WebSocket desconectado. Tentando reconectar...');
     setTimeout(() => {
       initTelegramWebSocket();
     }, 3000);
@@ -2131,7 +2113,6 @@ async function loadTelegramSessions() {
     // Verificar se a API está disponível primeiro
     const isApiAvailable = await checkTelegramApiStatus();
     if (!isApiAvailable) {
-      console.warn('API do Telegram não está disponível em:', TELEGRAM_API_URL);
       telegramSessions = [];
       loadPlatforms();
       return;
@@ -2152,13 +2133,6 @@ async function loadTelegramSessions() {
     // Atualizar card do Telegram se estiver visível
     loadPlatforms();
   } catch (error) {
-    if (error.name === 'AbortError') {
-      console.error('Timeout ao conectar com a API do Telegram');
-    } else {
-      console.error('Erro ao carregar sessões do Telegram:', error);
-    }
-    console.error('Verifique se a API está rodando em:', TELEGRAM_API_URL);
-    console.error('Para configurar a URL da API, use: localStorage.setItem("telegramApiUrl", "sua-url-aqui")');
     telegramSessions = [];
     loadPlatforms();
   }
@@ -2205,7 +2179,6 @@ async function loadTelegramAccountsList() {
       </div>
     `).join('');
   } catch (error) {
-    console.error('Erro ao carregar lista de contas:', error);
     container.innerHTML = '<p style="color: var(--accent-color); text-align: center; padding: 1rem;">Erro ao carregar contas.</p>';
   }
 }
@@ -2312,7 +2285,6 @@ async function handleAddTelegramAccount(e) {
       alert('Erro ao criar sessão: ' + (data.error || 'Erro desconhecido'));
     }
   } catch (error) {
-    console.error('Erro ao adicionar conta:', error);
     if (error.name === 'AbortError') {
       alert('⏱️ Timeout ao conectar com a API do Telegram.\n\nVerifique se a API está rodando e tente novamente.');
     } else if (error.message.includes('Failed to fetch')) {
@@ -2343,7 +2315,6 @@ async function pauseTelegramSession(sessionId) {
       alert('Erro ao pausar sessão: ' + (data.error || 'Erro desconhecido'));
     }
   } catch (error) {
-    console.error('Erro ao pausar sessão:', error);
     alert('Erro ao pausar sessão.');
   }
 }
@@ -2365,7 +2336,6 @@ async function resumeTelegramSession(sessionId) {
       alert('Erro ao retomar sessão: ' + (data.error || 'Erro desconhecido'));
     }
   } catch (error) {
-    console.error('Erro ao retomar sessão:', error);
     alert('Erro ao retomar sessão.');
   }
 }
@@ -2392,7 +2362,6 @@ async function deleteTelegramSession(sessionId) {
       alert('Erro ao excluir conta: ' + (data.error || 'Erro desconhecido'));
     }
   } catch (error) {
-    console.error('Erro ao excluir sessão:', error);
     alert('Erro ao excluir conta.');
   }
 }
