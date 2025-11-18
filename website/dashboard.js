@@ -1441,19 +1441,16 @@ async function testDeepSeekApiConnection() {
         headers: {
           'Accept': 'application/json'
         },
-        signal: createTimeoutSignal(10000),
-        mode: 'cors',
-        credentials: 'omit'
+        signal: createTimeoutSignal(10000)
       });
     } catch (fetchError) {
-      // Se falhar, tentar sem mode: 'cors' explicitamente
+      // Se falhar, tentar novamente
       response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json'
         },
-        signal: createTimeoutSignal(10000),
-        credentials: 'omit'
+        signal: createTimeoutSignal(10000)
       });
     }
     
@@ -1480,24 +1477,14 @@ async function testDeepSeekApiConnection() {
           
           <strong style="color: var(--accent-color); display: block; margin-bottom: 0.5rem;">Possíveis causas:</strong>
           <ul style="color: var(--text-light); margin: 0.5rem 0; padding-left: 1.5rem;">
-            <li><strong>CORS não configurado no servidor</strong> (mais provável)</li>
             <li>API offline ou inacessível</li>
             <li>Extensão do navegador bloqueando requisições</li>
             <li>Problema de rede/firewall</li>
+            <li>URL da API incorreta</li>
           </ul>
           
-          <strong style="color: var(--accent-color); display: block; margin-top: 0.75rem; margin-bottom: 0.5rem;">Como resolver CORS no servidor Node.js/Express:</strong>
-          <pre style="background: var(--bg-white); border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.75rem; color: var(--text-dark); margin: 0.5rem 0;"><code>// Adicione no seu servidor:
-const cors = require('cors');
-app.use(cors({
-  origin: '*', // ou especifique seu domínio
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Accept']
-}));</code></pre>
-          
           <small style="color: var(--text-light); display: block; margin-top: 0.5rem;">
-            <strong>Teste rápido:</strong> Abra <a href="${apiUrl}" target="_blank" style="color: var(--accent-color); text-decoration: underline;">${apiUrl}</a> no navegador. 
-            Se funcionar, o problema é CORS.
+            <strong>Teste rápido:</strong> Abra <a href="${apiUrl}" target="_blank" style="color: var(--accent-color); text-decoration: underline;">${apiUrl}</a> no navegador para verificar se a API está acessível.
           </small>
         </div>`;
     } else {
@@ -1561,12 +1548,10 @@ async function verifyDeepSeekApiKey() {
         body: JSON.stringify({
           api_key: apiKey
         }),
-        signal: createTimeoutSignal(15000), // Timeout de 15 segundos
-        mode: 'cors',
-        credentials: 'omit'
+        signal: createTimeoutSignal(15000) // Timeout de 15 segundos
       });
     } catch (fetchError) {
-      // Se falhar, tentar sem mode: 'cors' explicitamente
+      // Se falhar, tentar novamente
       response = await fetch(`${apiUrl}/check`, {
         method: 'POST',
         headers: {
@@ -1576,8 +1561,7 @@ async function verifyDeepSeekApiKey() {
         body: JSON.stringify({
           api_key: apiKey
         }),
-        signal: createTimeoutSignal(15000),
-        credentials: 'omit'
+        signal: createTimeoutSignal(15000)
       });
     }
     
@@ -1628,29 +1612,16 @@ async function verifyDeepSeekApiKey() {
           
           <strong style="color: var(--accent-color); display: block; margin-bottom: 0.5rem;">Possíveis causas:</strong>
           <ul style="color: var(--text-light); margin: 0.5rem 0; padding-left: 1.5rem;">
-            <li><strong>CORS não configurado no servidor</strong> (mais provável)</li>
             <li>API offline ou inacessível</li>
             <li>Extensão do navegador bloqueando requisições</li>
             <li>Problema de rede/firewall</li>
+            <li>URL da API incorreta</li>
           </ul>
           
-          <strong style="color: var(--accent-color); display: block; margin-top: 0.75rem; margin-bottom: 0.5rem;">Como resolver CORS no servidor Node.js/Express:</strong>
-          <pre style="background: var(--bg-white); border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-size: 0.75rem; color: var(--text-dark); margin: 0.5rem 0;"><code>// Adicione no seu servidor:
-const cors = require('cors');
-app.use(cors({
-  origin: '*', // ou especifique seu domínio
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Accept']
-}));</code></pre>
-          
           <small style="color: var(--text-light); display: block; margin-top: 0.5rem;">
-            <strong>Teste rápido:</strong> Abra <a href="${DEEPSEEK_API_URL}" target="_blank" style="color: var(--accent-color); text-decoration: underline;">${DEEPSEEK_API_URL}</a> no navegador. 
-            Se funcionar, o problema é CORS.
+            <strong>Teste rápido:</strong> Abra <a href="${DEEPSEEK_API_URL}" target="_blank" style="color: var(--accent-color); text-decoration: underline;">${DEEPSEEK_API_URL}</a> no navegador para verificar se a API está acessível.
           </small>
         </div>`;
-    } else if (error.message.includes('CORS')) {
-      errorMessage = 'Erro de CORS: A API não permite requisições do navegador.';
-      errorDetails = `<br><small style="color: var(--text-light);">Entre em contato com o administrador da API.</small>`;
     } else {
       errorMessage = `Erro: ${error.message}`;
     }
