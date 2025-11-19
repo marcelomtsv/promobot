@@ -25,6 +25,9 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+  } else if (!origin) {
+    // Permitir requisições sem origin (ex: curl, Postman)
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
   
   // Responder a preflight requests

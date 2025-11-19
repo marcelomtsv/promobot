@@ -2225,28 +2225,53 @@ function createTimeoutSignal(ms) {
 // Verificar se a API do Telegram está disponível
 async function checkTelegramApiStatus() {
   try {
+    console.log('Verificando API do Telegram em:', TELEGRAM_API_URL);
+    
     // Tentar primeiro o endpoint /health que é mais leve
-    const response = await fetch(`${TELEGRAM_API_URL}/health`, {
-      method: 'GET',
-      mode: 'cors',
-      signal: createTimeoutSignal(5000) // Timeout de 5 segundos
-    });
-    if (response.ok) {
-      const data = await response.json().catch(() => ({}));
-      return data.status === 'ok' || response.status === 200;
+    try {
+      const response = await fetch(`${TELEGRAM_API_URL}/health`, {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit',
+        signal: createTimeoutSignal(5000) // Timeout de 5 segundos
+      });
+      
+      console.log('Resposta /health:', response.status, response.statusText);
+      
+      if (response.ok) {
+        const data = await response.json().catch(() => ({}));
+        console.log('Dados /health:', data);
+        if (data.status === 'ok' || response.status === 200) {
+          return true;
+        }
+      }
+    } catch (healthError) {
+      console.log('Erro no /health:', healthError.message);
     }
     
     // Fallback para endpoint raiz
-    const rootResponse = await fetch(`${TELEGRAM_API_URL}/`, {
-      method: 'GET',
-      mode: 'cors',
-      signal: createTimeoutSignal(5000)
-    });
-    if (rootResponse.ok) {
-      const data = await rootResponse.json().catch(() => ({}));
-      return data.success === true || rootResponse.status === 200;
+    try {
+      const rootResponse = await fetch(`${TELEGRAM_API_URL}/`, {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit',
+        signal: createTimeoutSignal(5000)
+      });
+      
+      console.log('Resposta /:', rootResponse.status, rootResponse.statusText);
+      
+      if (rootResponse.ok) {
+        const data = await rootResponse.json().catch(() => ({}));
+        console.log('Dados /:', data);
+        if (data.success === true || rootResponse.status === 200) {
+          return true;
+        }
+      }
+    } catch (rootError) {
+      console.log('Erro no /:', rootError.message);
     }
     
+    console.log('API do Telegram não está disponível');
     return false;
   } catch (error) {
     console.error('Erro ao verificar API do Telegram:', error);
