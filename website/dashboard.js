@@ -389,11 +389,15 @@ async function loadPlatforms() {
     }
   }
 
-  // Carregar integrações destacadas
+  // Carregar integrações destacadas (verificar duplicatas antes de adicionar)
   if (integrationsList) {
     integrations.forEach(integration => {
-      const card = createIntegrationCard(integration);
-      integrationsList.appendChild(card);
+      // Verificar se o card já existe antes de adicionar
+      const existingCard = document.getElementById(`integration-card-${integration.id}`);
+      if (!existingCard) {
+        const card = createIntegrationCard(integration);
+        integrationsList.appendChild(card);
+      }
     });
   }
 
@@ -476,6 +480,10 @@ function createIntegrationCard(integration) {
     'deepseek': 'IA para análise inteligente de promoções',
     'botfather': 'Crie e gerencie bots do Telegram'
   };
+  
+  // Adicionar ID único ao card para evitar duplicação
+  card.setAttribute('data-integration-id', integration.id);
+  card.id = `integration-card-${integration.id}`;
   
   card.innerHTML = `
     <div class="platform-header">
