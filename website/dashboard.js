@@ -2878,24 +2878,85 @@ async function handleVerifyTelegramCode(e) {
         });
       }
       
-      // Sucesso!
-      submitBtn.innerHTML = '<i class="fas fa-check"></i> Verificado!';
-      submitBtn.style.background = '#10b981';
+      // Mostrar animação de sucesso no modal
+      const modal = document.getElementById('telegramCodeModal');
+      const modalBody = modal?.querySelector('.modal-body');
+      if (modalBody) {
+        modalBody.innerHTML = `
+          <div style="text-align: center; padding: 3rem 2rem;">
+            <div style="width: 100px; height: 100px; margin: 0 auto 2rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); animation: scaleIn 0.5s ease-out, pulse 2s infinite 0.5s;">
+              <i class="fas fa-check" style="font-size: 3rem; color: white; animation: checkmark 0.6s ease-out 0.3s both;"></i>
+            </div>
+            <h2 style="color: var(--text-dark); margin: 0 0 1rem 0; font-size: 1.75rem; font-weight: 700; animation: fadeInUp 0.6s ease-out 0.2s both;">
+              ✅ Conta Verificada!
+            </h2>
+            <p style="color: var(--text-light); font-size: 1rem; margin: 0 0 2rem 0; animation: fadeInUp 0.6s ease-out 0.4s both;">
+              Sua conta do Telegram foi adicionada e verificada com sucesso!
+            </p>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: var(--text-light); font-size: 0.9rem; animation: fadeInUp 0.6s ease-out 0.6s both;">
+              <i class="fas fa-spinner fa-spin"></i>
+              <span>Redirecionando...</span>
+            </div>
+          </div>
+          <style>
+            @keyframes scaleIn {
+              from {
+                transform: scale(0);
+                opacity: 0;
+              }
+              to {
+                transform: scale(1);
+                opacity: 1;
+              }
+            }
+            @keyframes pulse {
+              0%, 100% {
+                transform: scale(1);
+              }
+              50% {
+                transform: scale(1.05);
+              }
+            }
+            @keyframes checkmark {
+              0% {
+                transform: scale(0) rotate(45deg);
+                opacity: 0;
+              }
+              50% {
+                transform: scale(1.2) rotate(45deg);
+              }
+              100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+              }
+            }
+            @keyframes fadeInUp {
+              from {
+                transform: translateY(20px);
+                opacity: 0;
+              }
+              to {
+                transform: translateY(0);
+                opacity: 1;
+              }
+            }
+          </style>
+        `;
+      }
       
-      setTimeout(() => {
+      // Aguardar 2 segundos para mostrar animação, depois fechar e reabrir modal de configuração
+      setTimeout(async () => {
         closeTelegramCodeModal();
         
-        // Recarregar modal de configuração
-        const modalBody = document.getElementById('modalBody');
-        if (modalBody) {
-          modalBody.innerHTML = getTelegramConfigHTML();
-        }
+        // Recarregar dados do Firebase
+        await loadTelegramAccountFromFirebase();
         
+        // Reabrir modal de configuração do Telegram
+        openPlatformConfig('telegram');
+        
+        // Recarregar plataformas para atualizar status
         loadPlatforms();
-        
-        // Mostrar mensagem de sucesso
-        alert('✅ Conta adicionada e verificada com sucesso!');
-      }, 1000);
+      }, 2000);
     } else {
       throw new Error(verifyData.error || 'Código inválido');
     }
