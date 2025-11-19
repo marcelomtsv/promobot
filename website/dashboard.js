@@ -33,19 +33,28 @@ let autoScrollEnabled = true;
 let telegramWebSocket = null;
 let telegramSessions = [];
 
-// ===== CONFIGURAÇÃO DA API EXISTENTE =====
-// URL da API do Telegram
-const TELEGRAM_API_URL = localStorage.getItem('telegramApiUrl') || 'https://promobot-telegram.meoy4a.easypanel.host';
-const TELEGRAM_WS_URL = localStorage.getItem('telegramWsUrl') || 'wss://promobot-telegram.meoy4a.easypanel.host';
+// ===== CONFIGURAÇÃO DA API =====
+// URL da API do Telegram (localhost para desenvolvimento)
+const TELEGRAM_API_URL = localStorage.getItem('telegramApiUrl') || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3001' 
+    : 'http://localhost:3001');
+const TELEGRAM_WS_URL = localStorage.getItem('telegramWsUrl') || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'ws://localhost:3001' 
+    : 'ws://localhost:3001');
 
-// URL da API do DeepSeek
-const DEEPSEEK_API_URL = localStorage.getItem('deepseekApiUrl') || 'https://promobot-deepseek.meoy4a.easypanel.host';
+// URL da API do DeepSeek (localhost para desenvolvimento)
+const DEEPSEEK_API_URL = localStorage.getItem('deepseekApiUrl') || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3002' 
+    : 'http://localhost:3002');
 
-// URL da API do Bot Father
+// URL da API do Bot Father (localhost para desenvolvimento)
 const BOTFATHER_API_URL = localStorage.getItem('botfatherApiUrl') || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? 'http://localhost:3001' 
-    : 'https://promobot-botfather.meoy4a.easypanel.host');
+    : 'http://localhost:3001');
 // ==========================================
 
 // Inicialização
@@ -73,9 +82,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
   loadPlatforms();
   initMonitoring();
-  // Telegram desabilitado temporariamente - será configurado depois
-  // initTelegramWebSocket();
-  // loadTelegramSessions();
+  // Inicializar Telegram WebSocket para receber mensagens
+  initTelegramWebSocket();
+  loadTelegramSessions();
   
   // Restaurar aba ativa salva (já aplicada no script inline, apenas garantir sincronização)
   const savedPanel = localStorage.getItem('activePanel') || 'overview';
@@ -1550,7 +1559,7 @@ async function verifyDeepSeekApiKey() {
   try {
     // Obter URL da API do campo ou usar a padrão
     const urlInput = document.getElementById('deepseekApiUrl');
-    const apiUrl = (urlInput && urlInput.value.trim()) || DEEPSEEK_API_URL || 'https://promobot-deepseek.meoy4a.easypanel.host';
+    const apiUrl = (urlInput && urlInput.value.trim()) || DEEPSEEK_API_URL || 'http://localhost:3002';
     
     if (!apiUrl || apiUrl.trim() === '') {
       throw new Error('URL da API não configurada');
@@ -2103,52 +2112,60 @@ window.toggleSidebar = toggleSidebar;
 
 // Inicializar WebSocket para mensagens do Telegram
 function initTelegramWebSocket() {
-  // Telegram desabilitado temporariamente - será configurado depois
-  return;
-  
-  // Usar URL da API existente configurada
+  // Usar URL da API configurada
   const wsUrl = TELEGRAM_WS_URL;
   
-  telegramWebSocket = new WebSocket(wsUrl);
-  
-  telegramWebSocket.onopen = () => {
-    addConsoleLine('info', '🔌 Conectado ao servidor de mensagens do Telegram');
-  };
-  
-  telegramWebSocket.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      
-      // A API envia mensagens em batch
-      if (data.type === 'batch_messages' && data.data) {
-        data.data.forEach(message => {
+  try {
+    telegramWebSocket = new WebSocket(wsUrl);
+    
+    telegramWebSocket.onopen = () => {
+      addConsoleLine('info', '🔌 Conectado ao servidor de mensagens do Telegram');
+    };
+    
+    telegramWebSocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // A API envia mensagens em batch
+        if (data.type === 'batch_messages' && data.data) {
+          data.data.forEach(message => {
+            const session = telegramSessions.find(s => s.id === message.sessionId);
+            const sessionName = session ? session.name : 'Desconhecida';
+            
+            addConsoleLine('found', `📨 [${sessionName}] Mensagem recebida de ${message.senderName || 'Desconhecido'}: ${message.message || 'Sem texto'}`);
+          });
+        } else if (data.type === 'new_message') {
+          // Fallback para formato individual
+          const message = data.data;
           const session = telegramSessions.find(s => s.id === message.sessionId);
           const sessionName = session ? session.name : 'Desconhecida';
           
-          addConsoleLine('found', `📨 [${sessionName}] Mensagem recebida de ${message.senderName}: ${message.message}`);
-        });
-      } else if (data.type === 'new_message') {
-        // Fallback para formato individual
-        const message = data.data;
-        const session = telegramSessions.find(s => s.id === message.sessionId);
-        const sessionName = session ? session.name : 'Desconhecida';
-        
-        addConsoleLine('found', `📨 [${sessionName}] Mensagem recebida de ${message.senderName}: ${message.message}`);
+          addConsoleLine('found', `📨 [${sessionName}] Mensagem recebida de ${message.senderName || 'Desconhecido'}: ${message.message || 'Sem texto'}`);
+        } else if (data.type === 'connected') {
+          addConsoleLine('info', '✅ WebSocket conectado e pronto para receber mensagens');
+        }
+      } catch (error) {
+        console.error('Erro ao processar mensagem WebSocket:', error);
       }
-    } catch (error) {
-      // Erro silencioso ao processar mensagem WebSocket
-    }
-  };
-  
-  telegramWebSocket.onerror = (error) => {
-    addConsoleLine('error', '❌ Erro na conexão WebSocket');
-  };
-  
-  telegramWebSocket.onclose = () => {
+    };
+    
+    telegramWebSocket.onerror = (error) => {
+      addConsoleLine('error', '❌ Erro na conexão WebSocket do Telegram');
+    };
+    
+    telegramWebSocket.onclose = () => {
+      addConsoleLine('warning', '⚠️ Conexão WebSocket fechada. Tentando reconectar em 3 segundos...');
+      setTimeout(() => {
+        initTelegramWebSocket();
+      }, 3000);
+    };
+  } catch (error) {
+    addConsoleLine('error', `❌ Erro ao conectar WebSocket: ${error.message}`);
+    // Tentar reconectar após 5 segundos
     setTimeout(() => {
       initTelegramWebSocket();
-    }, 3000);
-  };
+    }, 5000);
+  }
 }
 
 // Helper para criar timeout (compatibilidade com navegadores antigos)
