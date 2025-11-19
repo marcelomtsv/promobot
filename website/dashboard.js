@@ -475,27 +475,62 @@ function openPlatformConfig(platformId) {
   
   // Verificar se é integração
   const integration = integrations.find(i => i.id === platformId);
-  if (integration) {
+    if (integration) {
     if (platformId === 'telegram' || platformId === 'whatsapp') {
       modalTitle.textContent = `Configurar ${integration.name}`;
       modalBody.innerHTML = getNotificationConfigHTML(platformId);
       modal.classList.add('active');
       
-      setTimeout(() => {
-        loadTelegramAccountsList();
-        const form = document.getElementById('addTelegramAccountFormElement');
-        if (form) {
-          // Remover listeners antigos se existirem
-          const newForm = form.cloneNode(true);
-          form.parentNode.replaceChild(newForm, form);
-          
-          // Adicionar novo listener
-          document.getElementById('addTelegramAccountFormElement').addEventListener('submit', (e) => {
-            e.preventDefault();
-            handleAddTelegramAccount(e);
-          });
+      // Se for Telegram, verificar API e carregar contas
+      if (platformId === 'telegram') {
+        // Verificar se API está disponível
+        const isApiAvailable = await checkTelegramApiStatus();
+        if (!isApiAvailable) {
+          modalBody.innerHTML = `
+            <div style="text-align: center; padding: 2rem;">
+              <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+              <h3 style="color: var(--text-dark); margin-bottom: 1rem;">API do Telegram não está disponível</h3>
+              <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+                A API precisa estar rodando em: <strong>${TELEGRAM_API_URL}</strong>
+              </p>
+              <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                Para iniciar a API, execute no terminal:<br>
+                <code style="background: var(--bg-light); padding: 0.5rem; border-radius: 4px; display: inline-block; margin-top: 0.5rem;">cd telegram && npm start</code>
+              </p>
+              <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+            </div>
+          `;
+          return;
         }
-      }, 100);
+        
+        // Carregar contas do Telegram
+        setTimeout(() => {
+          loadTelegramAccountsList();
+          const form = document.getElementById('addTelegramAccountFormElement');
+          if (form) {
+            // Remover listeners antigos se existirem
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
+            
+            // Adicionar novo listener
+            document.getElementById('addTelegramAccountFormElement').addEventListener('submit', (e) => {
+              e.preventDefault();
+              handleAddTelegramAccount(e);
+            });
+          }
+        }, 100);
+      } else {
+        // Para WhatsApp, apenas adicionar listener do formulário
+        setTimeout(() => {
+          const form = document.getElementById('notificationConfigForm');
+          if (form) {
+            form.addEventListener('submit', (e) => {
+              e.preventDefault();
+              handleNotificationConfig('whatsapp');
+            });
+          }
+        }, 100);
+      }
       return;
     } else if (platformId === 'deepseek') {
       modalTitle.textContent = `Configurar ${integration.name}`;
@@ -2201,10 +2236,6 @@ async function checkTelegramApiStatus() {
 
 // Carregar sessões do Telegram
 async function loadTelegramSessions() {
-  // Telegram desabilitado temporariamente - será configurado depois
-  telegramSessions = [];
-  return;
-  
   try {
     // Verificar se a API está disponível primeiro
     const isApiAvailable = await checkTelegramApiStatus();
@@ -2214,7 +2245,7 @@ async function loadTelegramSessions() {
       return;
     }
 
-    // A API usa /api/sessions, não /api/telegram/sessions
+    // A API usa /api/sessions
     const response = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
       signal: createTimeoutSignal(10000) // Timeout de 10 segundos
     });
