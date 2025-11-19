@@ -3067,9 +3067,8 @@ async function addTelegramAccount() {
     const data = await response.json();
     
     if (data.success) {
-      // Salvar dados no Firebase (sem sessionString ainda, será salvo após verificação)
-      // Usar email como identificador único
-      await saveTelegramAccountToFirebase({
+      // Preparar dados da conta
+      const accountData = {
         name: currentUser?.email || currentUser?.displayName || 'Usuario',
         email: currentUser?.email || '',
         phone,
@@ -3078,7 +3077,14 @@ async function addTelegramAccount() {
         sessionId: data.sessionId,
         status: 'pending',
         createdAt: new Date().toISOString()
-      });
+      };
+      
+      // Salvar no cache primeiro (para uso durante verificação)
+      window.telegramConfigCache = accountData;
+      
+      // Salvar dados no Firebase (sem sessionString ainda, será salvo após verificação)
+      // Usar email como identificador único
+      await saveTelegramAccountToFirebase(accountData);
       
       // Fechar modal de configuração imediatamente
       document.getElementById('platformModal')?.classList.remove('active');
