@@ -34,15 +34,15 @@ let telegramWebSocket = null;
 let telegramSessions = [];
 
 // ===== CONFIGURAÇÃO DA API =====
-// URL da API do Telegram (localhost para desenvolvimento)
+// URL da API do Telegram (localhost para desenvolvimento - porta 3003)
 const TELEGRAM_API_URL = localStorage.getItem('telegramApiUrl') || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:3001' 
-    : 'http://localhost:3001');
+    ? 'http://localhost:3003' 
+    : 'http://localhost:3003');
 const TELEGRAM_WS_URL = localStorage.getItem('telegramWsUrl') || 
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'ws://localhost:3001' 
-    : 'ws://localhost:3001');
+    ? 'ws://localhost:3003' 
+    : 'ws://localhost:3003');
 
 // URL da API do DeepSeek (localhost para desenvolvimento)
 const DEEPSEEK_API_URL = localStorage.getItem('deepseekApiUrl') || 
@@ -2181,11 +2181,19 @@ function createTimeoutSignal(ms) {
 // Verificar se a API do Telegram está disponível
 async function checkTelegramApiStatus() {
   try {
-    const response = await fetch(`${TELEGRAM_API_URL}/api/config`, {
+    // Tentar primeiro o endpoint /health que é mais leve
+    const response = await fetch(`${TELEGRAM_API_URL}/health`, {
       method: 'GET',
       signal: createTimeoutSignal(5000) // Timeout de 5 segundos
     });
-    return response.ok;
+    if (response.ok) return true;
+    
+    // Fallback para endpoint raiz
+    const rootResponse = await fetch(`${TELEGRAM_API_URL}/`, {
+      method: 'GET',
+      signal: createTimeoutSignal(5000)
+    });
+    return rootResponse.ok;
   } catch (error) {
     return false;
   }

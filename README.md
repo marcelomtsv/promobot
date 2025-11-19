@@ -8,7 +8,8 @@ Sistema completo com Website e APIs para gerenciamento de bots do Telegram.
 promobot/
 ├── website/          # Frontend e Dashboard (localhost:3000)
 ├── botfather/        # API BotFather (localhost:3001)
-└── deepseek/         # API DeepSeek (localhost:3002)
+├── deepseek/         # API DeepSeek (localhost:3002)
+└── telegram/         # API Telegram (localhost:3003)
 ```
 
 ## 🛠️ Desenvolvimento Local
@@ -43,6 +44,7 @@ Isso iniciará:
 - 🌐 **Website**: http://localhost:3000
 - 🤖 **BotFather API**: http://localhost:3001
 - 🧠 **DeepSeek API**: http://localhost:3002
+- 📱 **Telegram API**: http://localhost:3003
 
 **Rodar serviços individualmente:**
 ```bash
@@ -69,6 +71,7 @@ npm start
 - **Website**: `3000`
 - **BotFather API**: `3001`
 - **DeepSeek API**: `3002`
+- **Telegram API**: `3003`
 
 Para alterar as portas, crie um arquivo `.env` em cada pasta:
 
@@ -87,6 +90,13 @@ PORT=3001
 PORT=3002
 ```
 
+**telegram/.env:**
+```
+PORT=3003
+API_ID=seu_api_id
+API_HASH=seu_api_hash
+```
+
 ## 📡 Endpoints das APIs
 
 ### BotFather API (localhost:3001)
@@ -98,6 +108,18 @@ PORT=3002
 - `GET /` - Status da API
 - `POST /check` - Verificar API key
 - `POST /chat` - Processar mensagem
+
+### Telegram API (localhost:3003)
+- `GET /` - Status da API e lista de endpoints
+- `GET /health` - Health check
+- `GET /api/config` - Verificar configuração
+- `POST /api/config` - Configurar API_ID e API_HASH
+- `GET /api/sessions` - Listar sessões
+- `POST /api/sessions` - Criar nova sessão
+- `POST /api/sessions/:id/verify` - Verificar código
+- `POST /api/sessions/connect` - Conectar com sessão existente
+- `POST /check` - Verificar se API está configurada
+- `WebSocket ws://localhost:3003` - Receber mensagens em tempo real
 
 ## 🚀 Deploy no EasyPanel
 
