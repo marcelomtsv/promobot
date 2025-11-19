@@ -530,7 +530,7 @@ async function openPlatformConfig(platformId) {
           <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
             <i class="fab fa-whatsapp" style="font-size: 1.25rem; color: white;"></i>
           </div>
-          <span>Configurar WhatsApp</span>
+          <span>Adicionar WhatsApp</span>
         </div>
       `;
       modalBody.innerHTML = getNotificationConfigHTML(platformId);
@@ -1172,8 +1172,8 @@ function getNotificationConfigHTML(type) {
             <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
               <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
             </div>
-            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">WhatsApp Configurado</h3>
-            <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua conta está ativa e funcionando</p>
+            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">WhatsApp Cadastrado</h3>
+            <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua conta está pronta para enviar promoções</p>
             
             <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
@@ -1203,24 +1203,31 @@ function getNotificationConfigHTML(type) {
             </div>
           </div>
         ` : `
-          <!-- Formulário: Configurar -->
+          <!-- Formulário: Adicionar -->
           <form id="notificationConfigForm">
-            <div style="text-align: center; margin-bottom: 2.5rem;">
-              <p style="color: var(--text-light); margin: 0; font-size: 0.95rem; line-height: 1.6;">Configure sua conta do WhatsApp para receber notificações</p>
+            <!-- Hero Section -->
+            <div style="text-align: center; margin-bottom: 2.5rem; padding: 1.5rem; background: linear-gradient(135deg, rgba(37, 211, 102, 0.08) 0%, rgba(18, 140, 126, 0.08) 100%); border-radius: 16px; border: 1px solid rgba(37, 211, 102, 0.15);">
+              <div style="width: 64px; height: 64px; margin: 0 auto 1rem; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 20px rgba(37, 211, 102, 0.3);">
+                <i class="fab fa-whatsapp" style="font-size: 2rem; color: white;"></i>
+              </div>
+              <h3 style="margin: 0 0 0.75rem 0; color: var(--text-dark); font-size: 1.25rem; font-weight: 700;">Adicione sua conta do WhatsApp</h3>
+              <p style="color: var(--text-light); margin: 0; font-size: 0.95rem; line-height: 1.6; max-width: 400px; margin-left: auto; margin-right: auto;">
+                Envie promoções automaticamente para seus grupos e contatos do WhatsApp
+              </p>
             </div>
             
             <!-- Status Message -->
-            <div id="whatsappStatusMessage" style="display: none; margin-bottom: 1.5rem; padding: 1rem; border-radius: 10px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
+            <div id="whatsappStatusMessage" style="display: none; margin-bottom: 1.5rem; padding: 1rem; border-radius: 12px; background: var(--bg-white); border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);"></div>
             
             <!-- Card: Número do WhatsApp -->
-            <div style="background: linear-gradient(135deg, rgba(37, 211, 102, 0.05) 0%, rgba(18, 140, 126, 0.05) 100%); border: 2px solid rgba(37, 211, 102, 0.2); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;">
-              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
-                <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
-                  <i class="fas fa-phone-alt" style="font-size: 1.1rem; color: white;"></i>
+            <div style="background: var(--bg-white); border: 2px solid rgba(37, 211, 102, 0.2); border-radius: 16px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 16px rgba(37, 211, 102, 0.08); transition: all 0.3s ease;" onmouseover="this.style.borderColor='rgba(37, 211, 102, 0.3)'; this.style.boxShadow='0 6px 24px rgba(37, 211, 102, 0.12)'" onmouseout="this.style.borderColor='rgba(37, 211, 102, 0.2)'; this.style.boxShadow='0 4px 16px rgba(37, 211, 102, 0.08)'">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+                  <i class="fas fa-phone-alt" style="font-size: 1.2rem; color: white;"></i>
                 </div>
-                <div>
-                  <h4 style="margin: 0; color: var(--text-dark); font-size: 1rem; font-weight: 600;">Número do WhatsApp</h4>
-                  <p style="margin: 0.25rem 0 0 0; color: var(--text-light); font-size: 0.85rem;">Seu número com código do país</p>
+                <div style="flex: 1;">
+                  <h4 style="margin: 0; color: var(--text-dark); font-size: 1.05rem; font-weight: 700;">Número do WhatsApp</h4>
+                  <p style="margin: 0.375rem 0 0 0; color: var(--text-light); font-size: 0.875rem;">Digite seu número com código do país</p>
                 </div>
               </div>
               
