@@ -29,8 +29,7 @@ let monitoringInterval = null;
 let isMonitoring = false;
 let autoScrollEnabled = true;
 
-// Sessões do Telegram
-let telegramSessions = [];
+// Removido: sistema de múltiplas contas - cada usuário tem apenas UMA conta
 
 // ===== CONFIGURAÇÃO DA API =====
 // URL da API do Telegram (localhost para desenvolvimento - porta 3003)
@@ -164,8 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Configurar resto
   setupEventListeners();
-  // Carregar sessões do Telegram primeiro, depois plataformas
-  await loadTelegramSessions();
+  // Carregar plataformas (OTIMIZADO - não precisa mais carregar sessões separadamente)
   await loadPlatforms();
   initMonitoring();
   
@@ -1226,9 +1224,6 @@ function getNotificationConfigHTML(type) {
             </div>
           </div>
           
-          <div id="telegramAccountsList" style="margin-bottom: 1.5rem;">
-            <!-- Contas serão carregadas aqui -->
-          </div>
         </div>
         
         <div id="addTelegramAccountForm" style="padding: 1.5rem; background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 1.5rem;">
@@ -3639,13 +3634,10 @@ async function handleAddTelegramAccount(e) {
   hideTelegramStatusMessage();
   
   try {
-    // Verificar se já existe uma conta ativa
-    await loadTelegramSessions();
-    const activeSession = telegramSessions.find(s => s.status === 'active' || s.status === 'connected');
-    
-    if (activeSession) {
+    // Verificar se já existe conta no Firebase (OTIMIZADO - apenas uma conta por usuário)
+    const existingAccount = await checkTelegramAccountFromFirebase();
+    if (existingAccount.hasAccount) {
       showTelegramStatusMessage('⚠️ Já existe uma conta do Telegram configurada. Remova a conta existente antes de adicionar uma nova.', 'warning');
-      loadTelegramAccountsList();
       submitBtn.disabled = false;
       btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
       return;
@@ -3678,8 +3670,6 @@ async function handleAddTelegramAccount(e) {
       // Verificar se é erro de conta já existente
       if (errorMessage.includes('Já existe uma conta')) {
         showTelegramStatusMessage('⚠️ ' + errorMessage, 'warning');
-        loadTelegramSessions();
-        loadTelegramAccountsList();
         submitBtn.disabled = false;
         btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
         return;
@@ -3762,80 +3752,12 @@ function hideTelegramStatusMessage() {
   }
 }
 
-// Pausar sessão
-async function pauseTelegramSession(sessionId) {
-  try {
-    const response = await fetch(`${TELEGRAM_API_URL}/api/sessions/${sessionId}/pause`, {
-      method: 'POST',
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      loadTelegramAccountsList();
-      loadTelegramSessions();
-      loadPlatforms();
-    } else {
-      alert('Erro ao pausar sessão: ' + (data.error || 'Erro desconhecido'));
-    }
-  } catch (error) {
-    alert('Erro ao pausar sessão.');
-  }
-}
-
-// Retomar sessão
-async function resumeTelegramSession(sessionId) {
-  try {
-    const response = await fetch(`${TELEGRAM_API_URL}/api/sessions/${sessionId}/resume`, {
-      method: 'POST',
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      loadTelegramAccountsList();
-      loadTelegramSessions();
-      loadPlatforms();
-    } else {
-      alert('Erro ao retomar sessão: ' + (data.error || 'Erro desconhecido'));
-    }
-  } catch (error) {
-    alert('Erro ao retomar sessão.');
-  }
-}
-
-// Excluir sessão
-async function deleteTelegramSession(sessionId) {
-  if (!confirm('Tem certeza que deseja excluir esta conta? Esta ação não pode ser desfeita.')) {
-    return;
-  }
-  
-  try {
-    const response = await fetch(`${TELEGRAM_API_URL}/api/sessions/${sessionId}`, {
-      method: 'DELETE',
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      alert('Conta excluída com sucesso!');
-      loadTelegramAccountsList();
-      loadTelegramSessions();
-      loadPlatforms();
-    } else {
-      alert('Erro ao excluir conta: ' + (data.error || 'Erro desconhecido'));
-    }
-  } catch (error) {
-    alert('Erro ao excluir conta.');
-  }
-}
+// Removido: pauseTelegramSession(), resumeTelegramSession(), deleteTelegramSession()
+// Não precisa mais - cada usuário tem apenas UMA conta, gerenciada via Firebase
 
 // Exportar funções globalmente
 window.showAddTelegramAccountForm = showAddTelegramAccountForm;
 window.hideAddTelegramAccountForm = hideAddTelegramAccountForm;
-window.pauseTelegramSession = pauseTelegramSession;
-window.resumeTelegramSession = resumeTelegramSession;
-window.deleteTelegramSession = deleteTelegramSession;
 window.toggleApiKeyVisibility = toggleApiKeyVisibility;
 window.verifyDeepSeekApiKey = verifyDeepSeekApiKey;
 window.testDeepSeekApiConnection = testDeepSeekApiConnection;
