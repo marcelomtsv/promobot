@@ -2219,17 +2219,28 @@ async function checkTelegramApiStatus() {
     // Tentar primeiro o endpoint /health que é mais leve
     const response = await fetch(`${TELEGRAM_API_URL}/health`, {
       method: 'GET',
+      mode: 'cors',
       signal: createTimeoutSignal(5000) // Timeout de 5 segundos
     });
-    if (response.ok) return true;
+    if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return data.status === 'ok' || response.status === 200;
+    }
     
     // Fallback para endpoint raiz
     const rootResponse = await fetch(`${TELEGRAM_API_URL}/`, {
       method: 'GET',
+      mode: 'cors',
       signal: createTimeoutSignal(5000)
     });
-    return rootResponse.ok;
+    if (rootResponse.ok) {
+      const data = await rootResponse.json().catch(() => ({}));
+      return data.success === true || rootResponse.status === 200;
+    }
+    
+    return false;
   } catch (error) {
+    console.error('Erro ao verificar API do Telegram:', error);
     return false;
   }
 }
