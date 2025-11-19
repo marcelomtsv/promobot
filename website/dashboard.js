@@ -1181,23 +1181,13 @@ function getNotificationConfigHTML(type) {
                 <span class="platform-status active" style="display: inline-block; padding: 6px 16px; font-size: 0.8rem; border-radius: 20px;">Ativo</span>
               </div>
               ${config.number ? `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
                   <div style="flex: 1;">
                     <div style="color: var(--text-light); font-size: 0.75rem; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px;">Número</div>
                     <div style="color: var(--text-dark); font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
                       <i class="fab fa-whatsapp" style="color: #25d366; font-size: 1.1rem;"></i>
                       ${config.number}
                     </div>
-                  </div>
-                </div>
-              ` : ''}
-              ${config.apiKey ? `
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <div style="flex: 1;">
-                    <div style="color: var(--text-light); font-size: 0.75rem; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px;">API Key</div>
-                    <code style="background: var(--bg-white); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; color: var(--text-dark); display: inline-block;">
-                      ${config.apiKey.substring(0, 12)}...${config.apiKey.substring(config.apiKey.length - 4)}
-                    </code>
                   </div>
                 </div>
               ` : ''}
