@@ -9,27 +9,20 @@ Cada documento na coleção `users` representa um usuário autenticado. O ID do 
 ```javascript
 {
   // ===== TELEGRAM =====
+  // IMPORTANTE: Cada usuário pode ter APENAS UMA conta do Telegram
   telegramAccount: {
-    name: string,              // Email do usuário (identificador único)
-    email: string,             // Email do usuário
     phone: string,             // Telefone no formato: +5511999999999
     apiId: string,             // API ID do Telegram
     apiHash: string,           // API Hash do Telegram
     sessionId: string,         // ID da sessão na API do Telegram
-    sessionString: string,     // String de sessão (token) - OBRIGATÓRIO para conta ativa
-    status: string,            // 'pending' | 'active'
-    createdAt: string,          // ISO 8601 timestamp
-    verifiedAt: string          // ISO 8601 timestamp (quando foi verificada)
+    sessionString: string      // String de sessão (token) - OBRIGATÓRIO para conta ativa
   },
 
   // ===== INTEGRAÇÕES =====
+  // IMPORTANTE: Cada usuário pode ter APENAS UMA configuração por integração
   integrationConfigs: {
     deepseek: {
-      apiKey: string,          // API Key do DeepSeek
-      model: string,           // Modelo usado (ex: 'deepseek-chat')
-      enabled: boolean,        // Se está habilitado
-      verified: boolean,       // Se foi verificado
-      verifiedAt: string      // ISO 8601 timestamp
+      apiKey: string           // API Key do DeepSeek (único campo necessário)
     },
     whatsapp: {
       number: string           // Número do WhatsApp
@@ -37,19 +30,8 @@ Cada documento na coleção `users` representa um usuário autenticado. O ID do 
     botfather: {
       botToken: string,        // Token do bot
       channel: string,         // Canal do Telegram
-      group: string,           // Grupo do Telegram
-      enabled: boolean,
-      verified: boolean,
-      verifiedAt: string
+      group: string            // Grupo do Telegram
     }
-  },
-
-  // ===== NOTIFICAÇÕES =====
-  notificationConfigs: {
-    whatsapp: {
-      number: string           // Número do WhatsApp para notificações
-    }
-    // Outros tipos de notificação podem ser adicionados aqui
   },
 
   // ===== METADADOS =====
@@ -62,32 +44,23 @@ Cada documento na coleção `users` representa um usuário autenticado. O ID do 
 ```json
 {
   "telegramAccount": {
-    "name": "usuario@email.com",
-    "email": "usuario@email.com",
     "phone": "+5511999999999",
     "apiId": "29836363",
     "apiHash": "abcdef1234567890abcdef1234567890",
     "sessionId": "session_1234567890_abc123",
-    "sessionString": "1BVtsOHwBu2...",
-    "status": "active",
-    "createdAt": "2024-01-15T10:30:00.000Z",
-    "verifiedAt": "2024-01-15T10:35:00.000Z"
+    "sessionString": "1BVtsOHwBu2..."
   },
   "integrationConfigs": {
     "deepseek": {
-      "apiKey": "sk-...",
-      "model": "deepseek-chat",
-      "enabled": true,
-      "verified": true,
-      "verifiedAt": "2024-01-15T09:00:00.000Z"
+      "apiKey": "sk-..."
     },
     "whatsapp": {
       "number": "+5511999999999"
-    }
-  },
-  "notificationConfigs": {
-    "whatsapp": {
-      "number": "+5511999999999"
+    },
+    "botfather": {
+      "botToken": "1234567890:ABCdefGHIjklMNOpqrsTUVwxyz",
+      "channel": "@meucanal",
+      "group": "@meugrupo"
     }
   },
   "updatedAt": "2024-01-15T10:35:00.000Z"
@@ -97,18 +70,21 @@ Cada documento na coleção `users` representa um usuário autenticado. O ID do 
 ## 🔑 Campos Importantes
 
 ### Telegram Account
+- **IMPORTANTE**: Cada usuário pode ter **APENAS UMA** conta do Telegram
 - **`sessionString`**: Campo **OBRIGATÓRIO** para considerar a conta como "Ativa"
   - Se não existir ou estiver vazio → Status: "Não configurado" ou "Pendente"
   - Se existir → Status: "Ativo"
 - **`phone`**: Deve estar no formato internacional com `+` (ex: `+5511999999999`)
 - **`apiId`** e **`apiHash`**: Credenciais do Telegram (obtidas em https://my.telegram.org/apps)
+- **Recadastrar**: Ao adicionar nova conta, a anterior é **automaticamente removida** (Firebase + API)
 
 ### Integration Configs
-- **`deepseek`**: Configuração da API do DeepSeek
-  - `verified: true` → Status: "Ativo"
-  - `verified: false` ou sem `apiKey` → Status: "Não configurado"
-- **`whatsapp`**: Apenas número de telefone
-- **`botfather`**: Configuração do Bot Father
+- **IMPORTANTE**: Cada usuário pode ter **APENAS UMA** configuração por integração
+- **`deepseek`**: Apenas `apiKey` necessário
+  - Se `apiKey` existir → Status: "Ativo"
+  - Se não existir → Status: "Não configurado"
+- **`whatsapp`**: Apenas `number` (número de telefone)
+- **`botfather`**: `botToken`, `channel`, `group` (todos obrigatórios)
 
 ### Notification Configs
 - Usado para configurações de notificações (WhatsApp, etc.)
@@ -159,10 +135,22 @@ firestore/
 2. **Carregar**: Firestore → `loadUserDataFromFirebase()` → Atualiza cache
 3. **Cache**: Usado para evitar leituras desnecessárias do Firestore (TTL: 1 minuto)
 
-## ⚠️ Observações
+## ⚠️ Observações Importantes
 
-- **Telegram**: Status "Ativo" só aparece se `sessionString` existir (conta verificada)
-- **DeepSeek**: Status "Ativo" só aparece se `verified: true` e `apiKey` existir
-- **WhatsApp**: Status "Ativo" se `number` existir em `notificationConfigs.whatsapp`
+- **Telegram**: 
+  - Cada usuário pode ter **APENAS UMA** conta
+  - Status "Ativo" só aparece se `sessionString` existir (conta verificada)
+  - Ao adicionar nova conta, a anterior é **automaticamente removida**
+  - A API também garante apenas 1 conta ativa por vez
+- **DeepSeek**: 
+  - Cada usuário pode ter **APENAS UMA** configuração
+  - Status "Ativo" se `apiKey` existir
+- **WhatsApp**: 
+  - Cada usuário pode ter **APENAS UMA** configuração
+  - Status "Ativo" se `number` existir em `integrationConfigs.whatsapp`
+- **BotFather**: 
+  - Cada usuário pode ter **APENAS UMA** configuração
+  - Status "Ativo" se `botToken`, `channel` e `group` existirem
 - Todos os dados são salvos **APENAS** no Firestore (não usa mais localStorage para dados persistentes)
+- **Recadastrar**: Para trocar de conta/configuração, o sistema **automaticamente remove** a anterior antes de adicionar a nova
 

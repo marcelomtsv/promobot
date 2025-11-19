@@ -3205,16 +3205,14 @@ async function removeTelegramAccount() {
     const existingAccount = window.telegramConfigCache;
     const sessionId = existingAccount?.sessionId;
     
-    // Remover da API se tiver sessionId
-    if (sessionId) {
-      try {
-        await fetch(`${TELEGRAM_API_URL}/api/sessions/${sessionId}`, {
-          method: 'DELETE',
-          signal: createTimeoutSignal(5000)
-        }).catch(() => {}); // Ignorar erros se a sessão já não existir
-      } catch (e) {
-        // Ignorar erros ao remover da API
-      }
+    // Remover TODAS as sessões da API (garantir limpeza completa - apenas 1 conta por cliente)
+    try {
+      await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
+        method: 'DELETE',
+        signal: createTimeoutSignal(5000)
+      }).catch(() => {}); // Ignorar erros se a sessão já não existir
+    } catch (e) {
+      // Ignorar erros ao remover da API
     }
     
     // Remover do Firebase
@@ -3481,15 +3479,6 @@ async function handleAddTelegramAccount(e) {
   hideTelegramStatusMessage();
   
   try {
-    // Verificar se já existe conta no Firebase (OTIMIZADO - apenas uma conta por usuário)
-    const existingAccount = await checkTelegramAccountFromFirebase();
-    if (existingAccount.hasAccount) {
-      showTelegramStatusMessage('⚠️ Já existe uma conta do Telegram configurada. Remova a conta existente antes de adicionar uma nova.', 'warning');
-      submitBtn.disabled = false;
-      btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
-      return;
-    }
-    
     // Verificar se a API está disponível
     const isApiAvailable = await checkTelegramApiStatus();
     if (!isApiAvailable) {
@@ -3499,8 +3488,34 @@ async function handleAddTelegramAccount(e) {
       return;
     }
 
-    // Mostrar mensagem de carregamento
-    showTelegramStatusMessage('📱 Enviando código SMS para ' + phone + '... Aguarde alguns segundos.', 'info');
+    // Verificar se já existe conta no Firebase e remover automaticamente antes de adicionar nova
+    const existingAccount = await checkTelegramAccountFromFirebase();
+    if (existingAccount.hasAccount) {
+      // Remover do Firebase automaticamente
+      if (currentUser && currentUser.uid && window.firebaseDb) {
+        try {
+          const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+          await docRef.update({
+            telegramAccount: null,
+            updatedAt: new Date().toISOString()
+          });
+        } catch (e) {
+          // Ignorar
+        }
+      }
+      window.telegramConfigCache = {};
+      invalidateCache('telegramAccount');
+      
+      // Remover da API também (garantir limpeza completa)
+      try {
+        await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
+          method: 'DELETE',
+          signal: createTimeoutSignal(5000)
+        }).catch(() => {});
+      } catch (e) {
+        // Ignorar
+      }
+    }
 
     // Criar nova sessão (enviar código SMS)
     const response = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
