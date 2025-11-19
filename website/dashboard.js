@@ -971,8 +971,13 @@ function getNotificationConfigHTML(type) {
         <div id="addTelegramAccountForm" style="padding: 1.5rem; background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 1.5rem;">
           <h4 style="margin: 0 0 0.75rem 0; color: var(--text-dark); font-size: 1.1rem; font-weight: 600;">Adicionar Conta</h4>
           <p style="color: var(--text-light); font-size: 0.9rem; margin: 0 0 1.5rem 0; line-height: 1.5;">
-            Preencha os dados abaixo para adicionar uma conta do Telegram. Você receberá um código SMS para confirmar.
+            Preencha os dados abaixo para adicionar sua conta do Telegram. Você receberá um código SMS para confirmar.
+            <br><strong style="color: var(--text-dark);">Nota:</strong> Apenas uma conta pode ser cadastrada por vez.
           </p>
+          
+          <!-- Status Message -->
+          <div id="telegramStatusMessage" style="display: none; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
+          
           <form id="addTelegramAccountFormElement">
             <div class="form-group">
               <label>Nome da Conta</label>
@@ -1001,9 +1006,9 @@ function getNotificationConfigHTML(type) {
             </div>
             <div class="form-actions" style="margin-top: 1.5rem;">
               <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-              <button type="submit" class="btn btn-primary">
+              <button type="submit" class="btn btn-primary" id="addTelegramAccountBtn">
                 <i class="fas fa-plus"></i>
-                Adicionar Conta
+                <span id="addTelegramAccountBtnText">Adicionar Conta</span>
               </button>
             </div>
           </form>
@@ -2323,6 +2328,52 @@ async function loadTelegramAccountsList() {
           <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Nenhuma conta configurada ainda.</p>
         </div>
       `;
+      // Mostrar formulário de adicionar quando não tem conta
+      const form = document.getElementById('addTelegramAccountForm');
+      if (form) form.style.display = 'block';
+      return;
+    }
+    
+    // Se já existe uma conta ativa, mostrar estilo similar ao BotFather
+    const activeSession = telegramSessions.find(s => s.status === 'active' || s.status === 'connected');
+    if (activeSession && telegramSessions.length === 1) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 2rem 1rem;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+            <i class="fab fa-telegram-plane" style="font-size: 2rem; color: white;"></i>
+          </div>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Conta do Telegram Configurada</h3>
+          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua conta está ativa e funcionando</p>
+          
+          <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: var(--text-light); font-size: 0.85rem;">Status:</span>
+              <span class="platform-status active" style="display: inline-block; padding: 4px 12px; font-size: 0.75rem;">Ativo</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: var(--text-light); font-size: 0.85rem;">Nome:</span>
+              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${activeSession.name || 'Sem nome'}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: var(--text-light); font-size: 0.85rem;">Telefone:</span>
+              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${activeSession.phone || 'N/A'}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: var(--text-light); font-size: 0.85rem;">Status da Sessão:</span>
+              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500; text-transform: capitalize;">${activeSession.status || 'N/A'}</span>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 0.75rem; justify-content: center;">
+            <button type="button" class="btn btn-outline" onclick="deleteTelegramSession('${activeSession.id}')" style="flex: 1;">
+              <i class="fas fa-trash"></i> Remover Conta
+            </button>
+          </div>
+        </div>
+      `;
+      // Esconder formulário de adicionar quando já tem conta
+      const form = document.getElementById('addTelegramAccountForm');
+      if (form) form.style.display = 'none';
       return;
     }
     
@@ -2424,11 +2475,21 @@ function showTelegramCodeModal(sessionId, phone) {
   
   const modal = document.getElementById('telegramCodeModal');
   const codeInput = document.getElementById('telegramVerificationCode');
+  const modalBody = modal?.querySelector('.modal-body');
   
   if (modal) {
     modal.classList.add('active');
     // Fechar modal de configuração principal
     document.getElementById('platformModal')?.classList.remove('active');
+    
+    // Atualizar mensagem no modal
+    const messageElement = document.getElementById('telegramCodeMessage');
+    if (messageElement) {
+      messageElement.innerHTML = `
+        <strong style="color: var(--text-dark);">Código enviado para ${phone}</strong><br>
+        <span style="color: var(--text-light); font-size: 0.9rem;">Verifique as mensagens do Telegram no seu celular e digite o código abaixo:</span>
+      `;
+    }
     
     // Focar no input após animação
     setTimeout(() => {
@@ -2529,11 +2590,20 @@ async function handleAddTelegramAccount(e) {
   const phone = document.getElementById('telegramPhone').value.trim();
   const apiId = document.getElementById('telegramApiId').value.trim();
   const apiHash = document.getElementById('telegramApiHash').value.trim();
+  const submitBtn = document.getElementById('addTelegramAccountBtn');
+  const btnText = document.getElementById('addTelegramAccountBtnText');
+  const statusMessage = document.getElementById('telegramStatusMessage');
+  const form = document.getElementById('addTelegramAccountFormElement');
   
   if (!name || !phone || !apiId || !apiHash) {
-    alert('Preencha todos os campos obrigatórios');
+    showTelegramStatusMessage('Preencha todos os campos obrigatórios', 'error');
     return;
   }
+  
+  // Desabilitar botão e mostrar loading
+  submitBtn.disabled = true;
+  btnText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando código SMS...';
+  hideTelegramStatusMessage();
   
   try {
     // Verificar se já existe uma conta ativa
@@ -2541,20 +2611,24 @@ async function handleAddTelegramAccount(e) {
     const activeSession = telegramSessions.find(s => s.status === 'active' || s.status === 'connected');
     
     if (activeSession) {
-      alert('⚠️ Já existe uma conta do Telegram configurada.\n\nRemova a conta existente antes de adicionar uma nova.');
+      showTelegramStatusMessage('⚠️ Já existe uma conta do Telegram configurada. Remova a conta existente antes de adicionar uma nova.', 'warning');
       loadTelegramAccountsList();
+      submitBtn.disabled = false;
+      btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
       return;
     }
     
     // Verificar se a API está disponível
     const isApiAvailable = await checkTelegramApiStatus();
     if (!isApiAvailable) {
-      alert('⚠️ API do Telegram não está disponível!\n\n' +
-            'A API precisa estar rodando em: ' + TELEGRAM_API_URL + '\n\n' +
-            'Para configurar uma URL diferente, use o console do navegador:\n' +
-            'localStorage.setItem("telegramApiUrl", "sua-url-aqui")');
+      showTelegramStatusMessage('⚠️ API do Telegram não está disponível! A API precisa estar rodando em: ' + TELEGRAM_API_URL, 'error');
+      submitBtn.disabled = false;
+      btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
       return;
     }
+
+    // Mostrar mensagem de carregamento
+    showTelegramStatusMessage('📱 Enviando código SMS para ' + phone + '... Aguarde alguns segundos.', 'info');
 
     // Criar nova sessão (enviar código SMS)
     const response = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
@@ -2570,9 +2644,11 @@ async function handleAddTelegramAccount(e) {
       
       // Verificar se é erro de conta já existente
       if (errorMessage.includes('Já existe uma conta')) {
-        alert('⚠️ ' + errorMessage);
+        showTelegramStatusMessage('⚠️ ' + errorMessage, 'warning');
         loadTelegramSessions();
         loadTelegramAccountsList();
+        submitBtn.disabled = false;
+        btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
         return;
       }
       
@@ -2582,22 +2658,68 @@ async function handleAddTelegramAccount(e) {
     const data = await response.json();
     
     if (data.success) {
-      // Mostrar modal para inserir código
-      showTelegramCodeModal(data.sessionId, phone);
+      // Mostrar sucesso e abrir modal de código imediatamente
+      showTelegramStatusMessage('✅ Código SMS enviado com sucesso! Verifique seu celular.', 'success');
+      
+      // Fechar modal de configuração e abrir modal de código
+      setTimeout(() => {
+        document.getElementById('platformModal')?.classList.remove('active');
+        showTelegramCodeModal(data.sessionId, phone);
+        // Resetar botão
+        submitBtn.disabled = false;
+        btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
+        hideTelegramStatusMessage();
+      }, 500);
     } else {
-      alert('Erro ao criar sessão: ' + (data.error || 'Erro desconhecido'));
+      showTelegramStatusMessage('❌ Erro ao criar sessão: ' + (data.error || 'Erro desconhecido'), 'error');
+      submitBtn.disabled = false;
+      btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
     }
   } catch (error) {
     if (error.name === 'AbortError') {
-      alert('⏱️ Timeout ao conectar com a API do Telegram.\n\nVerifique se a API está rodando e tente novamente.');
+      showTelegramStatusMessage('⏱️ Timeout ao conectar com a API do Telegram. Verifique se a API está rodando e tente novamente.', 'error');
     } else if (error.message.includes('Failed to fetch')) {
-      alert('❌ Não foi possível conectar com a API do Telegram.\n\n' +
-            'Verifique se a API está rodando em: ' + TELEGRAM_API_URL + '\n\n' +
-            'Para configurar uma URL diferente, use o console do navegador:\n' +
-            'localStorage.setItem("telegramApiUrl", "sua-url-aqui")');
+      showTelegramStatusMessage('❌ Não foi possível conectar com a API do Telegram. Verifique se a API está rodando em: ' + TELEGRAM_API_URL, 'error');
     } else {
-      alert('❌ Erro ao adicionar conta: ' + error.message);
+      showTelegramStatusMessage('❌ Erro ao adicionar conta: ' + error.message, 'error');
     }
+    submitBtn.disabled = false;
+    btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
+  }
+}
+
+// Mostrar mensagem de status do Telegram
+function showTelegramStatusMessage(message, type = 'info') {
+  const statusMessage = document.getElementById('telegramStatusMessage');
+  if (!statusMessage) return;
+  
+  statusMessage.style.display = 'block';
+  
+  const colors = {
+    success: { bg: '#d1fae5', border: '#10b981', text: '#065f46', icon: 'fa-check-circle' },
+    error: { bg: '#fee2e2', border: '#ef4444', text: '#991b1b', icon: 'fa-exclamation-circle' },
+    warning: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e', icon: 'fa-exclamation-triangle' },
+    info: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af', icon: 'fa-info-circle' }
+  };
+  
+  const style = colors[type] || colors.info;
+  
+  statusMessage.style.background = style.bg;
+  statusMessage.style.borderColor = style.border;
+  statusMessage.style.color = style.text;
+  statusMessage.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <i class="fas ${style.icon}" style="font-size: 1.1rem;"></i>
+      <span style="flex: 1; font-size: 0.9rem; line-height: 1.5;">${message}</span>
+    </div>
+  `;
+}
+
+// Esconder mensagem de status do Telegram
+function hideTelegramStatusMessage() {
+  const statusMessage = document.getElementById('telegramStatusMessage');
+  if (statusMessage) {
+    statusMessage.style.display = 'none';
   }
 }
 
