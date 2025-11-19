@@ -946,14 +946,31 @@ function getDeepSeekConfigHTML() {
             </div>
           </div>
           
-          <div style="display: flex; gap: 0.75rem; justify-content: center;">
-            <button type="button" class="btn btn-outline" onclick="removeDeepSeekApiKey()" style="flex: 1;">
-              <i class="fas fa-trash"></i> Remover
+          <!-- Menu de Configuração -->
+          <div style="position: relative; margin-top: 1.5rem;">
+            <button type="button" class="btn btn-primary" onclick="toggleDeepSeekConfigMenu()" id="deepseekConfigMenuBtn" style="width: 100%;">
+              <i class="fas fa-cog"></i> Configurações
             </button>
-            <button type="button" class="btn btn-primary" onclick="showDeepSeekApiKeyInput()" style="flex: 1;">
-              <i class="fas fa-edit"></i> Trocar API Key
-            </button>
+            
+            <!-- Menu Dropdown (inicialmente oculto) -->
+            <div id="deepseekConfigMenu" style="display: none; position: absolute; top: calc(100% + 0.5rem); left: 0; right: 0; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); z-index: 1000; overflow: hidden;">
+              <button type="button" class="btn-menu-item" onclick="showDeepSeekApiKeyInput(); toggleDeepSeekConfigMenu();" style="width: 100%; padding: 0.875rem 1rem; text-align: left; background: transparent; border: none; color: var(--text-dark); cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-edit" style="color: var(--primary-color); width: 20px;"></i>
+                <span>Trocar API Key</span>
+              </button>
+              <div style="height: 1px; background: var(--border-color); margin: 0.25rem 0;"></div>
+              <button type="button" class="btn-menu-item" onclick="abrirConfirmacaoRemoverDeepSeek(); toggleDeepSeekConfigMenu();" style="width: 100%; padding: 0.875rem 1rem; text-align: left; background: transparent; border: none; color: var(--accent-color); cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-trash" style="width: 20px;"></i>
+                <span>Excluir API Key</span>
+              </button>
+            </div>
           </div>
+          
+          <style>
+            .btn-menu-item:hover {
+              background: var(--bg-light) !important;
+            }
+          </style>
         </div>
       ` : `
         <!-- Formulário: Adicionar API Key (ESTILO UNIFICADO) -->
@@ -3694,7 +3711,10 @@ window.hideAddTelegramAccountForm = hideAddTelegramAccountForm;
 window.toggleApiKeyVisibility = toggleApiKeyVisibility;
 window.cadastrarDeepSeek = cadastrarDeepSeek;
 window.voltarFormularioDeepSeek = voltarFormularioDeepSeek;
+window.toggleDeepSeekConfigMenu = toggleDeepSeekConfigMenu;
+window.abrirConfirmacaoRemoverDeepSeek = abrirConfirmacaoRemoverDeepSeek;
+window.voltarDeepSeekConfig = voltarDeepSeekConfig;
+window.confirmarRemoverDeepSeek = confirmarRemoverDeepSeek;
 window.testDeepSeekApiConnection = testDeepSeekApiConnection;
-window.removeDeepSeekApiKey = removeDeepSeekApiKey;
 window.showDeepSeekApiKeyInput = showDeepSeekApiKeyInput;
 
