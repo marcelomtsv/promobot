@@ -333,16 +333,16 @@ function createIntegrationCard(integration) {
   let statusClass = 'soon';
   
   if (integration.id === 'telegram') {
-    // Verificar se há contas do Telegram configuradas
-    if (telegramSessions && telegramSessions.length > 0) {
-      const activeSessions = telegramSessions.filter(s => s.status === 'active' || s.status === 'connected');
-      if (activeSessions.length > 0) {
-        statusText = 'Ativo';
-        statusClass = 'active';
-      } else {
-        statusText = 'Não configurado';
-        statusClass = 'soon';
-      }
+    // Verificar sincronização entre Firebase e API
+    // Só mostra "Ativo" se tiver nos dois lugares
+    const telegramConfig = window.telegramConfigCache || {};
+    const hasFirebaseAccount = telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash;
+    const hasApiAccount = telegramSessions && telegramSessions.length > 0 && 
+                          telegramSessions.some(s => s.status === 'active' || s.status === 'connected');
+    
+    if (hasFirebaseAccount && hasApiAccount) {
+      statusText = 'Ativo';
+      statusClass = 'active';
     } else {
       statusText = 'Não configurado';
       statusClass = 'soon';
