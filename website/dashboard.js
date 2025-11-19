@@ -56,6 +56,29 @@ const BOTFATHER_API_URL = localStorage.getItem('botfatherApiUrl') ||
     : 'http://localhost:3001');
 // ==========================================
 
+// Cache de configurações do Firebase
+window.integrationConfigsCache = {};
+window.notificationConfigsCache = {};
+
+// Carregar todas as configurações do Firebase
+async function loadAllConfigsFromFirebase() {
+  if (!currentUser || !currentUser.uid) {
+    return;
+  }
+  
+  try {
+    const userData = await loadUserDataFromFirebase();
+    if (userData) {
+      window.integrationConfigsCache = userData.integrationConfigs || {};
+      window.notificationConfigsCache = userData.notificationConfigs || {};
+    }
+  } catch (error) {
+    // Se der erro, usar cache vazio
+    window.integrationConfigsCache = {};
+    window.notificationConfigsCache = {};
+  }
+}
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
   // Carregar tema salvo (já aplicado no script inline, apenas atualizar ícone)
@@ -75,6 +98,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Carregar perfil imediatamente após autenticação
   if (currentUser) {
     loadUserProfile();
+    // Carregar todas as configurações do Firebase
+    await loadAllConfigsFromFirebase();
   }
   
   // Configurar resto
@@ -302,8 +327,8 @@ function createIntegrationCard(integration) {
   const card = document.createElement('div');
   card.className = 'platform-card integration-card';
   
-  // Verificar se está configurado
-  const notificationConfigs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
+  // Verificar se está configurado (usar cache do Firebase)
+  const notificationConfigs = window.notificationConfigsCache || {};
   let statusText = 'Não configurado';
   let statusClass = 'soon';
   
@@ -327,8 +352,7 @@ function createIntegrationCard(integration) {
     statusClass = 'active';
   } else if (integration.id === 'deepseek') {
     // Verificar configuração do DeepSeek
-    const integrationConfigs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-    const deepseekConfig = integrationConfigs.deepseek || {};
+    const deepseekConfig = window.integrationConfigsCache.deepseek || {};
     
     if (deepseekConfig.apiKey && deepseekConfig.verified) {
       statusText = 'Ativo';
@@ -727,8 +751,7 @@ function getTelegramConfigHTML() {
 
 // HTML de configuração do DeepSeek
 function getDeepSeekConfigHTML() {
-  const savedConfig = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-  const deepseekConfig = savedConfig.deepseek || {};
+  const deepseekConfig = window.integrationConfigsCache.deepseek || {};
   const hasApiKey = deepseekConfig.apiKey && deepseekConfig.verified;
   const isEnabled = deepseekConfig.enabled !== false;
   
@@ -1137,9 +1160,8 @@ function getNotificationConfigHTML(type) {
       </div>
     `;
   } else if (type === 'whatsapp') {
-    const savedConfig = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-    const whatsappConfig = savedConfig.whatsapp || {};
-    const notificationConfigs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
+    const whatsappConfig = window.integrationConfigsCache.whatsapp || {};
+    const notificationConfigs = window.notificationConfigsCache;
     const hasConfig = (whatsappConfig.number || notificationConfigs.whatsapp?.number);
     const config = whatsappConfig.number ? whatsappConfig : notificationConfigs.whatsapp || {};
     
@@ -1963,20 +1985,19 @@ async function handleDeepSeekConfig(e) {
   saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
   try {
-    // Salvar no localStorage (aqui você pode adicionar lógica para salvar no banco de dados)
-    const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-    configs.deepseek = { 
+    // Salvar no Firebase
+    const deepseekConfig = { 
       apiKey, 
       model, 
       enabled,
       verified: apiKeyInput.dataset.verified === 'true',
       verifiedAt: apiKeyInput.dataset.verified === 'true' ? new Date().toISOString() : null
     };
-    localStorage.setItem('integrationConfigs', JSON.stringify(configs));
-
-    // TODO: Aqui você pode adicionar uma chamada para salvar no banco de dados
-    // Exemplo:
-    // await saveDeepSeekConfigToDatabase(configs.deepseek);
+    
+    await saveIntegrationConfigToFirebase('deepseek', deepseekConfig);
+    
+    // Atualizar cache
+    window.integrationConfigsCache.deepseek = deepseekConfig;
 
     loadPlatforms();
     
@@ -1997,7 +2018,7 @@ async function handleDeepSeekConfig(e) {
 }
 
 // Salvar configuração de notificação
-function handleNotificationConfig(type, e) {
+async function handleNotificationConfig(type, e) {
   if (type === 'telegram') {
     const token = document.getElementById('telegramToken').value;
     const chatId = document.getElementById('telegramChatId').value;
@@ -2007,14 +2028,14 @@ function handleNotificationConfig(type, e) {
       return;
     }
 
-    const configs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
-    configs.telegram = { token, chatId };
-    localStorage.setItem('notificationConfigs', JSON.stringify(configs));
-
-    document.getElementById('telegramStatus').textContent = 'Configurado';
-    document.getElementById('telegramStatus').className = 'platform-status active';
-    
-    alert('Telegram configurado com sucesso!');
+    try {
+      await saveNotificationConfigToFirebase('telegram', { token, chatId });
+      document.getElementById('telegramStatus').textContent = 'Configurado';
+      document.getElementById('telegramStatus').className = 'platform-status active';
+      alert('Telegram configurado com sucesso!');
+    } catch (error) {
+      alert('Erro ao salvar: ' + error.message);
+    }
   } else if (type === 'whatsapp') {
     if (e) e.preventDefault();
     
@@ -2041,14 +2062,13 @@ function handleNotificationConfig(type, e) {
     }
 
     try {
-      const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-      configs.whatsapp = { number };
-      localStorage.setItem('integrationConfigs', JSON.stringify(configs));
-
-      // Também salvar em notificationConfigs para compatibilidade
-      const notificationConfigs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
-      notificationConfigs.whatsapp = { number };
-      localStorage.setItem('notificationConfigs', JSON.stringify(notificationConfigs));
+      // Salvar no Firebase
+      await saveIntegrationConfigToFirebase('whatsapp', { number });
+      await saveNotificationConfigToFirebase('whatsapp', { number });
+      
+      // Atualizar cache
+      window.integrationConfigsCache.whatsapp = { number };
+      window.notificationConfigsCache.whatsapp = { number };
 
       // Mostrar mensagem de sucesso
       if (statusMessage) {
@@ -2086,42 +2106,54 @@ function handleNotificationConfig(type, e) {
 }
 
 // Remover configuração do WhatsApp
-function removeWhatsAppConfig() {
+async function removeWhatsAppConfig() {
   if (!confirm('Tem certeza que deseja remover a configuração do WhatsApp?')) {
     return;
   }
   
-  const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-  delete configs.whatsapp;
-  localStorage.setItem('integrationConfigs', JSON.stringify(configs));
-  
-  const notificationConfigs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
-  delete notificationConfigs.whatsapp;
-  localStorage.setItem('notificationConfigs', JSON.stringify(notificationConfigs));
-  
-  // Recarregar modal
-  const modalBody = document.getElementById('modalBody');
-  if (modalBody) {
-    modalBody.innerHTML = getNotificationConfigHTML('whatsapp');
-    setTimeout(() => {
-      const form = document.getElementById('notificationConfigForm');
-      if (form) {
-        form.addEventListener('submit', (e) => {
-          e.preventDefault();
-          handleNotificationConfig('whatsapp', e);
-        });
-      }
-    }, 100);
+  try {
+    const userData = await loadUserDataFromFirebase() || {};
+    const integrationConfigs = userData.integrationConfigs || {};
+    const notificationConfigs = userData.notificationConfigs || {};
+    
+    delete integrationConfigs.whatsapp;
+    delete notificationConfigs.whatsapp;
+    
+    await saveUserDataToFirebase({
+      integrationConfigs: integrationConfigs,
+      notificationConfigs: notificationConfigs
+    });
+    
+    // Atualizar cache
+    window.integrationConfigsCache = integrationConfigs;
+    window.notificationConfigsCache = notificationConfigs;
+    
+    // Recarregar modal
+    const modalBody = document.getElementById('modalBody');
+    if (modalBody) {
+      modalBody.innerHTML = getNotificationConfigHTML('whatsapp');
+      setTimeout(() => {
+        const form = document.getElementById('notificationConfigForm');
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleNotificationConfig('whatsapp', e);
+          });
+        }
+      }, 100);
+    }
+    
+    loadPlatforms();
+  } catch (error) {
+    alert('Erro ao remover configuração: ' + error.message);
   }
-  
-  loadPlatforms();
 }
 
 // Mostrar formulário para editar configuração
 function showWhatsAppConfigInput() {
-  const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-  delete configs.whatsapp;
-  localStorage.setItem('integrationConfigs', JSON.stringify(configs));
+  // Limpar cache local (não remover do Firebase, apenas mostrar formulário)
+  delete window.integrationConfigsCache.whatsapp;
+  delete window.notificationConfigsCache.whatsapp;
   
   // Recarregar modal
   const modalBody = document.getElementById('modalBody');
@@ -2912,10 +2944,12 @@ async function loadTelegramAccountFromFirebase() {
   }
 }
 
-// Salvar conta do Telegram no Firebase
-async function saveTelegramAccountToFirebase(accountData) {
+// ===== FUNÇÕES DE FIREBASE FIRESTORE =====
+
+// Salvar dados do usuário no Firestore
+async function saveUserDataToFirebase(data) {
   if (!currentUser || !currentUser.uid) {
-    throw new Error('Usuário não autenticado. Faça login para salvar a conta.');
+    throw new Error('Usuário não autenticado. Faça login para salvar dados.');
   }
   
   if (!window.firebaseDb) {
@@ -2925,19 +2959,104 @@ async function saveTelegramAccountToFirebase(accountData) {
   try {
     const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
     await docRef.set({
-      telegramAccount: accountData,
+      ...data,
       updatedAt: new Date().toISOString()
     }, { merge: true });
-    
-    // Atualizar cache após salvar
-    window.telegramConfigCache = accountData;
   } catch (error) {
-    // Se der erro de Firestore não configurado, mostrar mensagem amigável
     if (error.code === 'not-found' || error.message.includes('does not exist')) {
       throw new Error('Firestore não está configurado. Configure o banco de dados no Firebase Console.');
     }
     throw error;
   }
+}
+
+// Carregar dados do usuário do Firestore
+async function loadUserDataFromFirebase() {
+  if (!currentUser || !currentUser.uid) {
+    return null;
+  }
+  
+  if (!window.firebaseDb) {
+    return null;
+  }
+  
+  try {
+    const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+    const doc = await docRef.get();
+    if (doc.exists) {
+      return doc.data();
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Salvar conta do Telegram no Firebase
+async function saveTelegramAccountToFirebase(accountData) {
+  await saveUserDataToFirebase({
+    telegramAccount: accountData
+  });
+  // Atualizar cache após salvar
+  window.telegramConfigCache = accountData;
+}
+
+// Salvar configuração de integração (DeepSeek, WhatsApp, etc.)
+async function saveIntegrationConfigToFirebase(integrationId, config) {
+  const userData = await loadUserDataFromFirebase() || {};
+  const integrationConfigs = userData.integrationConfigs || {};
+  integrationConfigs[integrationId] = config;
+  
+  await saveUserDataToFirebase({
+    integrationConfigs: integrationConfigs
+  });
+}
+
+// Carregar configuração de integração
+async function loadIntegrationConfigFromFirebase(integrationId) {
+  const userData = await loadUserDataFromFirebase();
+  if (userData && userData.integrationConfigs) {
+    return userData.integrationConfigs[integrationId] || null;
+  }
+  return null;
+}
+
+// Carregar todas as configurações de integrações
+async function loadAllIntegrationConfigsFromFirebase() {
+  const userData = await loadUserDataFromFirebase();
+  if (userData && userData.integrationConfigs) {
+    return userData.integrationConfigs;
+  }
+  return {};
+}
+
+// Salvar configuração de notificação
+async function saveNotificationConfigToFirebase(type, config) {
+  const userData = await loadUserDataFromFirebase() || {};
+  const notificationConfigs = userData.notificationConfigs || {};
+  notificationConfigs[type] = config;
+  
+  await saveUserDataToFirebase({
+    notificationConfigs: notificationConfigs
+  });
+}
+
+// Carregar configuração de notificação
+async function loadNotificationConfigFromFirebase(type) {
+  const userData = await loadUserDataFromFirebase();
+  if (userData && userData.notificationConfigs) {
+    return userData.notificationConfigs[type] || null;
+  }
+  return null;
+}
+
+// Carregar todas as configurações de notificações
+async function loadAllNotificationConfigsFromFirebase() {
+  const userData = await loadUserDataFromFirebase();
+  if (userData && userData.notificationConfigs) {
+    return userData.notificationConfigs;
+  }
+  return {};
 }
 
 // Remover conta do Telegram
