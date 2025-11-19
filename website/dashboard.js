@@ -2192,59 +2192,87 @@ function createTimeoutSignal(ms) {
   return controller.signal;
 }
 
+// Cache para evitar múltiplas tentativas quando API não está disponível
+let telegramApiUnavailable = false;
+let lastTelegramApiCheck = 0;
+const TELEGRAM_API_CHECK_INTERVAL = 30000; // Verificar novamente após 30 segundos
+
 // Verificar se a API do Telegram está disponível
 async function checkTelegramApiStatus() {
+  // Se já sabemos que a API não está disponível e foi verificado recentemente, não tentar novamente
+  const now = Date.now();
+  if (telegramApiUnavailable && (now - lastTelegramApiCheck) < TELEGRAM_API_CHECK_INTERVAL) {
+    return false;
+  }
+  
   try {
-    console.log('Verificando API do Telegram em:', TELEGRAM_API_URL);
-    
     // Tentar primeiro o endpoint /health que é mais leve
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1000); // Timeout mais curto
+      
       const response = await fetch(`${TELEGRAM_API_URL}/health`, {
         method: 'GET',
         mode: 'cors',
         credentials: 'omit',
-        signal: createTimeoutSignal(5000) // Timeout de 5 segundos
+        signal: controller.signal,
+        cache: 'no-cache'
+      }).catch(() => {
+        clearTimeout(timeoutId);
+        return null;
       });
       
-      console.log('Resposta /health:', response.status, response.statusText);
+      clearTimeout(timeoutId);
       
-      if (response.ok) {
+      if (response && response.ok) {
         const data = await response.json().catch(() => ({}));
-        console.log('Dados /health:', data);
         if (data.status === 'ok' || response.status === 200) {
+          telegramApiUnavailable = false;
+          lastTelegramApiCheck = now;
           return true;
         }
       }
     } catch (healthError) {
-      console.log('Erro no /health:', healthError.message);
+      // Erro silencioso - API não disponível
     }
     
-    // Fallback para endpoint raiz
+    // Fallback para endpoint raiz (só se /health falhou)
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1000);
+      
       const rootResponse = await fetch(`${TELEGRAM_API_URL}/`, {
         method: 'GET',
         mode: 'cors',
         credentials: 'omit',
-        signal: createTimeoutSignal(5000)
+        signal: controller.signal,
+        cache: 'no-cache'
+      }).catch(() => {
+        clearTimeout(timeoutId);
+        return null;
       });
       
-      console.log('Resposta /:', rootResponse.status, rootResponse.statusText);
+      clearTimeout(timeoutId);
       
-      if (rootResponse.ok) {
+      if (rootResponse && rootResponse.ok) {
         const data = await rootResponse.json().catch(() => ({}));
-        console.log('Dados /:', data);
         if (data.success === true || rootResponse.status === 200) {
+          telegramApiUnavailable = false;
+          lastTelegramApiCheck = now;
           return true;
         }
       }
     } catch (rootError) {
-      console.log('Erro no /:', rootError.message);
+      // Erro silencioso - API não disponível
     }
     
-    console.log('API do Telegram não está disponível');
+    // Marcar como indisponível
+    telegramApiUnavailable = true;
+    lastTelegramApiCheck = now;
     return false;
   } catch (error) {
-    console.error('Erro ao verificar API do Telegram:', error);
+    telegramApiUnavailable = true;
+    lastTelegramApiCheck = now;
     return false;
   }
 }
