@@ -2098,25 +2098,128 @@ function handleNotificationConfig(type, e) {
     
     alert('Telegram configurado com sucesso!');
   } else if (type === 'whatsapp') {
-    const number = document.getElementById('whatsappNumber').value;
-    const apiKey = document.getElementById('whatsappApiKey').value;
+    if (e) e.preventDefault();
+    
+    const number = document.getElementById('whatsappNumber')?.value.trim();
+    const apiKey = document.getElementById('whatsappApiKey')?.value.trim();
+    const statusMessage = document.getElementById('whatsappStatusMessage');
+    const saveBtn = document.getElementById('saveWhatsAppBtn');
 
     if (!number) {
-      alert('Preencha o número do WhatsApp');
+      if (statusMessage) {
+        statusMessage.style.display = 'block';
+        statusMessage.style.background = '#fee2e2';
+        statusMessage.style.borderColor = '#ef4444';
+        statusMessage.innerHTML = '<span style="color: #991b1b;"><i class="fas fa-exclamation-circle"></i> Preencha o número do WhatsApp</span>';
+      } else {
+        alert('Preencha o número do WhatsApp');
+      }
       return;
     }
 
-    const configs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
-    configs.whatsapp = { number, apiKey };
-    localStorage.setItem('notificationConfigs', JSON.stringify(configs));
+    // Desabilitar botão durante salvamento
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    }
 
-    document.getElementById('whatsappStatus').textContent = 'Configurado';
-    document.getElementById('whatsappStatus').className = 'platform-status active';
+    try {
+      const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
+      configs.whatsapp = { number, apiKey };
+      localStorage.setItem('integrationConfigs', JSON.stringify(configs));
+
+      // Também salvar em notificationConfigs para compatibilidade
+      const notificationConfigs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
+      notificationConfigs.whatsapp = { number, apiKey };
+      localStorage.setItem('notificationConfigs', JSON.stringify(notificationConfigs));
+
+      // Mostrar mensagem de sucesso
+      if (statusMessage) {
+        statusMessage.style.display = 'block';
+        statusMessage.style.background = '#d1fae5';
+        statusMessage.style.borderColor = '#10b981';
+        statusMessage.innerHTML = '<span style="color: #065f46;"><i class="fas fa-check-circle"></i> WhatsApp configurado com sucesso!</span>';
+      }
+
+      // Recarregar modal após 1 segundo
+      setTimeout(() => {
+        const modalBody = document.getElementById('modalBody');
+        if (modalBody) {
+          modalBody.innerHTML = getNotificationConfigHTML('whatsapp');
+          loadPlatforms();
+        }
+      }, 1000);
+    } catch (error) {
+      if (statusMessage) {
+        statusMessage.style.display = 'block';
+        statusMessage.style.background = '#fee2e2';
+        statusMessage.style.borderColor = '#ef4444';
+        statusMessage.innerHTML = '<span style="color: #991b1b;"><i class="fas fa-exclamation-circle"></i> Erro ao salvar: ' + error.message + '</span>';
+      }
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Configuração';
+      }
+    }
     
-    alert('WhatsApp configurado com sucesso!');
+    return;
   }
 
   closeModal();
+}
+
+// Remover configuração do WhatsApp
+function removeWhatsAppConfig() {
+  if (!confirm('Tem certeza que deseja remover a configuração do WhatsApp?')) {
+    return;
+  }
+  
+  const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
+  delete configs.whatsapp;
+  localStorage.setItem('integrationConfigs', JSON.stringify(configs));
+  
+  const notificationConfigs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
+  delete notificationConfigs.whatsapp;
+  localStorage.setItem('notificationConfigs', JSON.stringify(notificationConfigs));
+  
+  // Recarregar modal
+  const modalBody = document.getElementById('modalBody');
+  if (modalBody) {
+    modalBody.innerHTML = getNotificationConfigHTML('whatsapp');
+    setTimeout(() => {
+      const form = document.getElementById('notificationConfigForm');
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          handleNotificationConfig('whatsapp', e);
+        });
+      }
+    }, 100);
+  }
+  
+  loadPlatforms();
+}
+
+// Mostrar formulário para editar configuração
+function showWhatsAppConfigInput() {
+  const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
+  delete configs.whatsapp;
+  localStorage.setItem('integrationConfigs', JSON.stringify(configs));
+  
+  // Recarregar modal
+  const modalBody = document.getElementById('modalBody');
+  if (modalBody) {
+    modalBody.innerHTML = getNotificationConfigHTML('whatsapp');
+    setTimeout(() => {
+      const form = document.getElementById('notificationConfigForm');
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          handleNotificationConfig('whatsapp', e);
+        });
+      }
+    }, 100);
+  }
 }
 
 // Resetar formulários
