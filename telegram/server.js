@@ -71,16 +71,29 @@ app.get('/api/config', (req, res) => {
   res.json({ configured: !!(API_ID && API_HASH) });
 });
 
-// Listar sessões (otimizado)
+// Listar sessões (otimizado - pode filtrar por cliente)
 app.get('/api/sessions', (req, res) => {
+  const { userId, email, clientId } = req.query;
+  
   const list = [];
   for (const [id, s] of sessions.entries()) {
+    // Se forneceu filtro, mostrar apenas sessões desse cliente
+    if (userId || email || clientId) {
+      const targetClientId = userId || email || clientId;
+      if (s.clientId !== targetClientId && s.userId !== userId && s.email !== email) {
+        continue; // Pular sessões de outros clientes
+      }
+    }
+    
     list.push({
       id,
       name: s.name || s.phone,
       phone: s.phone,
       status: s.status,
       createdAt: s.createdAt,
+      clientId: s.clientId,
+      userId: s.userId,
+      email: s.email
     });
   }
   res.json({ sessions: list });

@@ -3527,11 +3527,18 @@ async function handleAddTelegramAccount(e) {
       }
     }
 
-    // Criar nova sessão (enviar código SMS)
+    // Criar nova sessão (enviar código SMS) - enviar userId/email como identificador único
     const response = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, apiId, apiHash }),
+      body: JSON.stringify({ 
+        name, 
+        phone, 
+        apiId, 
+        apiHash,
+        userId: currentUser?.uid,
+        email: currentUser?.email
+      }),
       signal: createTimeoutSignal(30000) // Timeout de 30 segundos
     });
     
