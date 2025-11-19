@@ -1158,34 +1158,150 @@ function getNotificationConfigHTML(type) {
       </div>
     `;
   } else if (type === 'whatsapp') {
+    const savedConfig = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
+    const whatsappConfig = savedConfig.whatsapp || {};
+    const notificationConfigs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
+    const hasConfig = (whatsappConfig.number || notificationConfigs.whatsapp?.number) || (whatsappConfig.apiKey || notificationConfigs.whatsapp?.apiKey);
+    const config = whatsappConfig.number ? whatsappConfig : notificationConfigs.whatsapp || {};
+    
     return `
       <div id="whatsappConfigContainer">
-        <form id="notificationConfigForm">
-          <div style="text-align: center; margin-bottom: 2rem;">
-            <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Configure sua conta do WhatsApp</p>
+        ${hasConfig ? `
+          <!-- Status: Configurado -->
+          <div style="text-align: center; padding: 2rem 1rem;">
+            <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+              <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
+            </div>
+            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">WhatsApp Configurado</h3>
+            <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua conta está ativa e funcionando</p>
+            
+            <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                <span style="color: var(--text-light); font-size: 0.85rem; font-weight: 500;">Status:</span>
+                <span class="platform-status active" style="display: inline-block; padding: 6px 16px; font-size: 0.8rem; border-radius: 20px;">Ativo</span>
+              </div>
+              ${config.number ? `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                  <div style="flex: 1;">
+                    <div style="color: var(--text-light); font-size: 0.75rem; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px;">Número</div>
+                    <div style="color: var(--text-dark); font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
+                      <i class="fab fa-whatsapp" style="color: #25d366; font-size: 1.1rem;"></i>
+                      ${config.number}
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
+              ${config.apiKey ? `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div style="flex: 1;">
+                    <div style="color: var(--text-light); font-size: 0.75rem; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px;">API Key</div>
+                    <code style="background: var(--bg-white); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; color: var(--text-dark); display: inline-block;">
+                      ${config.apiKey.substring(0, 12)}...${config.apiKey.substring(config.apiKey.length - 4)}
+                    </code>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem; justify-content: center;">
+              <button type="button" class="btn btn-outline" onclick="removeWhatsAppConfig()" style="flex: 1;">
+                <i class="fas fa-trash"></i> Remover
+              </button>
+              <button type="button" class="btn btn-primary" onclick="showWhatsAppConfigInput()" style="flex: 1;">
+                <i class="fas fa-edit"></i> Editar
+              </button>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Número do WhatsApp (com código do país)</label>
-            <input type="text" id="whatsappNumber" placeholder="5511999999999">
-            <small style="color: var(--text-light); font-size: 0.85rem;">
-              Formato: código do país + DDD + número (ex: 5511999999999)
-            </small>
-          </div>
-          <div class="form-group">
-            <label>API Key (se usar serviço externo)</label>
-            <input type="text" id="whatsappApiKey" placeholder="Opcional">
-            <small style="color: var(--text-light); font-size: 0.85rem;">
-              Opcional: chave de API se usar serviço externo
-            </small>
-          </div>
-          <div class="form-actions" style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-save"></i>
-              Salvar Configuração
-            </button>
-          </div>
-        </form>
+        ` : `
+          <!-- Formulário: Configurar -->
+          <form id="notificationConfigForm">
+            <div style="text-align: center; margin-bottom: 2.5rem;">
+              <p style="color: var(--text-light); margin: 0; font-size: 0.95rem; line-height: 1.6;">Configure sua conta do WhatsApp para receber notificações</p>
+            </div>
+            
+            <!-- Status Message -->
+            <div id="whatsappStatusMessage" style="display: none; margin-bottom: 1.5rem; padding: 1rem; border-radius: 10px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
+            
+            <!-- Card: Número do WhatsApp -->
+            <div style="background: linear-gradient(135deg, rgba(37, 211, 102, 0.05) 0%, rgba(18, 140, 126, 0.05) 100%); border: 2px solid rgba(37, 211, 102, 0.2); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+                <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+                  <i class="fas fa-phone-alt" style="font-size: 1.1rem; color: white;"></i>
+                </div>
+                <div>
+                  <h4 style="margin: 0; color: var(--text-dark); font-size: 1rem; font-weight: 600;">Número do WhatsApp</h4>
+                  <p style="margin: 0.25rem 0 0 0; color: var(--text-light); font-size: 0.85rem;">Seu número com código do país</p>
+                </div>
+              </div>
+              
+              <div class="form-group" style="margin: 0;">
+                <div style="position: relative;">
+                  <div style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 0.5rem; pointer-events: none;">
+                    <i class="fab fa-whatsapp" style="color: #25d366; font-size: 1.1rem;"></i>
+                    <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">+</span>
+                  </div>
+                  <input 
+                    type="text" 
+                    id="whatsappNumber" 
+                    value="${config.number || ''}"
+                    placeholder="5511999999999" 
+                    style="width: 100%; padding: 0.875rem 1rem 0.875rem 3.5rem; border: 2px solid var(--border-color); border-radius: 10px; background: var(--bg-white); color: var(--text-dark); font-size: 1rem; font-weight: 500; transition: all 0.2s ease;"
+                    onfocus="this.style.borderColor='#25d366'; this.style.boxShadow='0 0 0 3px rgba(37, 211, 102, 0.1)'"
+                    onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none'"
+                    autocomplete="off"
+                  >
+                </div>
+                <small style="color: var(--text-light); font-size: 0.8rem; display: block; margin-top: 0.75rem; line-height: 1.5;">
+                  <i class="fas fa-info-circle" style="margin-right: 0.25rem;"></i>
+                  Formato: código do país + DDD + número (ex: 5511999999999)
+                </small>
+              </div>
+            </div>
+            
+            <!-- Card: API Key (Opcional) -->
+            <div style="background: var(--bg-light); border: 2px solid var(--border-color); border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
+                <div style="width: 44px; height: 44px; background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+                  <i class="fas fa-key" style="font-size: 1.1rem; color: white;"></i>
+                </div>
+                <div style="flex: 1;">
+                  <h4 style="margin: 0; color: var(--text-dark); font-size: 1rem; font-weight: 600;">API Key</h4>
+                  <p style="margin: 0.25rem 0 0 0; color: var(--text-light); font-size: 0.85rem;">Opcional: chave de API para serviço externo</p>
+                </div>
+                <span style="background: rgba(37, 211, 102, 0.1); color: #25d366; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Opcional</span>
+              </div>
+              
+              <div class="form-group" style="margin: 0;">
+                <div style="position: relative;">
+                  <input 
+                    type="password" 
+                    id="whatsappApiKey" 
+                    value="${config.apiKey || ''}"
+                    placeholder="Digite sua API Key (opcional)" 
+                    style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--border-color); border-radius: 10px; background: var(--bg-white); color: var(--text-dark); font-size: 0.95rem; transition: all 0.2s ease;"
+                    onfocus="this.style.borderColor='var(--primary-color)'; this.style.boxShadow='0 0 0 3px rgba(99, 102, 241, 0.1)'"
+                    onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none'"
+                    autocomplete="off"
+                  >
+                </div>
+                <small style="color: var(--text-light); font-size: 0.8rem; display: block; margin-top: 0.75rem; line-height: 1.5;">
+                  <i class="fas fa-info-circle" style="margin-right: 0.25rem;"></i>
+                  Use apenas se estiver integrando com um serviço externo de WhatsApp
+                </small>
+              </div>
+            </div>
+            
+            <!-- Botões de Ação -->
+            <div class="form-actions" style="display: flex; gap: 0.75rem; margin-top: 2rem;">
+              <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1; padding: 0.875rem;">
+                <i class="fas fa-times"></i> Cancelar
+              </button>
+              <button type="submit" class="btn btn-primary" id="saveWhatsAppBtn" style="flex: 1; padding: 0.875rem; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border: none; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+                <i class="fas fa-save"></i> Salvar Configuração
+              </button>
+            </div>
+          </form>
+        `}
       </div>
     `;
   }
