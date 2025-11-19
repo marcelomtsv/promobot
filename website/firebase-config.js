@@ -38,18 +38,9 @@ const firebaseConfig = {
       let db = null;
       try {
         db = firebase.firestore();
-        // Configurar apenas se ainda não foi configurado
-        // O aviso de "overriding" aparece se settings() for chamado após inicialização automática
-        // Verificar se já foi configurado antes de chamar settings()
-        if (!db._settings || !db._settings.ignoreUndefinedProperties) {
-          try {
-            db.settings({
-              ignoreUndefinedProperties: true
-            });
-          } catch (settingsError) {
-            // Ignorar erro se já foi configurado
-          }
-        }
+        // Não chamar settings() para evitar aviso de "overriding the original host"
+        // O Firestore já inicializa com configurações padrão adequadas
+        // Se precisar de configurações específicas, faça antes de qualquer operação
       } catch (error) {
         // Se Firestore não estiver disponível, continuar sem ele
         console.warn('⚠️ Firestore não disponível, usando apenas localStorage');
