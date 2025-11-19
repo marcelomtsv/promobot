@@ -104,10 +104,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // Configurar resto
   setupEventListeners();
-  loadPlatforms();
+  // Carregar sessões do Telegram primeiro, depois plataformas
+  await loadTelegramSessions();
+  await loadPlatforms();
   initMonitoring();
-  // Carregar sessões do Telegram
-  loadTelegramSessions();
   
   // Restaurar aba ativa salva (já aplicada no script inline, apenas garantir sincronização)
   const savedPanel = localStorage.getItem('activePanel') || 'overview';
