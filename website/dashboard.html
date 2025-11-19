@@ -1446,6 +1446,8 @@
             <h2>Alterar Senha</h2>
           </div>
           <form id="passwordForm">
+            <!-- Campo de username oculto para acessibilidade -->
+            <input type="text" name="username" autocomplete="username" style="position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0;" tabindex="-1" aria-hidden="true">
             <div class="form-group">
               <label>Senha Atual</label>
               <input type="password" id="currentPassword" placeholder="Digite sua senha atual" autocomplete="current-password">
