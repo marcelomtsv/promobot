@@ -56,14 +56,71 @@ const BOTFATHER_API_URL = localStorage.getItem('botfatherApiUrl') ||
     : 'http://localhost:3001');
 // ==========================================
 
-// Cache de configurações do Firebase
+// ===== OTIMIZAÇÕES DE PERFORMANCE =====
+
+// Cache de configurações do Firebase com TTL (Time To Live)
 window.integrationConfigsCache = {};
 window.notificationConfigsCache = {};
+window.cacheTimestamps = {
+  integrationConfigs: 0,
+  notificationConfigs: 0,
+  telegramAccount: 0,
+  userData: 0
+};
+const CACHE_TTL = 60000; // 1 minuto em milissegundos
 
-// Carregar todas as configurações do Firebase
-async function loadAllConfigsFromFirebase() {
+// Debounce function - evita chamadas excessivas
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Throttle function - limita frequência de execução
+function throttle(func, limit) {
+  let inThrottle;
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+}
+
+// Verificar se cache está válido
+function isCacheValid(key) {
+  const timestamp = window.cacheTimestamps[key] || 0;
+  return (Date.now() - timestamp) < CACHE_TTL;
+}
+
+// Invalidar cache
+function invalidateCache(key) {
+  if (key) {
+    window.cacheTimestamps[key] = 0;
+  } else {
+    // Invalidar todos
+    Object.keys(window.cacheTimestamps).forEach(k => {
+      window.cacheTimestamps[k] = 0;
+    });
+  }
+}
+
+// Carregar todas as configurações do Firebase (com cache)
+async function loadAllConfigsFromFirebase(forceRefresh = false) {
   if (!currentUser || !currentUser.uid) {
     return;
+  }
+  
+  // Verificar cache
+  if (!forceRefresh && isCacheValid('userData')) {
+    return; // Usar cache
   }
   
   try {
@@ -71,6 +128,9 @@ async function loadAllConfigsFromFirebase() {
     if (userData) {
       window.integrationConfigsCache = userData.integrationConfigs || {};
       window.notificationConfigsCache = userData.notificationConfigs || {};
+      window.cacheTimestamps.integrationConfigs = Date.now();
+      window.cacheTimestamps.notificationConfigs = Date.now();
+      window.cacheTimestamps.userData = Date.now();
     }
   } catch (error) {
     // Se der erro, usar cache vazio
@@ -3005,23 +3065,42 @@ async function handleVerifyTelegramCode(e) {
   }
 }
 
-// Verificar se tem conta no Firebase E na API (só está ativo se tiver nos dois)
-async function checkTelegramAccountSync() {
+// Cache para sincronização
+let syncCache = null;
+let syncCacheTime = 0;
+const SYNC_CACHE_TTL = 10000; // 10 segundos
+
+// Verificar se tem conta no Firebase E na API (só está ativo se tiver nos dois) - com cache
+async function checkTelegramAccountSync(forceRefresh = false) {
+  // Verificar cache
+  const now = Date.now();
+  if (!forceRefresh && syncCache && (now - syncCacheTime) < SYNC_CACHE_TTL) {
+    return syncCache;
+  }
+  
   let hasFirebaseAccount = false;
   let hasApiAccount = false;
   let firebaseAccount = null;
   let apiSessions = [];
   
-  // Verificar Firebase
+  // Verificar Firebase (usar cache se disponível)
   if (currentUser && currentUser.uid && window.firebaseDb) {
     try {
-      const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-      const doc = await docRef.get();
-      if (doc.exists) {
-        const userData = doc.data();
-        if (userData.telegramAccount && userData.telegramAccount.phone && userData.telegramAccount.apiId) {
-          hasFirebaseAccount = true;
-          firebaseAccount = userData.telegramAccount;
+      // Se cache de userData é válido, usar cache
+      if (!forceRefresh && isCacheValid('telegramAccount') && window.telegramConfigCache && Object.keys(window.telegramConfigCache).length > 0) {
+        firebaseAccount = window.telegramConfigCache;
+        hasFirebaseAccount = !!(firebaseAccount.phone && firebaseAccount.apiId);
+      } else {
+        const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+        const doc = await docRef.get();
+        if (doc.exists) {
+          const userData = doc.data();
+          if (userData.telegramAccount && userData.telegramAccount.phone && userData.telegramAccount.apiId) {
+            hasFirebaseAccount = true;
+            firebaseAccount = userData.telegramAccount;
+            window.telegramConfigCache = firebaseAccount;
+            window.cacheTimestamps.telegramAccount = Date.now();
+          }
         }
       }
     } catch (error) {
@@ -3029,22 +3108,30 @@ async function checkTelegramAccountSync() {
     }
   }
   
-  // Verificar API
+  // Verificar API (usar cache de sessões se disponível)
   try {
-    const isApiAvailable = await checkTelegramApiStatus();
-    if (isApiAvailable) {
-      const sessionsResponse = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
-        method: 'GET',
-        signal: createTimeoutSignal(5000)
-      }).catch(() => null);
-      
-      if (sessionsResponse && sessionsResponse.ok) {
-        const sessionsData = await sessionsResponse.json().catch(() => ({ sessions: [] }));
-        apiSessions = sessionsData.sessions || [];
-        const activeSessions = apiSessions.filter(s => s.status === 'active' || s.status === 'connected');
-        hasApiAccount = activeSessions.length > 0;
+    if (telegramSessionsCache && (now - telegramSessionsCacheTime) < TELEGRAM_SESSIONS_CACHE_TTL) {
+      apiSessions = telegramSessionsCache;
+    } else {
+      const isApiAvailable = await checkTelegramApiStatus();
+      if (isApiAvailable) {
+        const sessionsResponse = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
+          method: 'GET',
+          signal: createTimeoutSignal(3000), // Timeout reduzido
+          cache: 'no-cache'
+        }).catch(() => null);
+        
+        if (sessionsResponse && sessionsResponse.ok) {
+          const sessionsData = await sessionsResponse.json().catch(() => ({ sessions: [] }));
+          apiSessions = sessionsData.sessions || [];
+          telegramSessionsCache = apiSessions;
+          telegramSessionsCacheTime = now;
+        }
       }
     }
+    
+    const activeSessions = apiSessions.filter(s => s.status === 'active' || s.status === 'connected');
+    hasApiAccount = activeSessions.length > 0;
   } catch (error) {
     // Ignorar erros
   }
@@ -3177,6 +3264,10 @@ async function saveTelegramAccountToFirebase(accountData) {
   });
   // Atualizar cache após salvar
   window.telegramConfigCache = accountData;
+  window.cacheTimestamps.telegramAccount = Date.now();
+  // Invalidar cache de sincronização
+  syncCache = null;
+  syncCacheTime = 0;
 }
 
 // Salvar configuração de integração (DeepSeek, WhatsApp, etc.)
@@ -3188,6 +3279,11 @@ async function saveIntegrationConfigToFirebase(integrationId, config) {
   await saveUserDataToFirebase({
     integrationConfigs: integrationConfigs
   });
+  
+  // Atualizar cache
+  window.integrationConfigsCache = integrationConfigs;
+  window.cacheTimestamps.integrationConfigs = Date.now();
+  window.cacheTimestamps.userData = Date.now();
 }
 
 // Carregar configuração de integração
@@ -3217,6 +3313,11 @@ async function saveNotificationConfigToFirebase(type, config) {
   await saveUserDataToFirebase({
     notificationConfigs: notificationConfigs
   });
+  
+  // Atualizar cache
+  window.notificationConfigsCache = notificationConfigs;
+  window.cacheTimestamps.notificationConfigs = Date.now();
+  window.cacheTimestamps.userData = Date.now();
 }
 
 // Carregar configuração de notificação
