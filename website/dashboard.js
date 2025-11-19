@@ -1101,10 +1101,6 @@ function getNotificationConfigHTML(type) {
           
           <form id="addTelegramAccountFormElement">
             <div class="form-group">
-              <label>Nome da Conta</label>
-              <input type="text" id="telegramAccountName" placeholder="Ex: Minha Conta Pessoal" required>
-            </div>
-            <div class="form-group">
               <label>Telefone (com código do país)</label>
               <input type="text" id="telegramPhone" placeholder="+5511999999999" required>
               <small style="color: var(--text-light); font-size: 0.85rem;">
