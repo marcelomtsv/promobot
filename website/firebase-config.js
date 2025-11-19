@@ -38,11 +38,18 @@ const firebaseConfig = {
       let db = null;
       try {
         db = firebase.firestore();
-        // Configurar para usar apenas localStorage se Firestore não estiver disponível
-        // Usar merge: true para evitar aviso de override
-        db.settings({
-          ignoreUndefinedProperties: true
-        }, { merge: true });
+        // Configurar apenas se ainda não foi configurado
+        // O aviso de "overriding" aparece se settings() for chamado após inicialização automática
+        // Verificar se já foi configurado antes de chamar settings()
+        if (!db._settings || !db._settings.ignoreUndefinedProperties) {
+          try {
+            db.settings({
+              ignoreUndefinedProperties: true
+            });
+          } catch (settingsError) {
+            // Ignorar erro se já foi configurado
+          }
+        }
       } catch (error) {
         // Se Firestore não estiver disponível, continuar sem ele
         console.warn('⚠️ Firestore não disponível, usando apenas localStorage');
