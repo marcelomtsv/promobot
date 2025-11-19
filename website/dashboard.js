@@ -987,46 +987,10 @@ function getDeepSeekConfigHTML() {
             </small>
           </div>
           
-          <div class="form-actions" style="margin-top: 1.5rem;">
-            <button type="button" class="btn btn-secondary" onclick="closeModal()" style="width: 100%; margin-bottom: 0.75rem;">Cancelar</button>
-            <button type="button" class="btn btn-primary" onclick="handleDeepSeekConfig()" id="saveDeepSeekBtn" style="width: 100%;">
-              <i class="fas fa-save"></i> Salvar Configuração
-            </button>
-          </div>
-          
-          <!-- Loading Screen -->
-          <div id="deepseekLoadingScreen" style="display: none; text-align: center; padding: 3rem 1rem;">
-            <div style="width: 100px; height: 100px; margin: 0 auto 2rem; position: relative;">
-              <!-- Spinner externo -->
-              <div style="width: 100px; height: 100px; border: 4px solid var(--bg-light); border-top: 4px solid var(--accent-color); border-right: 4px solid var(--accent-color); border-radius: 50%; animation: spin 1s linear infinite; position: absolute; top: 0; left: 0;"></div>
-              <!-- Spinner interno -->
-              <div style="width: 70px; height: 70px; border: 3px solid transparent; border-top: 3px solid var(--primary-color); border-radius: 50%; animation: spinReverse 0.8s linear infinite; position: absolute; top: 15px; left: 15px;"></div>
-              <!-- Ícone central -->
-              <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: pulse 2s ease-in-out infinite;">
-                <i class="fas fa-brain" style="font-size: 2.5rem; color: var(--accent-color); filter: drop-shadow(0 2px 8px rgba(0, 82, 212, 0.3));"></i>
-              </div>
-            </div>
-            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); animation: fadeInUp 0.5s ease; min-height: 2rem;">
-              <span id="loadingStatusText">Verificando API Key</span><span id="loadingDots" style="animation: blink 1.4s infinite;">...</span>
-            </h3>
-            <p style="color: var(--text-light); margin: 0; font-size: 0.9rem; animation: fadeInUp 0.5s ease 0.1s both; min-height: 1.5rem;">
-              <span id="loadingSubText">Conectando com o servidor</span>
-            </p>
-            <!-- Pontos animados -->
-            <div style="display: flex; justify-content: center; gap: 6px; margin-top: 1rem; animation: fadeInUp 0.5s ease 0.2s both;">
-              <div style="width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%; animation: bounce 1.4s ease-in-out infinite;"></div>
-              <div style="width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%; animation: bounce 1.4s ease-in-out 0.2s infinite;"></div>
-              <div style="width: 8px; height: 8px; background: var(--accent-color); border-radius: 50%; animation: bounce 1.4s ease-in-out 0.4s infinite;"></div>
-            </div>
-          </div>
-          
-          <!-- Status Message -->
-          <div id="apiKeyStatus" style="margin-top: 1rem; display: none;"></div>
-          
           <div class="form-actions" style="margin-top: 2rem;">
             <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">Cancelar</button>
-            <button type="button" class="btn btn-primary" onclick="addDeepSeekApiKey()" id="addApiKeyBtn" style="flex: 1;">
-              <i class="fas fa-plus"></i> Adicionar API Key
+            <button type="button" class="btn btn-primary" onclick="cadastrarDeepSeek()" id="cadastrarDeepSeekBtn" style="flex: 1;">
+              <i class="fas fa-plus"></i> Cadastrar
             </button>
           </div>
         </form>
@@ -1533,32 +1497,33 @@ function toggleBotTokenVisibility() {
   }
 }
 
-// Adicionar API Key do DeepSeek (com loading e verificação)
-async function addDeepSeekApiKey() {
+// Cadastrar DeepSeek (SIMPLIFICADO - verifica e salva direto)
+async function cadastrarDeepSeek() {
   const apiKeyInput = document.getElementById('deepseekApiKey');
-  const form = document.getElementById('deepseekConfigForm');
-  const loadingScreen = document.getElementById('deepseekLoadingScreen');
   const statusDiv = document.getElementById('apiKeyStatus');
-  const addBtn = document.getElementById('addApiKeyBtn');
+  const cadastrarBtn = document.getElementById('cadastrarDeepSeekBtn');
   
   if (!apiKeyInput) return;
   
   const apiKey = apiKeyInput.value.trim();
   
+  // Validação básica
   if (!apiKey) {
-    statusDiv.innerHTML = '<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--accent-color);"><i class="fas fa-exclamation-circle"></i> Por favor, insira uma API Key</div>';
-    statusDiv.style.display = 'block';
+    if (statusDiv) {
+      statusDiv.innerHTML = '<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--accent-color);"><i class="fas fa-exclamation-circle"></i> Por favor, insira uma API Key</div>';
+      statusDiv.style.display = 'block';
+    }
     return;
   }
   
-  // Mostrar loading no botão e mensagem de verificação
-  if (addBtn) {
-    addBtn.disabled = true;
-    addBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+  // Desabilitar botão e mostrar loading
+  if (cadastrarBtn) {
+    cadastrarBtn.disabled = true;
+    cadastrarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
   }
   
   if (statusDiv) {
-    statusDiv.innerHTML = '<div style="background: rgba(0, 82, 212, 0.1); border: 1px solid rgba(0, 82, 212, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--primary-color);"><i class="fas fa-spinner fa-spin"></i> Verificando API Key...</div>';
+    statusDiv.innerHTML = '<div style="background: rgba(0, 82, 212, 0.1); border: 1px solid rgba(0, 82, 212, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--primary-color);"><i class="fas fa-spinner fa-spin"></i> Verificando e cadastrando...</div>';
     statusDiv.style.display = 'block';
   }
   
@@ -1573,7 +1538,7 @@ async function addDeepSeekApiKey() {
       body: JSON.stringify({
         api_key: apiKey
       }),
-      signal: createTimeoutSignal(20000), // 20 segundos - otimizado
+      signal: createTimeoutSignal(20000),
       credentials: 'omit'
     });
     
@@ -1586,25 +1551,27 @@ async function addDeepSeekApiKey() {
     }
     
     if (response.ok && data.success && data.valid) {
-      // API Key válida - Salvar
-      const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-      configs.deepseek = {
-        apiKey: apiKey,
-        model: 'deepseek-chat',
-        enabled: true,
-        verified: true,
-        verifiedAt: new Date().toISOString()
-      };
-      localStorage.setItem('integrationConfigs', JSON.stringify(configs));
+      // API Key válida - Salvar no Firebase
+      await saveIntegrationConfigToFirebase('deepseek', { apiKey });
       
-      // Atualizar o conteúdo do modal para mostrar a tela de "configurado"
-      const modalBody = document.getElementById('modalBody');
-      if (modalBody) {
-        modalBody.innerHTML = getDeepSeekConfigHTML();
+      // Atualizar cache
+      if (!window.integrationConfigsCache) window.integrationConfigsCache = {};
+      window.integrationConfigsCache.deepseek = { apiKey };
+      
+      // Mostrar sucesso
+      if (statusDiv) {
+        statusDiv.innerHTML = '<div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 0.75rem; color: #10b981;"><i class="fas fa-check-circle"></i> API Key cadastrada com sucesso!</div>';
+        statusDiv.style.display = 'block';
       }
       
-      // Atualizar plataformas
-      loadPlatforms();
+      // Atualizar modal e dashboard após 1 segundo
+      setTimeout(() => {
+        const modalBody = document.getElementById('modalBody');
+        if (modalBody) {
+          modalBody.innerHTML = getDeepSeekConfigHTML();
+        }
+        loadPlatforms();
+      }, 1000);
       
     } else {
       // API Key inválida
@@ -1612,9 +1579,9 @@ async function addDeepSeekApiKey() {
     }
   } catch (error) {
     // Reabilitar botão
-    if (addBtn) {
-      addBtn.disabled = false;
-      addBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar API Key';
+    if (cadastrarBtn) {
+      cadastrarBtn.disabled = false;
+      cadastrarBtn.innerHTML = '<i class="fas fa-plus"></i> Cadastrar';
     }
     
     let errorMessage = 'API key inválida ou expirada';
