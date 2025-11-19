@@ -19,19 +19,22 @@ const wss = new WebSocketServer({ server, perMessageDeflate: true });
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
-  // Permitir apenas localhost e 127.0.0.1 (desenvolvimento local)
+  // Permitir localhost e 127.0.0.1 em qualquer porta (desenvolvimento local)
   if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-  } else if (!origin) {
-    // Permitir requisições sem origin (ex: curl, Postman)
+  } else if (!origin || origin === 'null') {
+    // Permitir requisições sem origin ou com origin null (ex: curl, Postman, fetch direto)
     res.setHeader('Access-Control-Allow-Origin', '*');
   }
   
   // Responder a preflight requests
   if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
     return res.sendStatus(200);
   }
   
