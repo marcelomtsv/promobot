@@ -468,7 +468,7 @@ function showPanel(panelId) {
 }
 
 // Abrir modal de configuração
-function openPlatformConfig(platformId) {
+async function openPlatformConfig(platformId) {
   const modal = document.getElementById('platformModal');
   const modalTitle = document.getElementById('modalTitle');
   const modalBody = document.getElementById('modalBody');
