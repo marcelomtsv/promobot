@@ -659,10 +659,6 @@ function getTelegramConfigHTML() {
               <span class="platform-status active" style="display: inline-block; padding: 4px 12px; font-size: 0.75rem;">Ativo</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">Email:</span>
-              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${telegramConfig.email || currentUser?.email || 'N/A'}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
               <span style="color: var(--text-light); font-size: 0.85rem;">Telefone:</span>
               <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${telegramConfig.phone || 'N/A'}</span>
             </div>
@@ -3076,6 +3072,23 @@ async function removeTelegramAccount() {
   }
   
   try {
+    // Buscar sessionId da conta antes de remover
+    const existingAccount = window.telegramConfigCache;
+    const sessionId = existingAccount?.sessionId;
+    
+    // Remover da API se tiver sessionId
+    if (sessionId) {
+      try {
+        await fetch(`${TELEGRAM_API_URL}/api/sessions/${sessionId}`, {
+          method: 'DELETE',
+          signal: createTimeoutSignal(5000)
+        }).catch(() => {}); // Ignorar erros se a sessão já não existir
+      } catch (e) {
+        // Ignorar erros ao remover da API
+      }
+    }
+    
+    // Remover do Firebase
     const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
     await docRef.update({
       telegramAccount: null,
@@ -3155,8 +3168,19 @@ async function addTelegramAccount() {
       return;
     }
 
-    // Mostrar mensagem de carregamento
-    showTelegramStatusMessage('📱 Enviando código SMS para ' + phone + '... Aguarde alguns segundos.', 'info');
+    // Verificar se já existe uma conta e remover da API antes de adicionar nova
+    const existingAccount = window.telegramConfigCache;
+    if (existingAccount && existingAccount.sessionId) {
+      try {
+        // Remover conta existente da API
+        await fetch(`${TELEGRAM_API_URL}/api/sessions/${existingAccount.sessionId}`, {
+          method: 'DELETE',
+          signal: createTimeoutSignal(5000)
+        }).catch(() => {}); // Ignorar erros se a sessão já não existir
+      } catch (e) {
+        // Ignorar erros ao remover sessão antiga
+      }
+    }
 
     // Criar nova sessão (enviar código SMS)
     const response = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
@@ -3208,7 +3232,7 @@ async function addTelegramAccount() {
       // Fechar modal de configuração imediatamente
       document.getElementById('platformModal')?.classList.remove('active');
       
-      // Abrir modal de código imediatamente
+      // Abrir modal de código imediatamente (sem mensagem intermediária)
       showTelegramCodeModal(data.sessionId, phone);
       
       // Resetar botão
