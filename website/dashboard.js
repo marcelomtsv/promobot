@@ -614,8 +614,8 @@ function getPlatformConfigHTML(platform) {
 
 // HTML de configuração do Telegram (padrão DeepSeek)
 function getTelegramConfigHTML() {
-  // Carregar do Firebase ou localStorage
-  const telegramConfig = JSON.parse(localStorage.getItem('telegramConfig') || '{}');
+  // Carregar do Firebase (será atualizado quando loadTelegramAccountFromFirebase() for chamado)
+  const telegramConfig = window.telegramConfigCache || {};
   const hasAccount = telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash;
   
   return `
@@ -2864,25 +2864,6 @@ async function handleVerifyTelegramCode(e) {
 
 // Carregar conta do Telegram do Firebase
 async function loadTelegramAccountFromFirebase() {
-  // Primeiro tentar carregar do localStorage (mais rápido e confiável)
-  const localConfig = localStorage.getItem('telegramConfig');
-  if (localConfig) {
-    try {
-      const config = JSON.parse(localConfig);
-      if (config.phone && config.apiId && config.apiHash) {
-        // Recarregar o HTML do modal
-        const container = document.getElementById('telegramConfigContainer');
-        if (container) {
-          container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
-        }
-        return;
-      }
-    } catch (e) {
-      // Ignorar erro de parse
-    }
-  }
-  
-  // Se não tiver no localStorage, tentar Firebase
   if (!currentUser || !currentUser.uid) {
     return;
   }
@@ -2895,41 +2876,66 @@ async function loadTelegramAccountFromFirebase() {
       if (doc.exists) {
         const userData = doc.data();
         if (userData.telegramAccount) {
-          localStorage.setItem('telegramConfig', JSON.stringify(userData.telegramAccount));
+          // Armazenar em cache para uso no getTelegramConfigHTML()
+          window.telegramConfigCache = userData.telegramAccount;
+          
           // Recarregar o HTML do modal
           const container = document.getElementById('telegramConfigContainer');
           if (container) {
             container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
           }
+        } else {
+          // Limpar cache se não tiver conta
+          window.telegramConfigCache = {};
+          const container = document.getElementById('telegramConfigContainer');
+          if (container) {
+            container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
+          }
+        }
+      } else {
+        // Limpar cache se documento não existir
+        window.telegramConfigCache = {};
+        const container = document.getElementById('telegramConfigContainer');
+        if (container) {
+          container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
         }
       }
     }
   } catch (error) {
-    // Silenciosamente usar apenas localStorage se Firestore não estiver disponível
+    // Se der erro, limpar cache e mostrar formulário vazio
+    window.telegramConfigCache = {};
+    const container = document.getElementById('telegramConfigContainer');
+    if (container) {
+      container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
+    }
   }
 }
 
 // Salvar conta do Telegram no Firebase
 async function saveTelegramAccountToFirebase(accountData) {
-  // Sempre salvar no localStorage primeiro
-  localStorage.setItem('telegramConfig', JSON.stringify(accountData));
-  
   if (!currentUser || !currentUser.uid) {
-    return;
+    throw new Error('Usuário não autenticado. Faça login para salvar a conta.');
   }
   
-  // Tentar salvar no Firebase, mas não falhar se der erro
+  if (!window.firebaseDb) {
+    throw new Error('Firestore não está disponível. Verifique sua conexão.');
+  }
+  
   try {
-    if (window.firebaseDb) {
-      const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-      await docRef.set({
-        telegramAccount: accountData,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    }
+    const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+    await docRef.set({
+      telegramAccount: accountData,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+    
+    // Atualizar cache após salvar
+    window.telegramConfigCache = accountData;
   } catch (error) {
-    // Silenciosamente usar apenas localStorage se Firestore não estiver disponível
-    // Não mostrar erro ao usuário, localStorage já foi salvo
+    // Se der erro de Firestore não configurado, mostrar mensagem amigável
+    if (error.code === 'not-found' || error.message.includes('does not exist')) {
+      throw new Error('Firestore não está configurado. Configure o banco de dados no Firebase Console.');
+    }
+    throw error;
   }
 }
 
@@ -2939,16 +2945,25 @@ async function removeTelegramAccount() {
     return;
   }
   
+  if (!currentUser || !currentUser.uid) {
+    alert('Usuário não autenticado.');
+    return;
+  }
+  
+  if (!window.firebaseDb) {
+    alert('Firestore não está disponível.');
+    return;
+  }
+  
   try {
-    if (currentUser && currentUser.uid && window.firebaseDb) {
-      const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-      await docRef.update({
-        telegramAccount: null,
-        updatedAt: new Date().toISOString()
-      });
-    }
+    const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+    await docRef.update({
+      telegramAccount: null,
+      updatedAt: new Date().toISOString()
+    });
     
-    localStorage.removeItem('telegramConfig');
+    // Limpar cache
+    window.telegramConfigCache = {};
     
     // Recarregar o modal
     const modalBody = document.getElementById('modalBody');
@@ -2970,7 +2985,8 @@ async function removeTelegramAccount() {
 
 // Mostrar formulário para trocar conta
 function showTelegramAccountInput() {
-  localStorage.removeItem('telegramConfig');
+  // Limpar cache
+  window.telegramConfigCache = {};
   
   // Recarregar o modal
   const modalBody = document.getElementById('modalBody');
