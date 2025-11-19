@@ -1497,18 +1497,18 @@ function toggleBotTokenVisibility() {
   }
 }
 
-// Cadastrar DeepSeek (SIMPLIFICADO - verifica e salva direto)
+// Cadastrar DeepSeek (com tela de verificação)
 async function cadastrarDeepSeek() {
   const apiKeyInput = document.getElementById('deepseekApiKey');
-  const statusDiv = document.getElementById('apiKeyStatus');
-  const cadastrarBtn = document.getElementById('cadastrarDeepSeekBtn');
+  const modalBody = document.getElementById('modalBody');
   
-  if (!apiKeyInput) return;
+  if (!apiKeyInput || !modalBody) return;
   
   const apiKey = apiKeyInput.value.trim();
   
   // Validação básica
   if (!apiKey) {
+    const statusDiv = document.getElementById('apiKeyStatus');
     if (statusDiv) {
       statusDiv.innerHTML = '<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--accent-color);"><i class="fas fa-exclamation-circle"></i> Por favor, insira uma API Key</div>';
       statusDiv.style.display = 'block';
@@ -1516,16 +1516,30 @@ async function cadastrarDeepSeek() {
     return;
   }
   
-  // Desabilitar botão e mostrar loading
-  if (cadastrarBtn) {
-    cadastrarBtn.disabled = true;
-    cadastrarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
-  }
+  // Salvar o valor da API Key para manter após erro
+  window.deepseekApiKeyTemp = apiKey;
   
-  if (statusDiv) {
-    statusDiv.innerHTML = '<div style="background: rgba(0, 82, 212, 0.1); border: 1px solid rgba(0, 82, 212, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--primary-color);"><i class="fas fa-spinner fa-spin"></i> Verificando e cadastrando...</div>';
-    statusDiv.style.display = 'block';
-  }
+  // Mostrar tela de "Verificando..."
+  modalBody.innerHTML = `
+    <div style="text-align: center; padding: 3rem 2rem;">
+      <div style="width: 80px; height: 80px; margin: 0 auto 2rem; position: relative;">
+        <!-- Spinner animado -->
+        <div style="width: 80px; height: 80px; border: 4px solid rgba(99, 102, 241, 0.1); border-top: 4px solid #6366f1; border-right: 4px solid #6366f1; border-radius: 50%; animation: spin 1s linear infinite; position: absolute; top: 0; left: 0;"></div>
+        <!-- Ícone central -->
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+          <i class="fas fa-brain" style="font-size: 2rem; color: #6366f1;"></i>
+        </div>
+      </div>
+      <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem;">Verificando...</h3>
+      <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Validando sua API Key</p>
+    </div>
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  `;
   
   try {
     // Verificar API Key
@@ -1559,31 +1573,34 @@ async function cadastrarDeepSeek() {
       window.integrationConfigsCache.deepseek = { apiKey };
       
       // Mostrar sucesso
-      if (statusDiv) {
-        statusDiv.innerHTML = '<div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 0.75rem; color: #10b981;"><i class="fas fa-check-circle"></i> API Key cadastrada com sucesso!</div>';
-        statusDiv.style.display = 'block';
-      }
+      modalBody.innerHTML = `
+        <div style="text-align: center; padding: 3rem 2rem;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 2rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); animation: scaleIn 0.5s ease-out;">
+            <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
+          </div>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem;">✅ Cadastrado com sucesso!</h3>
+          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua API Key foi verificada e salva</p>
+        </div>
+        <style>
+          @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+        </style>
+      `;
       
-      // Atualizar modal e dashboard após 1 segundo
+      // Atualizar dashboard e modal após 1.5 segundos
       setTimeout(() => {
-        const modalBody = document.getElementById('modalBody');
-        if (modalBody) {
-          modalBody.innerHTML = getDeepSeekConfigHTML();
-        }
         loadPlatforms();
-      }, 1000);
+        modalBody.innerHTML = getDeepSeekConfigHTML();
+      }, 1500);
       
     } else {
       // API Key inválida
       throw new Error(data.message || 'API Key inválida ou expirada');
     }
   } catch (error) {
-    // Reabilitar botão
-    if (cadastrarBtn) {
-      cadastrarBtn.disabled = false;
-      cadastrarBtn.innerHTML = '<i class="fas fa-plus"></i> Cadastrar';
-    }
-    
+    // Mostrar tela de erro com botão Voltar
     let errorMessage = 'API key inválida ou expirada';
     if (error.name === 'AbortError') {
       errorMessage = 'Timeout: A verificação demorou muito. Tente novamente.';
@@ -1595,9 +1612,34 @@ async function cadastrarDeepSeek() {
       errorMessage = error.message;
     }
     
-    if (statusDiv) {
-      statusDiv.innerHTML = `<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--accent-color);"><i class="fas fa-times-circle"></i> ${errorMessage}</div>`;
-      statusDiv.style.display = 'block';
+    modalBody.innerHTML = `
+      <div style="text-align: center; padding: 3rem 2rem;">
+        <div style="width: 80px; height: 80px; margin: 0 auto 2rem; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);">
+          <i class="fas fa-times" style="font-size: 2rem; color: white;"></i>
+        </div>
+        <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem;">❌ Erro na verificação</h3>
+        <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem; line-height: 1.6;">${errorMessage}</p>
+        <button type="button" class="btn btn-primary" onclick="voltarFormularioDeepSeek()" style="width: 100%;">
+          <i class="fas fa-arrow-left"></i> Voltar
+        </button>
+      </div>
+    `;
+  }
+}
+
+// Voltar ao formulário mantendo os dados
+function voltarFormularioDeepSeek() {
+  const modalBody = document.getElementById('modalBody');
+  if (!modalBody) return;
+  
+  // Recarregar formulário com dados mantidos
+  modalBody.innerHTML = getDeepSeekConfigHTML();
+  
+  // Restaurar valor da API Key se existir
+  if (window.deepseekApiKeyTemp) {
+    const apiKeyInput = document.getElementById('deepseekApiKey');
+    if (apiKeyInput) {
+      apiKeyInput.value = window.deepseekApiKeyTemp;
     }
   }
 }
@@ -3651,6 +3693,7 @@ window.showAddTelegramAccountForm = showAddTelegramAccountForm;
 window.hideAddTelegramAccountForm = hideAddTelegramAccountForm;
 window.toggleApiKeyVisibility = toggleApiKeyVisibility;
 window.cadastrarDeepSeek = cadastrarDeepSeek;
+window.voltarFormularioDeepSeek = voltarFormularioDeepSeek;
 window.testDeepSeekApiConnection = testDeepSeekApiConnection;
 window.removeDeepSeekApiKey = removeDeepSeekApiKey;
 window.showDeepSeekApiKeyInput = showDeepSeekApiKeyInput;
