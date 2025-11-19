@@ -304,14 +304,19 @@ function createIntegrationCard(integration) {
     // Verificar se há contas do Telegram configuradas
     if (telegramSessions && telegramSessions.length > 0) {
       const activeSessions = telegramSessions.filter(s => s.status === 'connected');
-      statusText = `${activeSessions.length} conta(s) ativa(s)`;
-      statusClass = 'active';
+      if (activeSessions.length > 0) {
+        statusText = 'Ativo';
+        statusClass = 'active';
+      } else {
+        statusText = 'Não configurado';
+        statusClass = 'soon';
+      }
     } else {
       statusText = 'Não configurado';
       statusClass = 'soon';
     }
   } else if (integration.id === 'whatsapp' && notificationConfigs.whatsapp) {
-    statusText = 'Configurado';
+    statusText = 'Ativo';
     statusClass = 'active';
   } else if (integration.id === 'deepseek') {
     // Verificar configuração do DeepSeek
@@ -319,10 +324,10 @@ function createIntegrationCard(integration) {
     const deepseekConfig = integrationConfigs.deepseek || {};
     
     if (deepseekConfig.apiKey && deepseekConfig.verified) {
-      statusText = 'Configurado e Verificado';
+      statusText = 'Ativo';
       statusClass = 'active';
     } else if (deepseekConfig.apiKey) {
-      statusText = 'Configurado (não verificado)';
+      statusText = 'Não configurado';
       statusClass = 'soon';
     } else {
       statusText = 'Não configurado';
