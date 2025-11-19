@@ -125,6 +125,64 @@ curl http://localhost:3003/health
 # Deve retornar: {"status":"ok","timestamp":"...","sessions":0}
 ```
 
+## 🔥 Configurar Firebase Firestore (OBRIGATÓRIO)
+
+Para salvar dados no Firebase (contas do Telegram, configurações, etc.), você **precisa configurar o Firestore** no Firebase Console.
+
+### 📋 Passo a Passo:
+
+1. **Acesse o Firebase Console:**
+   - Vá para: https://console.firebase.google.com/
+   - Faça login com sua conta Google
+
+2. **Selecione seu projeto:**
+   - Clique no projeto: **promobot-bbb55**
+   - Ou acesse diretamente: https://console.firebase.google.com/project/promobot-bbb55
+
+3. **Criar o Firestore Database:**
+   - No menu lateral esquerdo, clique em **"Firestore Database"**
+   - Se for a primeira vez, clique em **"Criar banco de dados"**
+   - Se já existir, pule para o passo 5
+
+4. **Configurar o Firestore:**
+   - **Modo de produção:** Escolha "Começar no modo de produção" (recomendado)
+   - **Localização:** Escolha a localização mais próxima (ex: `southamerica-east1` para Brasil)
+   - Clique em **"Ativar"**
+   - Aguarde alguns minutos enquanto o Firestore é criado
+
+5. **Configurar Regras de Segurança:**
+   - Vá em **"Regras"** (aba no topo)
+   - Cole as regras abaixo e clique em **"Publicar"**:
+   ```javascript
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       // Permitir que usuários autenticados leiam e escrevam apenas seus próprios dados
+       match /users/{userId} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+       }
+     }
+   }
+   ```
+
+6. **Verificar se está funcionando:**
+   - Volte ao seu site (http://localhost:3000)
+   - Faça login
+   - Tente configurar uma conta do Telegram
+   - Os dados devem ser salvos sem erros!
+
+### ✅ Pronto!
+
+Agora o Firestore está configurado e todos os dados serão salvos no Firebase:
+- ✅ Contas do Telegram
+- ✅ Configurações de usuário
+- ✅ Dados de integrações
+
+**Link direto para criar o Firestore:**
+https://console.cloud.google.com/datastore/setup?project=promobot-bbb55
+
+---
+
 ## ⚙️ Configuração
 
 ### Portas Padrão
