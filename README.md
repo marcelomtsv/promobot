@@ -54,6 +54,28 @@ Isso iniciará **todos os serviços simultaneamente** em modo desenvolvimento:
 - 🧠 **DeepSeek API**: http://localhost:3002
 - 📱 **Telegram API**: http://localhost:3003
 
+**⚠️ IMPORTANTE - API do Telegram:**
+
+A API do Telegram pode precisar ser iniciada separadamente. Se você ver o erro "API do Telegram não está disponível" no dashboard:
+
+1. **Abra um novo terminal** (mantenha o `npm run dev` rodando)
+2. Execute:
+   ```bash
+   cd telegram
+   npm start
+   ```
+3. Aguarde a mensagem: `🚀 Servidor rodando em http://localhost:3003`
+4. Volte ao dashboard e clique em "Tentar Novamente"
+
+**Ou inicie tudo de uma vez:**
+```bash
+# Terminal 1 - Serviços principais
+npm run dev
+
+# Terminal 2 - API Telegram (opcional, mas recomendado)
+cd telegram && npm start
+```
+
 ### 3️⃣ Verificar se Está Tudo Funcionando
 
 Abra seu navegador e acesse:
@@ -96,9 +118,17 @@ API disponível em: http://localhost:3002
 ```bash
 npm run dev:telegram
 # ou
-cd telegram && npm run dev
+cd telegram && npm start
 ```
 API disponível em: http://localhost:3003
+
+**⚠️ ATENÇÃO:** A API do Telegram é **necessária** para usar as funcionalidades de Telegram no dashboard. Sem ela, você verá o erro "API do Telegram não está disponível".
+
+**Para verificar se está rodando:**
+```bash
+curl http://localhost:3003/health
+# Deve retornar: {"status":"ok","timestamp":"...","sessions":0}
+```
 
 ## ⚙️ Configuração
 
@@ -233,14 +263,30 @@ npm run install:all
 
 ### Erro: "API do Telegram não está disponível"
 
-Isso é **normal** se a API do Telegram não estiver rodando. Você tem duas opções:
+**Solução Rápida:**
 
-1. **Iniciar a API do Telegram:**
+1. **Abra um novo terminal** (não feche o terminal onde está rodando `npm run dev`)
+2. Execute:
    ```bash
-   npm run dev:telegram
+   cd telegram
+   npm start
    ```
+3. Aguarde ver a mensagem: `🚀 Servidor rodando em http://localhost:3003`
+4. Volte ao dashboard e clique em "Tentar Novamente"
 
-2. **Ou ignorar** - O site funciona normalmente sem ela, apenas a funcionalidade de Telegram não estará disponível
+**Verificar se está rodando:**
+```bash
+# Verificar se a porta 3003 está em uso
+netstat -ano | findstr :3003
+
+# Ou testar diretamente
+curl http://localhost:3003/health
+```
+
+**Se ainda não funcionar:**
+- Verifique se as dependências estão instaladas: `cd telegram && npm install`
+- Verifique se há erros no terminal onde a API está rodando
+- Tente reiniciar: pare a API (Ctrl+C) e inicie novamente com `npm start`
 
 ### Erros no Console do Navegador
 
