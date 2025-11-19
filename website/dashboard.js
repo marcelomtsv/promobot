@@ -616,7 +616,7 @@ function getPlatformConfigHTML(platform) {
 function getTelegramConfigHTML() {
   // Carregar do Firebase ou localStorage
   const telegramConfig = JSON.parse(localStorage.getItem('telegramConfig') || '{}');
-  const hasAccount = telegramConfig.name && telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash;
+  const hasAccount = telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash;
   
   return `
     <div id="telegramConfigContainer">
@@ -635,8 +635,8 @@ function getTelegramConfigHTML() {
               <span class="platform-status active" style="display: inline-block; padding: 4px 12px; font-size: 0.75rem;">Ativo</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">Nome:</span>
-              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${telegramConfig.name || 'N/A'}</span>
+              <span style="color: var(--text-light); font-size: 0.85rem;">Email:</span>
+              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${telegramConfig.email || currentUser?.email || 'N/A'}</span>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
               <span style="color: var(--text-light); font-size: 0.85rem;">Telefone:</span>
@@ -664,19 +664,6 @@ function getTelegramConfigHTML() {
         <form id="telegramConfigForm">
           <!-- Status Message -->
           <div id="telegramStatusMessage" style="display: none; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
-          
-          <div class="form-group">
-            <label style="margin-bottom: 0.5rem; display: block; color: var(--text-dark); font-weight: 500;">Nome da Conta</label>
-            <input 
-              type="text" 
-              id="telegramAccountName" 
-              value="${telegramConfig.name || ''}" 
-              placeholder="Ex: Minha Conta Pessoal" 
-              style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem;"
-              autocomplete="off"
-              required
-            >
-          </div>
           
           <div class="form-group">
             <label style="margin-bottom: 0.5rem; display: block; color: var(--text-dark); font-weight: 500;">Telefone (com código do país)</label>
@@ -2988,14 +2975,15 @@ function showTelegramAccountInput() {
 
 // Adicionar conta do Telegram (nova versão)
 async function addTelegramAccount() {
-  const name = document.getElementById('telegramAccountName')?.value.trim();
+  // Usar email do usuário como identificador único
+  const name = currentUser?.email || currentUser?.displayName || 'Usuario';
   const phone = document.getElementById('telegramPhone')?.value.trim();
   const apiId = document.getElementById('telegramApiId')?.value.trim();
   const apiHash = document.getElementById('telegramApiHash')?.value.trim();
   const submitBtn = document.getElementById('addTelegramAccountBtn');
   const statusMessage = document.getElementById('telegramStatusMessage');
   
-  if (!name || !phone || !apiId || !apiHash) {
+  if (!phone || !apiId || !apiHash) {
     showTelegramStatusMessage('Preencha todos os campos obrigatórios', 'error');
     return;
   }
@@ -3051,8 +3039,10 @@ async function addTelegramAccount() {
     
     if (data.success) {
       // Salvar dados no Firebase (sem sessionString ainda, será salvo após verificação)
+      // Usar email como identificador único
       await saveTelegramAccountToFirebase({
-        name,
+        name: currentUser?.email || currentUser?.displayName || 'Usuario',
+        email: currentUser?.email || '',
         phone,
         apiId,
         apiHash,
