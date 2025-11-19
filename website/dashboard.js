@@ -2957,14 +2957,27 @@ async function handleVerifyTelegramCode(e) {
       // Buscar dados da conta do cache ou Firebase
       const telegramConfig = window.telegramConfigCache || {};
       if (telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash) {
-        await saveTelegramAccountToFirebase({
+        // Preparar dados completos da conta verificada
+        const verifiedAccountData = {
           ...telegramConfig,
           name: currentUser?.email || currentUser?.displayName || 'Usuario',
           email: currentUser?.email || '',
           sessionString: verifyData.sessionString,
           status: 'active',
           verifiedAt: new Date().toISOString()
-        });
+        };
+        
+        // Salvar no Firebase
+        await saveTelegramAccountToFirebase(verifiedAccountData);
+        
+        // ATUALIZAR CACHE IMEDIATAMENTE (sem esperar recarregar)
+        window.telegramConfigCache = verifiedAccountData;
+        window.cacheTimestamps.telegramAccount = Date.now();
+        
+        // Invalidar cache de sincronização para forçar refresh
+        syncCache = null;
+        syncCacheTime = 0;
+        invalidateCache('telegramAccount');
       }
       
       // Mostrar animação de sucesso no modal
@@ -2984,7 +2997,7 @@ async function handleVerifyTelegramCode(e) {
             </p>
             <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; color: var(--text-light); font-size: 0.9rem; animation: fadeInUp 0.6s ease-out 0.6s both;">
               <i class="fas fa-spinner fa-spin"></i>
-              <span>Redirecionando...</span>
+              <span>Atualizando...</span>
             </div>
           </div>
           <style>
@@ -3033,19 +3046,22 @@ async function handleVerifyTelegramCode(e) {
         `;
       }
       
-      // Aguardar 2 segundos para mostrar animação, depois fechar e reabrir modal de configuração
+      // Aguardar 1.5 segundos para mostrar animação, depois atualizar tudo IMEDIATAMENTE
       setTimeout(async () => {
         closeTelegramCodeModal();
         
-        // Recarregar dados do Firebase
-        await loadTelegramAccountFromFirebase();
+        // FORÇAR REFRESH - recarregar dados do Firebase (ignorando cache)
+        await loadTelegramAccountFromFirebase(true); // true = forceRefresh
         
-        // Reabrir modal de configuração do Telegram
+        // Atualizar status no dashboard IMEDIATAMENTE (antes de reabrir modal)
+        await checkTelegramAccountSync(true); // true = forceRefresh
+        
+        // Recarregar plataformas para atualizar status no dashboard
+        await loadPlatforms();
+        
+        // Reabrir modal de configuração do Telegram (já com dados atualizados)
         openPlatformConfig('telegram');
-        
-        // Recarregar plataformas para atualizar status
-        loadPlatforms();
-      }, 2000);
+      }, 1500);
     } else {
       throw new Error(verifyData.error || 'Código inválido');
     }
@@ -3128,12 +3144,12 @@ async function checkTelegramAccountFromFirebase(forceRefresh = false) {
 }
 
 // Carregar conta do Telegram do Firebase
-async function loadTelegramAccountFromFirebase() {
+async function loadTelegramAccountFromFirebase(forceRefresh = false) {
   if (!currentUser || !currentUser.uid) {
     return;
   }
   
-  // Verificar cache
+  // Verificar cache (só se não forçar refresh)
   if (!forceRefresh && isCacheValid('telegramAccount') && window.telegramConfigCache && Object.keys(window.telegramConfigCache).length > 0) {
     // Usar cache - apenas atualizar HTML se necessário
     const container = document.getElementById('telegramConfigContainer');
@@ -3144,7 +3160,7 @@ async function loadTelegramAccountFromFirebase() {
   }
   
   try {
-    // Verificar apenas Firebase (muito mais leve)
+    // Verificar apenas Firebase (muito mais leve) - forçar refresh se necessário
     const accountStatus = await checkTelegramAccountFromFirebase(forceRefresh);
     
     if (accountStatus.hasAccount && accountStatus.firebaseAccount) {
