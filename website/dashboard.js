@@ -662,10 +662,6 @@ function getTelegramConfigHTML() {
       ` : `
         <!-- Formulário: Adicionar Conta -->
         <form id="telegramConfigForm">
-          <div style="text-align: center; margin-bottom: 2rem;">
-            <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Adicionar Conta</p>
-          </div>
-          
           <!-- Status Message -->
           <div id="telegramStatusMessage" style="display: none; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
           
