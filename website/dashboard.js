@@ -2508,6 +2508,16 @@ async function handleAddTelegramAccount(e) {
   }
   
   try {
+    // Verificar se já existe uma conta ativa
+    await loadTelegramSessions();
+    const activeSession = telegramSessions.find(s => s.status === 'active' || s.status === 'connected');
+    
+    if (activeSession) {
+      alert('⚠️ Já existe uma conta do Telegram configurada.\n\nRemova a conta existente antes de adicionar uma nova.');
+      loadTelegramAccountsList();
+      return;
+    }
+    
     // Verificar se a API está disponível
     const isApiAvailable = await checkTelegramApiStatus();
     if (!isApiAvailable) {
@@ -2528,7 +2538,17 @@ async function handleAddTelegramAccount(e) {
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: `Status ${response.status}` }));
-      throw new Error(errorData.error || `Erro HTTP ${response.status}`);
+      const errorMessage = errorData.error || `Erro HTTP ${response.status}`;
+      
+      // Verificar se é erro de conta já existente
+      if (errorMessage.includes('Já existe uma conta')) {
+        alert('⚠️ ' + errorMessage);
+        loadTelegramSessions();
+        loadTelegramAccountsList();
+        return;
+      }
+      
+      throw new Error(errorMessage);
     }
     
     const data = await response.json();
