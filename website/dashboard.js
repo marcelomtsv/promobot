@@ -9,15 +9,16 @@ const integrations = [
 ];
 
 // Plataformas de e-commerce
+// IMPORTANTE: Todas começam como 'soon' (Em Breve) até que haja configuração salva no Firebase
 const platforms = [
-  { id: 'aliexpress', name: 'AliExpress', status: 'active', icon: 'fas fa-shopping-bag', favicon: 'https://www.google.com/s2/favicons?domain=aliexpress.com&sz=32' },
+  { id: 'aliexpress', name: 'AliExpress', status: 'soon', icon: 'fas fa-shopping-bag', favicon: 'https://www.google.com/s2/favicons?domain=aliexpress.com&sz=32' },
   { id: 'americanas', name: 'Americanas', status: 'soon', icon: 'fas fa-store', favicon: 'https://www.google.com/s2/favicons?domain=americanas.com.br&sz=32' },
-  { id: 'amazon', name: 'Amazon', status: 'active', icon: 'fab fa-amazon', favicon: 'https://www.google.com/s2/favicons?domain=amazon.com.br&sz=32' },
-  { id: 'kabum', name: 'Kabum', status: 'active', icon: 'fas fa-laptop', favicon: 'https://www.google.com/s2/favicons?domain=kabum.com.br&sz=32' },
-  { id: 'magazineluiza', name: 'Magazine Luiza', status: 'active', icon: 'fas fa-shopping-cart', favicon: 'https://www.google.com/s2/favicons?domain=magazineluiza.com.br&sz=32' },
-  { id: 'mercadolivre', name: 'Mercado Livre', status: 'active', icon: 'fas fa-truck', favicon: 'https://www.google.com/s2/favicons?domain=mercadolivre.com.br&sz=32' },
+  { id: 'amazon', name: 'Amazon', status: 'soon', icon: 'fab fa-amazon', favicon: 'https://www.google.com/s2/favicons?domain=amazon.com.br&sz=32' },
+  { id: 'kabum', name: 'Kabum', status: 'soon', icon: 'fas fa-laptop', favicon: 'https://www.google.com/s2/favicons?domain=kabum.com.br&sz=32' },
+  { id: 'magazineluiza', name: 'Magazine Luiza', status: 'soon', icon: 'fas fa-shopping-cart', favicon: 'https://www.google.com/s2/favicons?domain=magazineluiza.com.br&sz=32' },
+  { id: 'mercadolivre', name: 'Mercado Livre', status: 'soon', icon: 'fas fa-truck', favicon: 'https://www.google.com/s2/favicons?domain=mercadolivre.com.br&sz=32' },
   { id: 'netshoes', name: 'Netshoes', status: 'soon', icon: 'fas fa-running', favicon: 'https://www.google.com/s2/favicons?domain=netshoes.com.br&sz=32' },
-  { id: 'shopee', name: 'Shopee', status: 'active', icon: 'fas fa-box', favicon: 'https://www.google.com/s2/favicons?domain=shopee.com.br&sz=32' },
+  { id: 'shopee', name: 'Shopee', status: 'soon', icon: 'fas fa-box', favicon: 'https://www.google.com/s2/favicons?domain=shopee.com.br&sz=32' },
   { id: 'submarino', name: 'Submarino', status: 'soon', icon: 'fas fa-ship', favicon: 'https://www.google.com/s2/favicons?domain=submarino.com.br&sz=32' }
 ];
 
@@ -407,10 +408,17 @@ async function loadPlatforms() {
     });
   }
 
-  // Preview de plataformas ativas (apenas e-commerce)
+  // Preview de plataformas ativas (apenas e-commerce - apenas as que têm configuração)
   if (activePreview) {
     platforms.forEach(platform => {
-      if (platform.status === 'active') {
+      // Verificar se há configuração salva no Firebase para esta loja
+      const integrationConfigs = window.integrationConfigsCache || {};
+      const platformConfig = integrationConfigs[platform.id] || {};
+      const hasConfig = platformConfig && Object.keys(platformConfig).length > 0 && 
+                        Object.values(platformConfig).some(val => val && val.toString().trim() !== '');
+      
+      // Mostrar apenas se tiver configuração (status ativo)
+      if (hasConfig) {
         const previewCard = createPlatformCard(platform);
         activePreview.appendChild(previewCard);
       }
@@ -510,8 +518,17 @@ function createPlatformCard(platform) {
   const card = document.createElement('div');
   card.className = 'platform-card';
   
-  const statusClass = platform.status === 'active' ? 'active' : 'soon';
-  const statusText = platform.status === 'active' ? 'Ativo' : 'Em Breve';
+  // Verificar se há configuração salva no Firebase para esta loja
+  const integrationConfigs = window.integrationConfigsCache || {};
+  const platformConfig = integrationConfigs[platform.id] || {};
+  
+  // Verificar se há configuração válida (pode variar por loja, mas geralmente precisa ter pelo menos um campo)
+  const hasConfig = platformConfig && Object.keys(platformConfig).length > 0 && 
+                    Object.values(platformConfig).some(val => val && val.toString().trim() !== '');
+  
+  // Status: 'active' apenas se houver configuração, senão 'soon' (Em Breve)
+  const statusClass = hasConfig ? 'active' : 'soon';
+  const statusText = hasConfig ? 'Ativo' : 'Em Breve';
   
   // Usar favicon se disponível, senão usar ícone FontAwesome
   const iconHTML = platform.favicon 
@@ -528,7 +545,7 @@ function createPlatformCard(platform) {
       <span class="platform-status ${statusClass}">${statusText}</span>
     </div>
     <div class="platform-actions">
-      ${platform.status === 'active' ? `
+      ${hasConfig ? `
         <button class="btn-sm btn-primary" onclick="openPlatformConfig('${platform.id}')">
           <i class="fas fa-cog"></i>
           Configurar
