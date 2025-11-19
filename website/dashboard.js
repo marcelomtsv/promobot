@@ -524,45 +524,58 @@ async function openPlatformConfig(platformId) {
           <span>Configurar Telegram</span>
         </div>
       `;
-      modalBody.innerHTML = getTelegramConfigHTML();
+      
+      // Mostrar loading enquanto carrega dados
+      modalBody.innerHTML = `
+        <div style="text-align: center; padding: 3rem 2rem;">
+          <div style="width: 60px; height: 60px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3);">
+            <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: white;"></i>
+          </div>
+          <p style="color: var(--text-light); font-size: 0.9rem; margin: 0;">Carregando configurações...</p>
+        </div>
+      `;
       modal.classList.add('active');
       
-      // Verificar se API está disponível e carregar conta do Firebase
-      setTimeout(async () => {
+      // Carregar dados ANTES de mostrar o conteúdo
+      try {
+        // Verificar se API está disponível
         const isApiAvailable = await checkTelegramApiStatus();
         if (!isApiAvailable) {
-          const container = document.getElementById('telegramConfigContainer');
-          if (container) {
-            container.innerHTML = `
-              <div style="text-align: center; padding: 2rem;">
-                <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-                <h3 style="color: var(--text-dark); margin-bottom: 1rem;">API do Telegram não está disponível</h3>
-                <p style="color: var(--text-light); margin-bottom: 1.5rem;">
-                  A API precisa estar rodando em: <strong>${TELEGRAM_API_URL}</strong>
-                </p>
-                <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
-                  <h4 style="color: var(--text-dark); margin-bottom: 0.75rem; font-size: 1rem;">Como iniciar:</h4>
-                  <ol style="color: var(--text-light); font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
-                    <li>Abra um terminal na pasta do projeto</li>
-                    <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">cd telegram</code></li>
-                    <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">npm start</code></li>
-                    <li>Aguarde a mensagem: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">🚀 Servidor rodando em http://localhost:3003</code></li>
-                    <li>Feche este modal e tente novamente</li>
-                  </ol>
-                </div>
-                <div style="display: flex; gap: 0.75rem; justify-content: center;">
-                  <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
-                  <button type="button" class="btn btn-primary" onclick="openPlatformConfig('telegram')">Tentar Novamente</button>
-                </div>
+          modalBody.innerHTML = `
+            <div style="text-align: center; padding: 2rem;">
+              <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+              <h3 style="color: var(--text-dark); margin-bottom: 1rem;">API do Telegram não está disponível</h3>
+              <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+                A API precisa estar rodando em: <strong>${TELEGRAM_API_URL}</strong>
+              </p>
+              <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
+                <h4 style="color: var(--text-dark); margin-bottom: 0.75rem; font-size: 1rem;">Como iniciar:</h4>
+                <ol style="color: var(--text-light); font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
+                  <li>Abra um terminal na pasta do projeto</li>
+                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">cd telegram</code></li>
+                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">npm start</code></li>
+                  <li>Aguarde a mensagem: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">🚀 Servidor rodando em http://localhost:3003</code></li>
+                  <li>Feche este modal e tente novamente</li>
+                </ol>
               </div>
-            `;
-          }
+              <div style="display: flex; gap: 0.75rem; justify-content: center;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="openPlatformConfig('telegram')">Tentar Novamente</button>
+              </div>
+            </div>
+          `;
           return;
         }
         
-        // Carregar conta do Firebase
+        // Carregar conta do Firebase ANTES de mostrar o HTML
         await loadTelegramAccountFromFirebase();
-      }, 100);
+        
+        // Agora sim, mostrar o conteúdo com os dados carregados
+        modalBody.innerHTML = getTelegramConfigHTML();
+      } catch (error) {
+        // Em caso de erro, mostrar formulário vazio
+        modalBody.innerHTML = getTelegramConfigHTML();
+      }
       
       return;
     } else if (platformId === 'whatsapp') {
