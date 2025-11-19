@@ -16,75 +16,57 @@ promobot/
 
 - **Node.js >= 20.0.0** ([Download](https://nodejs.org/))
 - **npm** (vem com Node.js)
-- **Git** (opcional, para clonar o repositório)
 
-## 🚀 Início Rápido - Passo a Passo
+## ⚡ INÍCIO RÁPIDO - 3 PASSOS SIMPLES
 
-### 1️⃣ Instalar Todas as Dependências
+### 🎯 Método 1: Script Automático (MAIS FÁCIL)
 
-Abra um terminal na pasta raiz do projeto e execute:
+**Windows:**
+```bash
+start.bat
+```
 
+**Linux/Mac:**
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+O script vai:
+- ✅ Verificar Node.js
+- ✅ Instalar dependências automaticamente
+- ✅ Iniciar todos os serviços
+
+### 🎯 Método 2: Comando NPM (RECOMENDADO)
+
+**1. Instalar dependências:**
 ```bash
 npm run install:all
 ```
 
-Este comando instala as dependências de todos os serviços automaticamente.
-
-**Ou instale manualmente em cada pasta:**
-```bash
-cd website && npm install
-cd ../botfather && npm install
-cd ../deepseek && npm install
-cd ../telegram && npm install
-cd ..
-```
-
-### 2️⃣ Iniciar Todos os Serviços
-
-Execute na pasta raiz:
-
+**2. Iniciar tudo:**
 ```bash
 npm run dev
 ```
 
-Isso iniciará **todos os serviços simultaneamente** em modo desenvolvimento:
-
+**Pronto!** Todos os serviços estarão rodando:
 - 🌐 **Website**: http://localhost:3000
 - 🤖 **BotFather API**: http://localhost:3001
 - 🧠 **DeepSeek API**: http://localhost:3002
 - 📱 **Telegram API**: http://localhost:3003
 
-**⚠️ IMPORTANTE - API do Telegram:**
+### 🎯 Método 3: Manual (Se os métodos acima não funcionarem)
 
-A API do Telegram pode precisar ser iniciada separadamente. Se você ver o erro "API do Telegram não está disponível" no dashboard:
-
-1. **Abra um novo terminal** (mantenha o `npm run dev` rodando)
-2. Execute:
-   ```bash
-   cd telegram
-   npm start
-   ```
-3. Aguarde a mensagem: `🚀 Servidor rodando em http://localhost:3003`
-4. Volte ao dashboard e clique em "Tentar Novamente"
-
-**Ou inicie tudo de uma vez:**
+**Terminal 1 - Serviços principais:**
 ```bash
-# Terminal 1 - Serviços principais
 npm run dev
-
-# Terminal 2 - API Telegram (opcional, mas recomendado)
-cd telegram && npm start
 ```
 
-### 3️⃣ Verificar se Está Tudo Funcionando
-
-Abra seu navegador e acesse:
-
-- **Site Principal**: http://localhost:3000
-- **Login**: http://localhost:3000/login.html
-- **Dashboard**: http://localhost:3000/dashboard.html
-
-Você deve ver o site funcionando sem erros no console.
+**Terminal 2 - API Telegram (opcional, mas recomendado):**
+```bash
+cd telegram
+npm start
+```
 
 ## 📋 Iniciar Serviços Individualmente
 
@@ -122,7 +104,20 @@ cd telegram && npm start
 ```
 API disponível em: http://localhost:3003
 
-**⚠️ ATENÇÃO:** A API do Telegram é **necessária** para usar as funcionalidades de Telegram no dashboard. Sem ela, você verá o erro "API do Telegram não está disponível".
+**⚠️ IMPORTANTE - API do Telegram:**
+
+A API do Telegram é **necessária** para usar as funcionalidades de Telegram no dashboard. 
+
+**Se você ver o erro "API do Telegram não está disponível":**
+
+1. **Abra um novo terminal** (mantenha o `npm run dev` rodando)
+2. Execute:
+   ```bash
+   cd telegram
+   npm start
+   ```
+3. Aguarde a mensagem: `🚀 Servidor rodando em http://localhost:3003`
+4. Volte ao dashboard e clique em "Tentar Novamente"
 
 **Para verificar se está rodando:**
 ```bash
@@ -194,9 +189,9 @@ Se quiser usar a funcionalidade de Telegram, você precisa:
 - `GET /health` - Health check
 - `GET /api/config` - Verificar configuração
 - `POST /api/config` - Configurar API_ID e API_HASH
-- `GET /api/sessions` - Listar sessões
-- `POST /api/sessions` - Criar nova sessão
-- `POST /api/sessions/:id/verify` - Verificar código
+- `GET /api/sessions` - Listar sessões (contas cadastradas)
+- `POST /api/sessions` - Cadastrar nova conta
+- `POST /api/sessions/:id/verify` - Verificar código de autenticação
 - `POST /api/sessions/connect` - Conectar com sessão existente
 - `POST /check` - Verificar se API está configurada
 
@@ -337,10 +332,15 @@ Use este checklist toda vez que for iniciar o projeto:
 
 - [ ] Node.js >= 20.0.0 instalado
 - [ ] Dependências instaladas (`npm run install:all`)
-- [ ] Todos os serviços iniciados (`npm run dev`)
+- [ ] Serviços principais iniciados (`npm run dev`)
+- [ ] **API Telegram iniciada** (`cd telegram && npm start`) - **IMPORTANTE**
 - [ ] Website acessível em http://localhost:3000
+- [ ] API Telegram respondendo em http://localhost:3003/health
 - [ ] Sem erros críticos no console do navegador
-- [ ] APIs respondendo corretamente (opcional)
+
+**💡 Dica:** Mantenha 2 terminais abertos:
+- **Terminal 1:** `npm run dev` (serviços principais)
+- **Terminal 2:** `cd telegram && npm start` (API Telegram)
 
 ## 🚀 Deploy no EasyPanel
 
