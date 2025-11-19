@@ -3205,10 +3205,15 @@ async function removeTelegramAccount() {
     const existingAccount = window.telegramConfigCache;
     const sessionId = existingAccount?.sessionId;
     
-    // Remover TODAS as sessões da API (garantir limpeza completa - apenas 1 conta por cliente)
+    // Remover sessões deste cliente específico da API (usando userId/email como ID único)
     try {
       await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: currentUser?.uid,
+          email: currentUser?.email
+        }),
         signal: createTimeoutSignal(5000)
       }).catch(() => {}); // Ignorar erros se a sessão já não existir
     } catch (e) {
@@ -3370,10 +3375,15 @@ async function addTelegramAccount() {
       window.telegramConfigCache = {};
       invalidateCache('telegramAccount');
       
-      // Remover da API também (só quando for adicionar nova conta)
+      // Remover da API também (só quando for adicionar nova conta) - deletar apenas deste cliente
       try {
         await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
           method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId: currentUser?.uid,
+            email: currentUser?.email
+          }),
           signal: createTimeoutSignal(5000)
         }).catch(() => {});
       } catch (e) {

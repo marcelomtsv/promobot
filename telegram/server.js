@@ -118,12 +118,16 @@ function validateCredentials(apiId, apiHash) {
   return { valid: true };
 }
 
-// Criar sessão (apenas 1 conta permitida)
+// Criar sessão (apenas 1 conta permitida POR CLIENTE - usando email/userId como ID único)
 app.post('/api/sessions', async (req, res) => {
   try {
-    const { name, phone, apiId, apiHash } = req.body;
+    const { name, phone, apiId, apiHash, userId, email } = req.body;
     if (!name || !phone) return res.status(400).json({ error: 'Nome e telefone obrigatórios' });
     if (!apiId || !apiHash) return res.status(400).json({ error: 'API_ID e API_HASH obrigatórios' });
+    
+    // userId ou email é obrigatório para identificar o cliente
+    const clientId = userId || email || name; // Usar email como fallback se não tiver userId
+    if (!clientId) return res.status(400).json({ error: 'userId ou email é obrigatório para identificar o cliente' });
 
     // Validar formato do telefone ANTES de qualquer operação
     const phoneValidation = validatePhoneNumber(phone);
@@ -137,14 +141,21 @@ app.post('/api/sessions', async (req, res) => {
       return res.status(400).json({ error: credentialsValidation.error });
     }
 
-    // Verificar se já existe uma conta ativa
+    // Verificar se já existe uma conta ativa PARA ESTE CLIENTE ESPECÍFICO
     const existingSessions = Array.from(sessions.values());
-    const activeSession = existingSessions.find(s => s.status === 'active' || s.status === 'connected');
+    const activeSession = existingSessions.find(s => 
+      (s.status === 'active' || s.status === 'connected') && 
+      (s.clientId === clientId || s.userId === userId || s.email === email)
+    );
     
     if (activeSession) {
-      return res.status(400).json({ 
-        error: 'Já existe uma conta do Telegram configurada. Remova a conta existente antes de adicionar uma nova.' 
-      });
+      // Remover sessão anterior deste cliente antes de criar nova
+      try {
+        await activeSession.client.disconnect().catch(() => {});
+        sessions.delete(activeSession.sessionId || Object.keys(sessions).find(key => sessions.get(key) === activeSession));
+      } catch (e) {
+        // Ignorar erros ao desconectar
+      }
     }
 
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -167,6 +178,10 @@ app.post('/api/sessions', async (req, res) => {
       phoneCodeHash: result.phoneCodeHash,
       stringSession,
       createdAt: Date.now(),
+      clientId: clientId,  // ID único do cliente (email ou userId)
+      userId: userId,
+      email: email,
+      sessionId: sessionId  // Armazenar sessionId na sessão para facilitar busca
     });
 
     res.json({ success: true, sessionId, phoneCodeHash: result.phoneCodeHash });
@@ -207,9 +222,13 @@ app.post('/api/sessions/:id/verify', async (req, res) => {
 // Conectar com sessão existente
 app.post('/api/sessions/connect', async (req, res) => {
   try {
-    const { name, sessionString, phone, apiId, apiHash } = req.body;
+    const { name, sessionString, phone, apiId, apiHash, userId, email } = req.body;
     if (!name || !sessionString) return res.status(400).json({ error: 'Nome e SessionString obrigatórios' });
     if (!apiId || !apiHash) return res.status(400).json({ error: 'API_ID e API_HASH obrigatórios' });
+    
+    // userId ou email é obrigatório para identificar o cliente
+    const clientId = userId || email || name;
+    if (!clientId) return res.status(400).json({ error: 'userId ou email é obrigatório para identificar o cliente' });
 
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const stringSession = new StringSession(sessionString);
@@ -223,14 +242,22 @@ app.post('/api/sessions/connect', async (req, res) => {
       return res.status(401).json({ error: 'Sessão inválida' });
     }
 
-    // Verificar se já existe uma conta ativa
+    // Verificar se já existe uma conta ativa PARA ESTE CLIENTE ESPECÍFICO
     const existingSessions = Array.from(sessions.values());
-    const activeSession = existingSessions.find(s => s.status === 'active' || s.status === 'connected');
+    const activeSession = existingSessions.find(s => 
+      (s.status === 'active' || s.status === 'connected') && 
+      (s.clientId === clientId || s.userId === userId || s.email === email)
+    );
     
     if (activeSession) {
-      return res.status(400).json({ 
-        error: 'Já existe uma conta do Telegram configurada. Remova a conta existente antes de adicionar uma nova.' 
-      });
+      // Remover sessão anterior deste cliente antes de criar nova
+      try {
+        await activeSession.client.disconnect().catch(() => {});
+        const oldSessionId = activeSession.sessionId || Object.keys(sessions).find(key => sessions.get(key) === activeSession);
+        if (oldSessionId) sessions.delete(oldSessionId);
+      } catch (e) {
+        // Ignorar erros ao desconectar
+      }
     }
 
     sessions.set(sessionId, {
@@ -242,6 +269,10 @@ app.post('/api/sessions/connect', async (req, res) => {
       status: 'active',
       sessionString,
       createdAt: Date.now(),
+      clientId: clientId,  // ID único do cliente
+      userId: userId,
+      email: email,
+      sessionId: sessionId
     });
 
     res.json({ success: true, sessionId });
@@ -294,16 +325,38 @@ app.delete('/api/sessions/:id', async (req, res) => {
   }
 });
 
-// Limpar todas as sessões
+// Limpar sessões (de um cliente específico ou todas)
 app.delete('/api/sessions', async (req, res) => {
   try {
-    const disconnectPromises = [];
-    for (const [id, session] of sessions.entries()) {
-      disconnectPromises.push(session.client.disconnect().catch(() => {}));
+    const { userId, email, clientId } = req.body;
+    
+    // Se forneceu userId/email/clientId, deletar apenas desse cliente
+    if (userId || email || clientId) {
+      const targetClientId = userId || email || clientId;
+      const disconnectPromises = [];
+      const sessionsToDelete = [];
+      
+      for (const [id, session] of sessions.entries()) {
+        if (session.clientId === targetClientId || session.userId === userId || session.email === email) {
+          disconnectPromises.push(session.client.disconnect().catch(() => {}));
+          sessionsToDelete.push(id);
+        }
+      }
+      
+      await Promise.all(disconnectPromises);
+      sessionsToDelete.forEach(id => sessions.delete(id));
+      
+      res.json({ success: true, deleted: sessionsToDelete.length });
+    } else {
+      // Se não forneceu identificador, deletar TODAS as sessões (compatibilidade)
+      const disconnectPromises = [];
+      for (const [id, session] of sessions.entries()) {
+        disconnectPromises.push(session.client.disconnect().catch(() => {}));
+      }
+      await Promise.all(disconnectPromises);
+      sessions.clear();
+      res.json({ success: true, deleted: 'all' });
     }
-    await Promise.all(disconnectPromises);
-    sessions.clear();
-    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
