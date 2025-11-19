@@ -34,14 +34,19 @@ const firebaseConfig = {
       // Inicializar Auth
       const auth = firebase.auth();
       
+      // Inicializar Firestore
+      const db = firebase.firestore();
+      
       // Configurar idioma para português
       auth.languageCode = 'pt';
       
       // Exportar para uso global
       window.firebaseAuth = auth;
+      window.firebaseDb = db;
       
       console.log('✅ Firebase inicializado com sucesso!');
       console.log('✅ Authentication pronto para uso');
+      console.log('✅ Firestore pronto para uso');
       
     } catch (error) {
       console.error('❌ Erro ao inicializar Firebase:', error);

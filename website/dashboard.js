@@ -473,71 +473,65 @@ async function openPlatformConfig(platformId) {
   
   // Verificar se é integração
   const integration = integrations.find(i => i.id === platformId);
-    if (integration) {
-    if (platformId === 'telegram' || platformId === 'whatsapp') {
+  if (integration) {
+    if (platformId === 'telegram') {
+      modalTitle.textContent = `Configurar ${integration.name}`;
+      modalBody.innerHTML = getTelegramConfigHTML();
+      modal.classList.add('active');
+      
+      // Verificar se API está disponível e carregar conta do Firebase
+      setTimeout(async () => {
+        const isApiAvailable = await checkTelegramApiStatus();
+        if (!isApiAvailable) {
+          const container = document.getElementById('telegramConfigContainer');
+          if (container) {
+            container.innerHTML = `
+              <div style="text-align: center; padding: 2rem;">
+                <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                <h3 style="color: var(--text-dark); margin-bottom: 1rem;">API do Telegram não está disponível</h3>
+                <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+                  A API precisa estar rodando em: <strong>${TELEGRAM_API_URL}</strong>
+                </p>
+                <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
+                  <h4 style="color: var(--text-dark); margin-bottom: 0.75rem; font-size: 1rem;">Como iniciar:</h4>
+                  <ol style="color: var(--text-light); font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
+                    <li>Abra um terminal na pasta do projeto</li>
+                    <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">cd telegram</code></li>
+                    <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">npm start</code></li>
+                    <li>Aguarde a mensagem: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">🚀 Servidor rodando em http://localhost:3003</code></li>
+                    <li>Feche este modal e tente novamente</li>
+                  </ol>
+                </div>
+                <div style="display: flex; gap: 0.75rem; justify-content: center;">
+                  <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+                  <button type="button" class="btn btn-primary" onclick="openPlatformConfig('telegram')">Tentar Novamente</button>
+                </div>
+              </div>
+            `;
+          }
+          return;
+        }
+        
+        // Carregar conta do Firebase
+        await loadTelegramAccountFromFirebase();
+      }, 100);
+      
+      return;
+    } else if (platformId === 'whatsapp') {
       modalTitle.textContent = `Configurar ${integration.name}`;
       modalBody.innerHTML = getNotificationConfigHTML(platformId);
       modal.classList.add('active');
       
-      // Se for Telegram, verificar API e carregar contas
-      if (platformId === 'telegram') {
-        // Verificar se API está disponível
-        const isApiAvailable = await checkTelegramApiStatus();
-        if (!isApiAvailable) {
-          modalBody.innerHTML = `
-            <div style="text-align: center; padding: 2rem;">
-              <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-              <h3 style="color: var(--text-dark); margin-bottom: 1rem;">API do Telegram não está disponível</h3>
-              <p style="color: var(--text-light); margin-bottom: 1.5rem;">
-                A API precisa estar rodando em: <strong>${TELEGRAM_API_URL}</strong>
-              </p>
-              <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
-                <h4 style="color: var(--text-dark); margin-bottom: 0.75rem; font-size: 1rem;">Como iniciar:</h4>
-                <ol style="color: var(--text-light); font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
-                  <li>Abra um terminal na pasta do projeto</li>
-                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">cd telegram</code></li>
-                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">npm start</code></li>
-                  <li>Aguarde a mensagem: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">🚀 Servidor rodando em http://localhost:3003</code></li>
-                  <li>Feche este modal e tente novamente</li>
-                </ol>
-              </div>
-              <div style="display: flex; gap: 0.75rem; justify-content: center;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
-                <button type="button" class="btn btn-primary" onclick="openPlatformConfig('telegram')">Tentar Novamente</button>
-              </div>
-            </div>
-          `;
-          return;
+      // Para WhatsApp, apenas adicionar listener do formulário
+      setTimeout(() => {
+        const form = document.getElementById('notificationConfigForm');
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleNotificationConfig('whatsapp');
+          });
         }
-        
-        // Carregar contas do Telegram
-        setTimeout(() => {
-          loadTelegramAccountsList();
-          const form = document.getElementById('addTelegramAccountFormElement');
-          if (form) {
-            // Remover listeners antigos se existirem
-            const newForm = form.cloneNode(true);
-            form.parentNode.replaceChild(newForm, form);
-            
-            // Adicionar novo listener
-            document.getElementById('addTelegramAccountFormElement').addEventListener('submit', (e) => {
-              e.preventDefault();
-              handleAddTelegramAccount(e);
-            });
-          }
-        }, 100);
-      } else {
-        // Para WhatsApp, apenas adicionar listener do formulário
-        setTimeout(() => {
-          const form = document.getElementById('notificationConfigForm');
-          if (form) {
-            form.addEventListener('submit', (e) => {
-              e.preventDefault();
-              handleNotificationConfig('whatsapp');
-            });
-          }
-        }, 100);
-      }
+      }, 100);
       return;
     } else if (platformId === 'deepseek') {
       modalTitle.textContent = `Configurar ${integration.name}`;
@@ -601,6 +595,140 @@ function getPlatformConfigHTML(platform) {
         <button type="submit" class="btn btn-primary">Salvar Configuração</button>
       </div>
     </form>
+  `;
+}
+
+// HTML de configuração do Telegram (padrão DeepSeek)
+function getTelegramConfigHTML() {
+  // Carregar do Firebase ou localStorage
+  const telegramConfig = JSON.parse(localStorage.getItem('telegramConfig') || '{}');
+  const hasAccount = telegramConfig.name && telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash;
+  
+  return `
+    <div id="telegramConfigContainer">
+      ${hasAccount ? `
+        <!-- Status: Configurado e Ativo -->
+        <div style="text-align: center; padding: 2rem 1rem;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+            <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
+          </div>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Telegram Configurado</h3>
+          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua conta está ativa e funcionando</p>
+          
+          <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: var(--text-light); font-size: 0.85rem;">Status:</span>
+              <span class="platform-status active" style="display: inline-block; padding: 4px 12px; font-size: 0.75rem;">Ativo</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: var(--text-light); font-size: 0.85rem;">Nome:</span>
+              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${telegramConfig.name || 'N/A'}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <span style="color: var(--text-light); font-size: 0.85rem;">Telefone:</span>
+              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${telegramConfig.phone || 'N/A'}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: var(--text-light); font-size: 0.85rem;">API ID:</span>
+              <code style="background: var(--bg-white); border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--text-dark);">
+                ${telegramConfig.apiId ? telegramConfig.apiId.substring(0, 4) + '...' + telegramConfig.apiId.substring(telegramConfig.apiId.length - 2) : 'N/A'}
+              </code>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 0.75rem; justify-content: center;">
+            <button type="button" class="btn btn-outline" onclick="removeTelegramAccount()" style="flex: 1;">
+              <i class="fas fa-trash"></i> Remover
+            </button>
+            <button type="button" class="btn btn-primary" onclick="showTelegramAccountInput()" style="flex: 1;">
+              <i class="fas fa-edit"></i> Trocar Conta
+            </button>
+          </div>
+        </div>
+      ` : `
+        <!-- Formulário: Adicionar Conta -->
+        <form id="telegramConfigForm">
+          <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="width: 60px; height: 60px; margin: 0 auto 1rem; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3);">
+              <i class="fab fa-telegram-plane" style="font-size: 1.5rem; color: white;"></i>
+            </div>
+            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Telegram</h3>
+            <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Adicionar Conta</p>
+          </div>
+          
+          <!-- Status Message -->
+          <div id="telegramStatusMessage" style="display: none; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
+          
+          <div class="form-group">
+            <label style="margin-bottom: 0.5rem; display: block; color: var(--text-dark); font-weight: 500;">Nome da Conta</label>
+            <input 
+              type="text" 
+              id="telegramAccountName" 
+              value="${telegramConfig.name || ''}" 
+              placeholder="Ex: Minha Conta Pessoal" 
+              style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem;"
+              autocomplete="off"
+              required
+            >
+          </div>
+          
+          <div class="form-group">
+            <label style="margin-bottom: 0.5rem; display: block; color: var(--text-dark); font-weight: 500;">Telefone (com código do país)</label>
+            <input 
+              type="text" 
+              id="telegramPhone" 
+              value="${telegramConfig.phone || ''}" 
+              placeholder="+5511999999999" 
+              style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem;"
+              autocomplete="off"
+              required
+            >
+            <small style="color: var(--text-light); font-size: 0.8rem; display: block; margin-top: 0.5rem;">
+              Formato: +código do país + DDD + número (ex: +5511999999999)
+            </small>
+          </div>
+          
+          <div class="form-group">
+            <label style="margin-bottom: 0.5rem; display: block; color: var(--text-dark); font-weight: 500;">API ID</label>
+            <input 
+              type="text" 
+              id="telegramApiId" 
+              value="${telegramConfig.apiId || ''}" 
+              placeholder="12345678" 
+              style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem;"
+              autocomplete="off"
+              required
+            >
+            <small style="color: var(--text-light); font-size: 0.8rem; display: block; margin-top: 0.5rem;">
+              Obtenha em <a href="https://my.telegram.org/apps" target="_blank" style="color: var(--accent-color);">my.telegram.org/apps</a>
+            </small>
+          </div>
+          
+          <div class="form-group">
+            <label style="margin-bottom: 0.5rem; display: block; color: var(--text-dark); font-weight: 500;">API Hash</label>
+            <input 
+              type="text" 
+              id="telegramApiHash" 
+              value="${telegramConfig.apiHash || ''}" 
+              placeholder="abcdef1234567890abcdef1234567890" 
+              style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem;"
+              autocomplete="off"
+              required
+            >
+            <small style="color: var(--text-light); font-size: 0.8rem; display: block; margin-top: 0.5rem;">
+              Obtenha em <a href="https://my.telegram.org/apps" target="_blank" style="color: var(--accent-color);">my.telegram.org/apps</a>
+            </small>
+          </div>
+          
+          <div class="form-actions" style="margin-top: 2rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="addTelegramAccount()" id="addTelegramAccountBtn" style="flex: 1;">
+              <i class="fas fa-plus"></i> Adicionar Conta
+            </button>
+          </div>
+        </form>
+      `}
+    </div>
   `;
 }
 
@@ -2548,17 +2676,30 @@ async function handleVerifyTelegramCode(e) {
     const verifyData = await verifyResponse.json();
     
     if (verifyData.success) {
+      // Conta verificada com sucesso - salvar no Firebase
+      const telegramConfig = JSON.parse(localStorage.getItem('telegramConfig') || '{}');
+      if (telegramConfig.name && telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash) {
+        await saveTelegramAccountToFirebase({
+          ...telegramConfig,
+          sessionString: verifyData.sessionString,
+          status: 'active',
+          verifiedAt: new Date().toISOString()
+        });
+      }
+      
       // Sucesso!
       submitBtn.innerHTML = '<i class="fas fa-check"></i> Verificado!';
       submitBtn.style.background = '#10b981';
       
       setTimeout(() => {
         closeTelegramCodeModal();
-        resetTelegramAccountForm();
         
-        // Recarregar tudo
-        loadTelegramAccountsList();
-        loadTelegramSessions();
+        // Recarregar modal de configuração
+        const modalBody = document.getElementById('modalBody');
+        if (modalBody) {
+          modalBody.innerHTML = getTelegramConfigHTML();
+        }
+        
         loadPlatforms();
         
         // Mostrar mensagem de sucesso
@@ -2582,7 +2723,227 @@ async function handleVerifyTelegramCode(e) {
   }
 }
 
-// Adicionar conta do Telegram
+// Carregar conta do Telegram do Firebase
+async function loadTelegramAccountFromFirebase() {
+  if (!currentUser || !currentUser.uid) {
+    return;
+  }
+  
+  try {
+    if (window.firebaseDb) {
+      const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+      const doc = await docRef.get();
+      
+      if (doc.exists) {
+        const userData = doc.data();
+        if (userData.telegramAccount) {
+          localStorage.setItem('telegramConfig', JSON.stringify(userData.telegramAccount));
+          // Recarregar o HTML do modal
+          const container = document.getElementById('telegramConfigContainer');
+          if (container) {
+            container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
+          }
+        }
+      }
+    }
+  } catch (error) {
+    // Se der erro, usar localStorage como fallback
+  }
+}
+
+// Salvar conta do Telegram no Firebase
+async function saveTelegramAccountToFirebase(accountData) {
+  if (!currentUser || !currentUser.uid) {
+    // Fallback para localStorage se não tiver usuário
+    localStorage.setItem('telegramConfig', JSON.stringify(accountData));
+    return;
+  }
+  
+  try {
+    if (window.firebaseDb) {
+      const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+      await docRef.set({
+        telegramAccount: accountData,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      
+      // Também salvar no localStorage como backup
+      localStorage.setItem('telegramConfig', JSON.stringify(accountData));
+    } else {
+      // Fallback para localStorage
+      localStorage.setItem('telegramConfig', JSON.stringify(accountData));
+    }
+  } catch (error) {
+    // Fallback para localStorage em caso de erro
+    localStorage.setItem('telegramConfig', JSON.stringify(accountData));
+    throw error;
+  }
+}
+
+// Remover conta do Telegram
+async function removeTelegramAccount() {
+  if (!confirm('Tem certeza que deseja remover a conta do Telegram? Esta ação não pode ser desfeita.')) {
+    return;
+  }
+  
+  try {
+    if (currentUser && currentUser.uid && window.firebaseDb) {
+      const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+      await docRef.update({
+        telegramAccount: null,
+        updatedAt: new Date().toISOString()
+      });
+    }
+    
+    localStorage.removeItem('telegramConfig');
+    
+    // Recarregar o modal
+    const modalBody = document.getElementById('modalBody');
+    if (modalBody) {
+      modalBody.innerHTML = getTelegramConfigHTML();
+      setTimeout(() => {
+        const form = document.getElementById('telegramConfigForm');
+        if (form) {
+          // Não precisa de listener, já está usando onclick
+        }
+      }, 100);
+    }
+    
+    loadPlatforms();
+  } catch (error) {
+    alert('Erro ao remover conta: ' + error.message);
+  }
+}
+
+// Mostrar formulário para trocar conta
+function showTelegramAccountInput() {
+  localStorage.removeItem('telegramConfig');
+  
+  // Recarregar o modal
+  const modalBody = document.getElementById('modalBody');
+  if (modalBody) {
+    modalBody.innerHTML = getTelegramConfigHTML();
+    setTimeout(() => {
+      const form = document.getElementById('telegramConfigForm');
+      if (form) {
+        // Não precisa de listener, já está usando onclick
+      }
+    }, 100);
+  }
+}
+
+// Adicionar conta do Telegram (nova versão)
+async function addTelegramAccount() {
+  const name = document.getElementById('telegramAccountName')?.value.trim();
+  const phone = document.getElementById('telegramPhone')?.value.trim();
+  const apiId = document.getElementById('telegramApiId')?.value.trim();
+  const apiHash = document.getElementById('telegramApiHash')?.value.trim();
+  const submitBtn = document.getElementById('addTelegramAccountBtn');
+  const statusMessage = document.getElementById('telegramStatusMessage');
+  
+  if (!name || !phone || !apiId || !apiHash) {
+    showTelegramStatusMessage('Preencha todos os campos obrigatórios', 'error');
+    return;
+  }
+  
+  // Desabilitar botão e mostrar loading
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando código SMS...';
+  }
+  hideTelegramStatusMessage();
+  
+  try {
+    // Verificar se a API está disponível
+    const isApiAvailable = await checkTelegramApiStatus();
+    if (!isApiAvailable) {
+      showTelegramStatusMessage('⚠️ API do Telegram não está disponível! A API precisa estar rodando em: ' + TELEGRAM_API_URL, 'error');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
+      }
+      return;
+    }
+
+    // Mostrar mensagem de carregamento
+    showTelegramStatusMessage('📱 Enviando código SMS para ' + phone + '... Aguarde alguns segundos.', 'info');
+
+    // Criar nova sessão (enviar código SMS)
+    const response = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone, apiId, apiHash }),
+      signal: createTimeoutSignal(30000) // Timeout de 30 segundos
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: `Status ${response.status}` }));
+      const errorMessage = errorData.error || `Erro HTTP ${response.status}`;
+      
+      // Verificar se é erro de conta já existente
+      if (errorMessage.includes('Já existe uma conta')) {
+        showTelegramStatusMessage('⚠️ ' + errorMessage, 'warning');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
+        }
+        return;
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Salvar dados no Firebase (sem sessionString ainda, será salvo após verificação)
+      await saveTelegramAccountToFirebase({
+        name,
+        phone,
+        apiId,
+        apiHash,
+        sessionId: data.sessionId,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      });
+      
+      // Mostrar sucesso e abrir modal de código imediatamente
+      showTelegramStatusMessage('✅ Código SMS enviado com sucesso! Verifique seu celular.', 'success');
+      
+      // Fechar modal de configuração e abrir modal de código
+      setTimeout(() => {
+        document.getElementById('platformModal')?.classList.remove('active');
+        showTelegramCodeModal(data.sessionId, phone);
+        // Resetar botão
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
+        }
+        hideTelegramStatusMessage();
+      }, 500);
+    } else {
+      showTelegramStatusMessage('❌ Erro ao criar sessão: ' + (data.error || 'Erro desconhecido'), 'error');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
+      }
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      showTelegramStatusMessage('⏱️ Timeout ao conectar com a API do Telegram. Verifique se a API está rodando e tente novamente.', 'error');
+    } else if (error.message.includes('Failed to fetch')) {
+      showTelegramStatusMessage('❌ Não foi possível conectar com a API do Telegram. Verifique se a API está rodando em: ' + TELEGRAM_API_URL, 'error');
+    } else {
+      showTelegramStatusMessage('❌ Erro ao adicionar conta: ' + error.message, 'error');
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
+    }
+  }
+}
+
+// Adicionar conta do Telegram (versão antiga - manter para compatibilidade)
 async function handleAddTelegramAccount(e) {
   e.preventDefault();
   
