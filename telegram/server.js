@@ -86,12 +86,56 @@ app.get('/api/sessions', (req, res) => {
   res.json({ sessions: list });
 });
 
+// Função auxiliar para validar formato de telefone
+function validatePhoneNumber(phone) {
+  // Remove espaços e caracteres especiais
+  const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  // Deve começar com + e ter pelo menos 10 dígitos
+  if (!cleaned.startsWith('+')) {
+    return { valid: false, error: 'Telefone deve começar com + (ex: +5511999999999)' };
+  }
+  // Deve ter entre 10 e 15 dígitos após o +
+  const digits = cleaned.substring(1);
+  if (digits.length < 10 || digits.length > 15 || !/^\d+$/.test(digits)) {
+    return { valid: false, error: 'Telefone inválido. Use o formato: +5511999999999' };
+  }
+  return { valid: true };
+}
+
+// Função auxiliar para validar credenciais
+function validateCredentials(apiId, apiHash) {
+  // Validar API_ID
+  const apiIdNum = parseInt(apiId);
+  if (isNaN(apiIdNum) || apiIdNum <= 0) {
+    return { valid: false, error: 'API_ID deve ser um número válido maior que zero' };
+  }
+  
+  // Validar API_HASH (deve ter pelo menos 20 caracteres)
+  if (!apiHash || typeof apiHash !== 'string' || apiHash.length < 20) {
+    return { valid: false, error: 'API_HASH inválido. Deve ter pelo menos 20 caracteres' };
+  }
+  
+  return { valid: true };
+}
+
 // Criar sessão (apenas 1 conta permitida)
 app.post('/api/sessions', async (req, res) => {
   try {
     const { name, phone, apiId, apiHash } = req.body;
     if (!name || !phone) return res.status(400).json({ error: 'Nome e telefone obrigatórios' });
     if (!apiId || !apiHash) return res.status(400).json({ error: 'API_ID e API_HASH obrigatórios' });
+
+    // Validar formato do telefone ANTES de qualquer operação
+    const phoneValidation = validatePhoneNumber(phone);
+    if (!phoneValidation.valid) {
+      return res.status(400).json({ error: phoneValidation.error });
+    }
+
+    // Validar credenciais ANTES de qualquer operação
+    const credentialsValidation = validateCredentials(apiId, apiHash);
+    if (!credentialsValidation.valid) {
+      return res.status(400).json({ error: credentialsValidation.error });
+    }
 
     // Verificar se já existe uma conta ativa
     const existingSessions = Array.from(sessions.values());

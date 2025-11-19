@@ -408,10 +408,10 @@ function createIntegrationCard(integration) {
   let statusClass = 'soon';
   
   if (integration.id === 'telegram') {
-    // Verificar apenas Firebase (muito mais leve)
+    // Verificar apenas Firebase (muito mais leve) - conta ativa se tiver sessionString (verificada)
     const telegramConfig = window.telegramConfigCache || {};
     const hasAccount = telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash;
-    const isActive = hasAccount && telegramConfig.status === 'active';
+    const isActive = hasAccount && telegramConfig.sessionString; // Ativo apenas se tiver sessionString (conta verificada)
     
     if (isActive) {
       statusText = 'Ativo';
@@ -3069,7 +3069,7 @@ let syncCache = null;
 let syncCacheTime = 0;
 const SYNC_CACHE_TTL = 10000; // 10 segundos
 
-// Verificar se tem conta no Firebase E na API (só está ativo se tiver nos dois) - com cache
+// Verificar se tem conta no Firebase (OTIMIZADO - usa apenas Firebase para status)
 async function checkTelegramAccountSync(forceRefresh = false) {
   // Verificar cache
   const now = Date.now();
@@ -3078,23 +3078,21 @@ async function checkTelegramAccountSync(forceRefresh = false) {
   }
   
   let hasFirebaseAccount = false;
-  let hasApiAccount = false;
   let firebaseAccount = null;
-  let apiSessions = [];
   
-  // Verificar Firebase (usar cache se disponível)
+  // Verificar apenas Firebase (muito mais leve e rápido)
   if (currentUser && currentUser.uid && window.firebaseDb) {
     try {
       // Se cache de userData é válido, usar cache
       if (!forceRefresh && isCacheValid('telegramAccount') && window.telegramConfigCache && Object.keys(window.telegramConfigCache).length > 0) {
         firebaseAccount = window.telegramConfigCache;
-        hasFirebaseAccount = !!(firebaseAccount.phone && firebaseAccount.apiId);
+        hasFirebaseAccount = !!(firebaseAccount.phone && firebaseAccount.apiId && firebaseAccount.sessionString);
       } else {
         const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
         const doc = await docRef.get();
         if (doc.exists) {
           const userData = doc.data();
-          if (userData.telegramAccount && userData.telegramAccount.phone && userData.telegramAccount.apiId) {
+          if (userData.telegramAccount && userData.telegramAccount.phone && userData.telegramAccount.apiId && userData.telegramAccount.sessionString) {
             hasFirebaseAccount = true;
             firebaseAccount = userData.telegramAccount;
             window.telegramConfigCache = firebaseAccount;
@@ -3107,71 +3105,25 @@ async function checkTelegramAccountSync(forceRefresh = false) {
     }
   }
   
-  // Verificar API (usar cache de sessões se disponível)
-  try {
-    if (telegramSessionsCache && (now - telegramSessionsCacheTime) < TELEGRAM_SESSIONS_CACHE_TTL) {
-      apiSessions = telegramSessionsCache;
-    } else {
-      const isApiAvailable = await checkTelegramApiStatus();
-      if (isApiAvailable) {
-        const sessionsResponse = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
-          method: 'GET',
-          signal: createTimeoutSignal(3000), // Timeout reduzido
-          cache: 'no-cache'
-        }).catch(() => null);
-        
-        if (sessionsResponse && sessionsResponse.ok) {
-          const sessionsData = await sessionsResponse.json().catch(() => ({ sessions: [] }));
-          apiSessions = sessionsData.sessions || [];
-          telegramSessionsCache = apiSessions;
-          telegramSessionsCacheTime = now;
-        }
-      }
-    }
-    
-    const activeSessions = apiSessions.filter(s => s.status === 'active' || s.status === 'connected');
-    hasApiAccount = activeSessions.length > 0;
-  } catch (error) {
-    // Ignorar erros
-  }
-  
-  // Se tiver em um mas não no outro, limpar ambos
-  if (hasFirebaseAccount && !hasApiAccount) {
-    // Tem no Firebase mas não na API - limpar Firebase
-    if (currentUser && currentUser.uid && window.firebaseDb) {
-      try {
-        const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-        await docRef.update({
-          telegramAccount: null,
-          updatedAt: new Date().toISOString()
-        });
-      } catch (e) {
-        // Ignorar
-      }
-    }
-    window.telegramConfigCache = {};
-    hasFirebaseAccount = false;
-    firebaseAccount = null;
-  } else if (!hasFirebaseAccount && hasApiAccount) {
-    // Tem na API mas não no Firebase - limpar API
-    try {
-      await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
-        method: 'DELETE',
-        signal: createTimeoutSignal(5000)
-      }).catch(() => {});
-    } catch (e) {
-      // Ignorar
-    }
-    hasApiAccount = false;
-    apiSessions = [];
-  }
-  
-  return {
-    isActive: hasFirebaseAccount && hasApiAccount, // Só ativo se tiver nos dois
+  const result = {
+    isActive: hasFirebaseAccount, // Ativo se tiver no Firebase com sessionString (conta verificada)
     hasFirebaseAccount,
-    hasApiAccount,
-    firebaseAccount,
-    apiSessions
+    firebaseAccount
+  };
+  
+  // Atualizar cache
+  syncCache = result;
+  syncCacheTime = now;
+  
+  return result;
+}
+
+// Alias para compatibilidade - verifica apenas Firebase
+async function checkTelegramAccountFromFirebase(forceRefresh = false) {
+  const result = await checkTelegramAccountSync(forceRefresh);
+  return {
+    hasAccount: result.hasFirebaseAccount,
+    firebaseAccount: result.firebaseAccount
   };
 }
 
@@ -3181,16 +3133,27 @@ async function loadTelegramAccountFromFirebase() {
     return;
   }
   
+  // Verificar cache
+  if (!forceRefresh && isCacheValid('telegramAccount') && window.telegramConfigCache && Object.keys(window.telegramConfigCache).length > 0) {
+    // Usar cache - apenas atualizar HTML se necessário
+    const container = document.getElementById('telegramConfigContainer');
+    if (container) {
+      container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
+    }
+    return;
+  }
+  
   try {
-    // Verificar sincronização entre Firebase e API
-    const syncStatus = await checkTelegramAccountSync();
+    // Verificar apenas Firebase (muito mais leve)
+    const accountStatus = await checkTelegramAccountFromFirebase(forceRefresh);
     
-    if (syncStatus.isActive && syncStatus.firebaseAccount) {
-      // Só mostrar como configurado se tiver nos dois
-      window.telegramConfigCache = syncStatus.firebaseAccount;
+    if (accountStatus.hasAccount && accountStatus.firebaseAccount) {
+      window.telegramConfigCache = accountStatus.firebaseAccount;
+      window.cacheTimestamps.telegramAccount = Date.now();
     } else {
-      // Limpar cache se não estiver sincronizado
+      // Limpar cache se não tiver conta
       window.telegramConfigCache = {};
+      window.cacheTimestamps.telegramAccount = 0;
     }
     
     // Recarregar o HTML do modal
@@ -3201,6 +3164,7 @@ async function loadTelegramAccountFromFirebase() {
   } catch (error) {
     // Se der erro, limpar cache e mostrar formulário vazio
     window.telegramConfigCache = {};
+    window.cacheTimestamps.telegramAccount = 0;
     const container = document.getElementById('telegramConfigContainer');
     if (container) {
       container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
@@ -3416,6 +3380,39 @@ function showTelegramAccountInput() {
   }
 }
 
+// Função auxiliar para validar formato de telefone
+function validatePhoneNumber(phone) {
+  if (!phone) return { valid: false, error: 'Telefone é obrigatório' };
+  // Remove espaços e caracteres especiais
+  const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  // Deve começar com + e ter pelo menos 10 dígitos
+  if (!cleaned.startsWith('+')) {
+    return { valid: false, error: 'Telefone deve começar com + (ex: +5511999999999)' };
+  }
+  // Deve ter entre 10 e 15 dígitos após o +
+  const digits = cleaned.substring(1);
+  if (digits.length < 10 || digits.length > 15 || !/^\d+$/.test(digits)) {
+    return { valid: false, error: 'Telefone inválido. Use o formato: +5511999999999' };
+  }
+  return { valid: true };
+}
+
+// Função auxiliar para validar credenciais
+function validateCredentials(apiId, apiHash) {
+  // Validar API_ID
+  const apiIdNum = parseInt(apiId);
+  if (isNaN(apiIdNum) || apiIdNum <= 0) {
+    return { valid: false, error: 'API_ID deve ser um número válido maior que zero' };
+  }
+  
+  // Validar API_HASH (deve ter pelo menos 20 caracteres)
+  if (!apiHash || typeof apiHash !== 'string' || apiHash.length < 20) {
+    return { valid: false, error: 'API_HASH inválido. Deve ter pelo menos 20 caracteres' };
+  }
+  
+  return { valid: true };
+}
+
 // Adicionar conta do Telegram (nova versão)
 async function addTelegramAccount() {
   // Usar email do usuário como identificador único
@@ -3428,6 +3425,20 @@ async function addTelegramAccount() {
   
   if (!phone || !apiId || !apiHash) {
     showTelegramStatusMessage('Preencha todos os campos obrigatórios', 'error');
+    return;
+  }
+  
+  // Validar formato do telefone ANTES de chamar a API
+  const phoneValidation = validatePhoneNumber(phone);
+  if (!phoneValidation.valid) {
+    showTelegramStatusMessage(phoneValidation.error, 'error');
+    return;
+  }
+  
+  // Validar credenciais ANTES de chamar a API
+  const credentialsValidation = validateCredentials(apiId, apiHash);
+  if (!credentialsValidation.valid) {
+    showTelegramStatusMessage(credentialsValidation.error, 'error');
     return;
   }
   
@@ -3460,11 +3471,9 @@ async function addTelegramAccount() {
       return;
     }
 
-    // Verificar sincronização e limpar contas desincronizadas
-    const syncStatus = await checkTelegramAccountSync();
-    
-    // Se tiver conta no Firebase mas não na API, ou vice-versa, limpar ambos
-    if (syncStatus.hasFirebaseAccount || syncStatus.hasApiAccount) {
+    // Verificar se já existe conta no Firebase e remover antes de adicionar nova
+    const existingAccount = await checkTelegramAccountFromFirebase();
+    if (existingAccount.hasAccount) {
       // Remover do Firebase
       if (currentUser && currentUser.uid && window.firebaseDb) {
         try {
@@ -3478,8 +3487,9 @@ async function addTelegramAccount() {
         }
       }
       window.telegramConfigCache = {};
+      invalidateCache('telegramAccount');
       
-      // Remover da API
+      // Remover da API também (só quando for adicionar nova conta)
       try {
         await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
           method: 'DELETE',
