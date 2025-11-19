@@ -3173,18 +3173,28 @@ async function handleAddTelegramAccount(e) {
     const data = await response.json();
     
     if (data.success) {
-      // Mostrar sucesso e abrir modal de código imediatamente
-      showTelegramStatusMessage('✅ Código SMS enviado com sucesso! Verifique seu celular.', 'success');
+      // Salvar dados no Firebase (sem sessionString ainda, será salvo após verificação)
+      await saveTelegramAccountToFirebase({
+        name: currentUser?.email || currentUser?.displayName || 'Usuario',
+        email: currentUser?.email || '',
+        phone,
+        apiId,
+        apiHash,
+        sessionId: data.sessionId,
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      });
       
-      // Fechar modal de configuração e abrir modal de código
-      setTimeout(() => {
-        document.getElementById('platformModal')?.classList.remove('active');
-        showTelegramCodeModal(data.sessionId, phone);
-        // Resetar botão
-        submitBtn.disabled = false;
-        btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
-        hideTelegramStatusMessage();
-      }, 500);
+      // Fechar modal de configuração imediatamente
+      document.getElementById('platformModal')?.classList.remove('active');
+      
+      // Abrir modal de código imediatamente
+      showTelegramCodeModal(data.sessionId, phone);
+      
+      // Resetar botão
+      submitBtn.disabled = false;
+      btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
+      hideTelegramStatusMessage();
     } else {
       showTelegramStatusMessage('❌ Erro ao criar sessão: ' + (data.error || 'Erro desconhecido'), 'error');
       submitBtn.disabled = false;
