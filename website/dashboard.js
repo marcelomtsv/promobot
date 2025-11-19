@@ -2819,9 +2819,11 @@ async function handleVerifyTelegramCode(e) {
     if (verifyData.success) {
       // Conta verificada com sucesso - salvar no Firebase
       const telegramConfig = JSON.parse(localStorage.getItem('telegramConfig') || '{}');
-      if (telegramConfig.name && telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash) {
+      if (telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash) {
         await saveTelegramAccountToFirebase({
           ...telegramConfig,
+          name: currentUser?.email || currentUser?.displayName || 'Usuario',
+          email: currentUser?.email || '',
           sessionString: verifyData.sessionString,
           status: 'active',
           verifiedAt: new Date().toISOString()
