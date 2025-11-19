@@ -1602,6 +1602,11 @@
             message.includes('net::err_connection_refused') ||
             message.includes('failed to fetch') ||
             message.includes('api_not_available') ||
+            message.includes('could not reach cloud firestore') ||
+            message.includes('does not exist for project') ||
+            message.includes('the database (default) does not exist') ||
+            message.includes('operate in offline mode') ||
+            message.includes('firestore backend') ||
             stack.includes('checktelegramapistatus') ||
             stack.includes('dashboard.js')) {
           return; // Suprimir silenciosamente
@@ -1613,7 +1618,12 @@
         const message = args.map(arg => String(arg)).join(' ').toLowerCase();
         if (message.includes('localhost:3003') || 
             message.includes(':3003') ||
-            message.includes('connection_refused')) {
+            message.includes('connection_refused') ||
+            message.includes('could not reach cloud firestore') ||
+            message.includes('does not exist for project') ||
+            message.includes('the database (default) does not exist') ||
+            message.includes('operate in offline mode') ||
+            message.includes('firestore backend')) {
           return; // Suprimir silenciosamente
         }
         originalWarn.apply(console, args);
