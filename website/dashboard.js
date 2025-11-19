@@ -505,7 +505,7 @@ function createIntegrationCard(integration) {
     <div class="platform-actions">
       <button class="btn-sm btn-primary" onclick="openPlatformConfig('${integration.id}')">
         <i class="fas fa-cog"></i>
-        Configurar
+        Cadastrar
       </button>
     </div>
   `;
@@ -548,7 +548,7 @@ function createPlatformCard(platform) {
       ${hasConfig ? `
         <button class="btn-sm btn-primary" onclick="openPlatformConfig('${platform.id}')">
           <i class="fas fa-cog"></i>
-          Configurar
+          Cadastrar
         </button>
       ` : `
         <button class="btn-sm btn-outline" disabled>
@@ -628,7 +628,7 @@ async function openPlatformConfig(platformId) {
           <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);">
             <i class="fab fa-telegram-plane" style="font-size: 1.25rem; color: white;"></i>
           </div>
-          <span>Configurar Telegram</span>
+          <span>Cadastrar Telegram</span>
         </div>
       `;
       
@@ -709,7 +709,14 @@ async function openPlatformConfig(platformId) {
       }, 100);
       return;
     } else if (platformId === 'deepseek') {
-      modalTitle.textContent = `Configurar ${integration.name}`;
+      modalTitle.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+            <i class="fas fa-brain" style="font-size: 1.25rem; color: white;"></i>
+          </div>
+          <span>Cadastrar DeepSeek</span>
+        </div>
+      `;
       modalBody.innerHTML = getDeepSeekConfigHTML();
       modal.classList.add('active');
       
@@ -897,7 +904,7 @@ function getDeepSeekConfigHTML() {
           <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
             <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
           </div>
-          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">DeepSeek Configurado</h3>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">DeepSeek Cadastrado</h3>
           <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua API Key está ativa e funcionando</p>
           
           <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: left;">
