@@ -487,6 +487,11 @@ function createIntegrationCard(integration) {
     'botfather': 'Crie e gerencie bots do Telegram'
   };
   
+  // Determinar texto do botão baseado no status
+  const isActive = statusClass === 'active';
+  const buttonText = isActive ? 'Gerenciar' : 'Cadastrar';
+  const buttonIcon = isActive ? 'fas fa-edit' : 'fas fa-plus';
+  
   // Adicionar ID único ao card para evitar duplicação
   card.setAttribute('data-integration-id', integration.id);
   card.id = `integration-card-${integration.id}`;
@@ -504,8 +509,8 @@ function createIntegrationCard(integration) {
     </p>
     <div class="platform-actions">
       <button class="btn-sm btn-primary" onclick="openPlatformConfig('${integration.id}')">
-        <i class="fas fa-cog"></i>
-        Cadastrar
+        <i class="${buttonIcon}"></i>
+        ${buttonText}
       </button>
     </div>
   `;
@@ -547,8 +552,8 @@ function createPlatformCard(platform) {
     <div class="platform-actions">
       ${hasConfig ? `
         <button class="btn-sm btn-primary" onclick="openPlatformConfig('${platform.id}')">
-          <i class="fas fa-cog"></i>
-          Cadastrar
+          <i class="fas fa-edit"></i>
+          Gerenciar
         </button>
       ` : `
         <button class="btn-sm btn-outline" disabled>
@@ -723,7 +728,14 @@ async function openPlatformConfig(platformId) {
       // Não precisa mais de configuração adicional, o HTML já gerencia tudo
       return;
     } else if (platformId === 'botfather') {
-      modalTitle.textContent = `Configurar ${integration.name}`;
+      modalTitle.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);">
+            <i class="fas fa-robot" style="font-size: 1.25rem; color: white;"></i>
+          </div>
+          <span>Cadastrar Bot Father</span>
+        </div>
+      `;
       modalBody.innerHTML = getBotFatherConfigHTML();
       modal.classList.add('active');
       return;
@@ -1157,8 +1169,8 @@ function getBotFatherConfigHTML() {
             <div style="width: 60px; height: 60px; margin: 0 auto 1rem; background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
               <i class="fas fa-robot" style="font-size: 1.5rem; color: white;"></i>
             </div>
-            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Configurar Bot Father</h3>
-            <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Configure seu bot do Telegram com token, canal e grupo</p>
+            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Bot Father Cadastrado</h3>
+            <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Seu bot do Telegram está configurado e funcionando</p>
           </div>
           
           <div class="form-group" style="margin-bottom: 1.5rem;">
