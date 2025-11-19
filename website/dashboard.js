@@ -345,15 +345,34 @@ function animateCounter(elementId, target, prefix = '', suffix = '') {
 }
 
 // Carregar plataformas e integrações
+let isLoadingPlatforms = false; // Flag para evitar chamadas simultâneas
 async function loadPlatforms() {
+  // Evitar chamadas simultâneas que podem causar duplicação
+  if (isLoadingPlatforms) {
+    return;
+  }
+  isLoadingPlatforms = true;
+  
   const platformsList = document.getElementById('platformsList');
   const integrationsList = document.getElementById('integrationsList');
   const activePreview = document.getElementById('activePlatformsPreview');
   
-  // Limpar
-  if (platformsList) platformsList.innerHTML = '';
-  if (integrationsList) integrationsList.innerHTML = '';
-  if (activePreview) activePreview.innerHTML = '';
+  // Limpar COMPLETAMENTE (remover todos os filhos)
+  if (platformsList) {
+    while (platformsList.firstChild) {
+      platformsList.removeChild(platformsList.firstChild);
+    }
+  }
+  if (integrationsList) {
+    while (integrationsList.firstChild) {
+      integrationsList.removeChild(integrationsList.firstChild);
+    }
+  }
+  if (activePreview) {
+    while (activePreview.firstChild) {
+      activePreview.removeChild(activePreview.firstChild);
+    }
+  }
 
   // Verificar conta do Telegram no Firebase (apenas Firebase - mais leve)
   if (currentUser && currentUser.uid) {
@@ -395,6 +414,9 @@ async function loadPlatforms() {
       }
     });
   }
+  
+  // Liberar flag após completar
+  isLoadingPlatforms = false;
 }
 
 // Criar card de integração destacada
@@ -423,19 +445,22 @@ function createIntegrationCard(integration) {
       statusText = 'Não configurado';
       statusClass = 'soon';
     }
-  } else if (integration.id === 'whatsapp' && notificationConfigs.whatsapp) {
-    statusText = 'Ativo';
-    statusClass = 'active';
+  } else if (integration.id === 'whatsapp') {
+    const whatsappConfig = window.integrationConfigsCache.whatsapp || {};
+    if (whatsappConfig.number) {
+      statusText = 'Ativo';
+      statusClass = 'active';
+    } else {
+      statusText = 'Não configurado';
+      statusClass = 'soon';
+    }
   } else if (integration.id === 'deepseek') {
     // Verificar configuração do DeepSeek
     const deepseekConfig = window.integrationConfigsCache.deepseek || {};
     
-    if (deepseekConfig.apiKey && deepseekConfig.verified) {
+    if (deepseekConfig.apiKey) {
       statusText = 'Ativo';
       statusClass = 'active';
-    } else if (deepseekConfig.apiKey) {
-      statusText = 'Não configurado';
-      statusClass = 'soon';
     } else {
       statusText = 'Não configurado';
       statusClass = 'soon';
@@ -839,13 +864,12 @@ function getTelegramConfigHTML() {
 // HTML de configuração do DeepSeek
 function getDeepSeekConfigHTML() {
   const deepseekConfig = window.integrationConfigsCache.deepseek || {};
-  const hasApiKey = deepseekConfig.apiKey && deepseekConfig.verified;
-  const isEnabled = deepseekConfig.enabled !== false;
+  const hasApiKey = !!deepseekConfig.apiKey;
   
   return `
     <div id="deepseekConfigContainer">
-      ${hasApiKey && isEnabled ? `
-        <!-- Status: Configurado e Ativo -->
+      ${hasApiKey ? `
+        <!-- Status: Configurado e Ativo (ESTILO UNIFICADO) -->
         <div style="text-align: center; padding: 2rem 1rem;">
           <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
             <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
@@ -876,15 +900,10 @@ function getDeepSeekConfigHTML() {
           </div>
         </div>
       ` : `
-        <!-- Formulário: Adicionar API Key -->
+        <!-- Formulário: Adicionar API Key (ESTILO UNIFICADO) -->
         <form id="deepseekConfigForm">
-          <div style="text-align: center; margin-bottom: 2rem;">
-            <div style="width: 60px; height: 60px; margin: 0 auto 1rem; background: linear-gradient(135deg, var(--accent-color) 0%, #0052cc 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-              <i class="fas fa-key" style="font-size: 1.5rem; color: white;"></i>
-            </div>
-            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Configurar DeepSeek</h3>
-            <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Insira sua API Key do DeepSeek para ativar a análise inteligente</p>
-          </div>
+          <!-- Status Message -->
+          <div id="apiKeyStatus" style="display: none; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
           
           <div class="form-group">
             <label style="margin-bottom: 0.5rem; display: block; color: var(--text-dark); font-weight: 500;">API Key do DeepSeek</label>
@@ -910,6 +929,13 @@ function getDeepSeekConfigHTML() {
             <small style="color: var(--text-light); font-size: 0.8rem; display: block; margin-top: 0.5rem;">
               Obtenha sua API Key em <a href="https://platform.deepseek.com" target="_blank" style="color: var(--accent-color);">platform.deepseek.com</a>
             </small>
+          </div>
+          
+          <div class="form-actions" style="margin-top: 1.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()" style="width: 100%; margin-bottom: 0.75rem;">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="handleDeepSeekConfig()" id="saveDeepSeekBtn" style="width: 100%;">
+              <i class="fas fa-save"></i> Salvar Configuração
+            </button>
           </div>
           
           <!-- Loading Screen -->
@@ -1050,14 +1076,12 @@ function getDeepSeekConfigHTML() {
 
 // HTML de configuração do Bot Father
 function getBotFatherConfigHTML() {
-  const savedConfig = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-  const botfatherConfig = savedConfig.botfather || {};
-  const hasConfig = botfatherConfig.botToken && botfatherConfig.channel && botfatherConfig.group && botfatherConfig.verified;
-  const isEnabled = botfatherConfig.enabled !== false;
+  const botfatherConfig = window.integrationConfigsCache.botfather || {};
+  const hasConfig = botfatherConfig.botToken && botfatherConfig.channel && botfatherConfig.group;
   
   return `
     <div id="botfatherConfigContainer">
-      ${hasConfig && isEnabled ? `
+      ${hasConfig ? `
         <!-- Status: Configurado e Ativo -->
         <div style="text-align: center; padding: 2rem 1rem;">
           <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
@@ -1248,37 +1272,28 @@ function getNotificationConfigHTML(type) {
     `;
   } else if (type === 'whatsapp') {
     const whatsappConfig = window.integrationConfigsCache.whatsapp || {};
-    const notificationConfigs = window.notificationConfigsCache;
-    const hasConfig = (whatsappConfig.number || notificationConfigs.whatsapp?.number);
-    const config = whatsappConfig.number ? whatsappConfig : notificationConfigs.whatsapp || {};
+    const hasConfig = !!whatsappConfig.number;
     
     return `
       <div id="whatsappConfigContainer">
         ${hasConfig ? `
-          <!-- Status: Configurado -->
+          <!-- Status: Configurado e Ativo (ESTILO UNIFICADO) -->
           <div style="text-align: center; padding: 2rem 1rem;">
             <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
               <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
             </div>
             <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">WhatsApp Cadastrado</h3>
-            <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua conta está pronta para enviar promoções</p>
+            <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua conta está ativa e funcionando</p>
             
-            <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
-                <span style="color: var(--text-light); font-size: 0.85rem; font-weight: 500;">Status:</span>
-                <span class="platform-status active" style="display: inline-block; padding: 6px 16px; font-size: 0.8rem; border-radius: 20px;">Ativo</span>
+            <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: left;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="color: var(--text-light); font-size: 0.85rem;">Status:</span>
+                <span class="platform-status active" style="display: inline-block; padding: 4px 12px; font-size: 0.75rem;">Ativo</span>
               </div>
-              ${config.number ? `
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <div style="flex: 1;">
-                    <div style="color: var(--text-light); font-size: 0.75rem; margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.5px;">Número</div>
-                    <div style="color: var(--text-dark); font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-                      <i class="fab fa-whatsapp" style="color: #25d366; font-size: 1.1rem;"></i>
-                      ${config.number}
-                    </div>
-                  </div>
-                </div>
-              ` : ''}
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-light); font-size: 0.85rem;">Número:</span>
+                <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${whatsappConfig.number || 'N/A'}</span>
+              </div>
             </div>
             
             <div style="display: flex; gap: 0.75rem; justify-content: center;">
@@ -1291,40 +1306,31 @@ function getNotificationConfigHTML(type) {
             </div>
           </div>
         ` : `
-          <!-- Formulário: Adicionar -->
+          <!-- Formulário: Adicionar (ESTILO UNIFICADO) -->
           <form id="notificationConfigForm">
             <!-- Status Message -->
-            <div id="whatsappStatusMessage" style="display: none; margin-bottom: 1.5rem; padding: 0.875rem 1rem; border-radius: 8px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
+            <div id="whatsappStatusMessage" style="display: none; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
             
-            <!-- Input Simples -->
-            <div class="form-group" style="margin-bottom: 2rem;">
-              <label style="display: block; margin-bottom: 0.75rem; color: var(--text-dark); font-size: 0.9rem; font-weight: 500;">Número do WhatsApp</label>
-              <div style="position: relative;">
-                <div style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 0.5rem; pointer-events: none; z-index: 1;">
-                  <i class="fab fa-whatsapp" style="color: #25d366; font-size: 1rem;"></i>
-                  <span style="color: var(--text-light); font-size: 0.875rem;">+</span>
-                </div>
-                <input 
-                  type="text" 
-                  id="whatsappNumber" 
-                  value="${config.number || ''}"
-                  placeholder="5511999999999" 
-                  style="width: 100%; padding: 0.875rem 1rem 0.875rem 3.25rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark); font-size: 0.95rem; transition: all 0.2s ease;"
-                  onfocus="this.style.borderColor='#25d366'; this.style.outline='none'"
-                  onblur="this.style.borderColor='var(--border-color)'"
-                  autocomplete="off"
-                  required
-                >
-              </div>
+            <div class="form-group">
+              <label style="margin-bottom: 0.5rem; display: block; color: var(--text-dark); font-weight: 500;">Número do WhatsApp</label>
+              <input 
+                type="text" 
+                id="whatsappNumber" 
+                value="${whatsappConfig.number || ''}"
+                placeholder="+5511999999999" 
+                style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem;"
+                autocomplete="off"
+                required
+              >
+              <small style="color: var(--text-light); font-size: 0.8rem; display: block; margin-top: 0.5rem;">
+                Formato: +código do país + DDD + número (ex: +5511999999999)
+              </small>
             </div>
             
-            <!-- Botões de Ação -->
-            <div class="form-actions" style="display: flex; gap: 0.75rem;">
-              <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">
-                Cancelar
-              </button>
-              <button type="submit" class="btn btn-primary" id="saveWhatsAppBtn" style="flex: 1; background: #25d366; border: none;">
-                Cadastrar
+            <div class="form-actions" style="margin-top: 1.5rem;">
+              <button type="button" class="btn btn-secondary" onclick="closeModal()" style="width: 100%; margin-bottom: 0.75rem;">Cancelar</button>
+              <button type="submit" class="btn btn-primary" id="saveWhatsAppBtn" style="width: 100%;">
+                <i class="fas fa-plus"></i> Cadastrar
               </button>
             </div>
           </form>
@@ -1706,17 +1712,19 @@ async function addBotFatherConfig() {
     }
     
     if (response.ok && data.success && data.valid) {
-      // Configuração válida - Salvar
-      const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-      configs.botfather = {
+      // Configuração válida - Salvar (OTIMIZADO - apenas campos essenciais)
+      await saveIntegrationConfigToFirebase('botfather', {
         botToken: botToken,
         channel: channel,
-        group: group,
-        enabled: true,
-        verified: true,
-        verifiedAt: new Date().toISOString()
+        group: group
+      });
+      
+      // Atualizar cache
+      window.integrationConfigsCache.botfather = {
+        botToken: botToken,
+        channel: channel,
+        group: group
       };
-      localStorage.setItem('integrationConfigs', JSON.stringify(configs));
       
       // Atualizar o conteúdo do modal para mostrar a tela de "configurado"
       const modalBody = document.getElementById('modalBody');
@@ -1762,30 +1770,51 @@ async function addBotFatherConfig() {
 }
 
 // Remover Configuração do Bot Father
-function removeBotFatherConfig() {
+async function removeBotFatherConfig() {
   if (!confirm('Tem certeza que deseja remover a configuração do Bot Father? Esta ação desativará a integração.')) {
     return;
   }
   
-  const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-  delete configs.botfather;
-  localStorage.setItem('integrationConfigs', JSON.stringify(configs));
-  
-  // Atualizar modal
-  const modalBody = document.getElementById('modalBody');
-  if (modalBody) {
-    modalBody.innerHTML = getBotFatherConfigHTML();
+  if (!currentUser || !currentUser.uid) {
+    alert('Usuário não autenticado.');
+    return;
   }
   
-  // Atualizar plataformas
-  loadPlatforms();
+  if (!window.firebaseDb) {
+    alert('Firestore não está disponível.');
+    return;
+  }
+  
+  try {
+    const userData = await loadUserDataFromFirebase() || {};
+    const integrationConfigs = userData.integrationConfigs || {};
+    delete integrationConfigs.botfather;
+    
+    await saveUserDataToFirebase({
+      integrationConfigs: integrationConfigs
+    });
+    
+    // Atualizar cache
+    delete window.integrationConfigsCache.botfather;
+    window.cacheTimestamps.integrationConfigs = Date.now();
+    
+    // Atualizar modal
+    const modalBody = document.getElementById('modalBody');
+    if (modalBody) {
+      modalBody.innerHTML = getBotFatherConfigHTML();
+    }
+    
+    // Atualizar plataformas
+    loadPlatforms();
+  } catch (error) {
+    alert('Erro ao remover configuração: ' + error.message);
+  }
 }
 
 // Mostrar input para trocar configuração do Bot Father
 function showBotFatherConfigInput() {
-  const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-  delete configs.botfather;
-  localStorage.setItem('integrationConfigs', JSON.stringify(configs));
+  // Limpar cache local (não remover do Firebase, apenas mostrar formulário)
+  delete window.integrationConfigsCache.botfather;
   
   // Atualizar modal
   const modalBody = document.getElementById('modalBody');
@@ -2072,13 +2101,9 @@ async function handleDeepSeekConfig(e) {
   saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
   try {
-    // Salvar no Firebase
+    // Salvar no Firebase (OTIMIZADO - apenas apiKey)
     const deepseekConfig = { 
-      apiKey, 
-      model, 
-      enabled,
-      verified: apiKeyInput.dataset.verified === 'true',
-      verifiedAt: apiKeyInput.dataset.verified === 'true' ? new Date().toISOString() : null
+      apiKey
     };
     
     await saveIntegrationConfigToFirebase('deepseek', deepseekConfig);
@@ -2149,13 +2174,11 @@ async function handleNotificationConfig(type, e) {
     }
 
     try {
-      // Salvar no Firebase
+      // Salvar no Firebase (OTIMIZADO - apenas em integrationConfigs, sem duplicação)
       await saveIntegrationConfigToFirebase('whatsapp', { number });
-      await saveNotificationConfigToFirebase('whatsapp', { number });
       
       // Atualizar cache
       window.integrationConfigsCache.whatsapp = { number };
-      window.notificationConfigsCache.whatsapp = { number };
 
       // Mostrar mensagem de sucesso
       if (statusMessage) {
@@ -2201,14 +2224,10 @@ async function removeWhatsAppConfig() {
   try {
     const userData = await loadUserDataFromFirebase() || {};
     const integrationConfigs = userData.integrationConfigs || {};
-    const notificationConfigs = userData.notificationConfigs || {};
-    
     delete integrationConfigs.whatsapp;
-    delete notificationConfigs.whatsapp;
     
     await saveUserDataToFirebase({
-      integrationConfigs: integrationConfigs,
-      notificationConfigs: notificationConfigs
+      integrationConfigs: integrationConfigs
     });
     
     // Atualizar cache
@@ -2240,7 +2259,6 @@ async function removeWhatsAppConfig() {
 function showWhatsAppConfigInput() {
   // Limpar cache local (não remover do Firebase, apenas mostrar formulário)
   delete window.integrationConfigsCache.whatsapp;
-  delete window.notificationConfigsCache.whatsapp;
   
   // Recarregar modal
   const modalBody = document.getElementById('modalBody');
@@ -2957,14 +2975,13 @@ async function handleVerifyTelegramCode(e) {
       // Buscar dados da conta do cache ou Firebase
       const telegramConfig = window.telegramConfigCache || {};
       if (telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash) {
-        // Preparar dados completos da conta verificada
+        // Preparar dados da conta verificada (OTIMIZADO - apenas campos essenciais)
         const verifiedAccountData = {
-          ...telegramConfig,
-          name: currentUser?.email || currentUser?.displayName || 'Usuario',
-          email: currentUser?.email || '',
-          sessionString: verifyData.sessionString,
-          status: 'active',
-          verifiedAt: new Date().toISOString()
+          phone: telegramConfig.phone,
+          apiId: telegramConfig.apiId,
+          apiHash: telegramConfig.apiHash,
+          sessionId: telegramConfig.sessionId,
+          sessionString: verifyData.sessionString
         };
         
         // Salvar no Firebase
@@ -3544,16 +3561,12 @@ async function addTelegramAccount() {
     const data = await response.json();
     
     if (data.success) {
-      // Preparar dados da conta
+      // Preparar dados da conta (OTIMIZADO - apenas campos essenciais)
       const accountData = {
-        name: currentUser?.email || currentUser?.displayName || 'Usuario',
-        email: currentUser?.email || '',
         phone,
         apiId,
         apiHash,
-        sessionId: data.sessionId,
-        status: 'pending',
-        createdAt: new Date().toISOString()
+        sessionId: data.sessionId
       };
       
       // Salvar no cache primeiro (para uso durante verificação)
@@ -3670,16 +3683,12 @@ async function handleAddTelegramAccount(e) {
     const data = await response.json();
     
     if (data.success) {
-      // Salvar dados no Firebase (sem sessionString ainda, será salvo após verificação)
+      // Salvar dados no Firebase (OTIMIZADO - apenas campos essenciais, sem sessionString ainda)
       await saveTelegramAccountToFirebase({
-        name: currentUser?.email || currentUser?.displayName || 'Usuario',
-        email: currentUser?.email || '',
         phone,
         apiId,
         apiHash,
-        sessionId: data.sessionId,
-        status: 'pending',
-        createdAt: new Date().toISOString()
+        sessionId: data.sessionId
       });
       
       // Fechar modal de configuração imediatamente
