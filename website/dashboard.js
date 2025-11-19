@@ -2762,7 +2762,7 @@ let pendingTelegramSessionId = null;
 let pendingTelegramPhone = null;
 
 // Mostrar modal de código do Telegram
-function showTelegramCodeModal(sessionId, phone) {
+function showTelegramCodeModal(sessionId, phone, isWaiting = false) {
   pendingTelegramSessionId = sessionId;
   pendingTelegramPhone = phone;
   
@@ -2778,19 +2778,40 @@ function showTelegramCodeModal(sessionId, phone) {
     // Atualizar mensagem no modal
     const messageElement = document.getElementById('telegramCodeMessage');
     if (messageElement) {
-      messageElement.innerHTML = `
-        <strong style="color: var(--text-dark);">Código enviado para ${phone}</strong><br>
-        <span style="color: var(--text-light); font-size: 0.9rem;">Verifique as mensagens do Telegram no seu celular e digite o código abaixo:</span>
-      `;
+      if (isWaiting) {
+        // Mostrar mensagem de aguardando SMS
+        messageElement.innerHTML = `
+          <strong style="color: var(--text-dark);">Aguardando SMS...</strong><br>
+          <span style="color: var(--text-light); font-size: 0.9rem;">Enviando código SMS para ${phone}. Aguarde alguns segundos...</span>
+        `;
+        // Desabilitar input enquanto aguarda
+        if (codeInput) {
+          codeInput.disabled = true;
+          codeInput.placeholder = 'Aguardando SMS...';
+        }
+      } else {
+        // Mostrar mensagem normal quando SMS já foi enviado
+        messageElement.innerHTML = `
+          <strong style="color: var(--text-dark);">Código enviado para ${phone}</strong><br>
+          <span style="color: var(--text-light); font-size: 0.9rem;">Verifique as mensagens do Telegram no seu celular e digite o código abaixo:</span>
+        `;
+        // Habilitar input
+        if (codeInput) {
+          codeInput.disabled = false;
+          codeInput.placeholder = '12345';
+        }
+      }
     }
     
-    // Focar no input após animação
-    setTimeout(() => {
-      if (codeInput) {
-        codeInput.focus();
-        codeInput.value = '';
-      }
-    }, 300);
+    // Focar no input após animação (apenas se não estiver aguardando)
+    if (!isWaiting) {
+      setTimeout(() => {
+        if (codeInput) {
+          codeInput.focus();
+          codeInput.value = '';
+        }
+      }, 300);
+    }
   }
 }
 
@@ -3149,7 +3170,13 @@ async function addTelegramAccount() {
     return;
   }
   
-  // Desabilitar botão e mostrar loading
+  // Fechar modal de configuração e abrir modal de código IMEDIATAMENTE
+  document.getElementById('platformModal')?.classList.remove('active');
+  
+  // Abrir modal de código com mensagem "Aguardando SMS..."
+  showTelegramCodeModal(null, phone, true); // true = aguardando SMS
+  
+  // Desabilitar botão (se ainda estiver visível)
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando código SMS...';
@@ -3160,7 +3187,11 @@ async function addTelegramAccount() {
     // Verificar se a API está disponível
     const isApiAvailable = await checkTelegramApiStatus();
     if (!isApiAvailable) {
+      // Fechar modal de código e mostrar erro
+      closeTelegramCodeModal();
       showTelegramStatusMessage('⚠️ API do Telegram não está disponível! A API precisa estar rodando em: ' + TELEGRAM_API_URL, 'error');
+      // Reabrir modal de configuração
+      document.getElementById('platformModal')?.classList.add('active');
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
@@ -3249,13 +3280,10 @@ async function addTelegramAccount() {
       // Usar email como identificador único
       await saveTelegramAccountToFirebase(accountData);
       
-      // Fechar modal de configuração imediatamente
-      document.getElementById('platformModal')?.classList.remove('active');
+      // Atualizar modal de código para mostrar que SMS foi enviado
+      showTelegramCodeModal(data.sessionId, phone, false); // false = SMS já enviado
       
-      // Abrir modal de código imediatamente (sem mensagem intermediária)
-      showTelegramCodeModal(data.sessionId, phone);
-      
-      // Resetar botão
+      // Resetar botão (se ainda estiver visível)
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
