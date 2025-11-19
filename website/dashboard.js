@@ -2864,6 +2864,25 @@ async function handleVerifyTelegramCode(e) {
 
 // Carregar conta do Telegram do Firebase
 async function loadTelegramAccountFromFirebase() {
+  // Primeiro tentar carregar do localStorage (mais rápido e confiável)
+  const localConfig = localStorage.getItem('telegramConfig');
+  if (localConfig) {
+    try {
+      const config = JSON.parse(localConfig);
+      if (config.phone && config.apiId && config.apiHash) {
+        // Recarregar o HTML do modal
+        const container = document.getElementById('telegramConfigContainer');
+        if (container) {
+          container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
+        }
+        return;
+      }
+    } catch (e) {
+      // Ignorar erro de parse
+    }
+  }
+  
+  // Se não tiver no localStorage, tentar Firebase
   if (!currentUser || !currentUser.uid) {
     return;
   }
@@ -2886,18 +2905,20 @@ async function loadTelegramAccountFromFirebase() {
       }
     }
   } catch (error) {
-    // Se der erro, usar localStorage como fallback
+    // Silenciosamente usar apenas localStorage se Firestore não estiver disponível
   }
 }
 
 // Salvar conta do Telegram no Firebase
 async function saveTelegramAccountToFirebase(accountData) {
+  // Sempre salvar no localStorage primeiro
+  localStorage.setItem('telegramConfig', JSON.stringify(accountData));
+  
   if (!currentUser || !currentUser.uid) {
-    // Fallback para localStorage se não tiver usuário
-    localStorage.setItem('telegramConfig', JSON.stringify(accountData));
     return;
   }
   
+  // Tentar salvar no Firebase, mas não falhar se der erro
   try {
     if (window.firebaseDb) {
       const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
@@ -2905,17 +2926,10 @@ async function saveTelegramAccountToFirebase(accountData) {
         telegramAccount: accountData,
         updatedAt: new Date().toISOString()
       }, { merge: true });
-      
-      // Também salvar no localStorage como backup
-      localStorage.setItem('telegramConfig', JSON.stringify(accountData));
-    } else {
-      // Fallback para localStorage
-      localStorage.setItem('telegramConfig', JSON.stringify(accountData));
     }
   } catch (error) {
-    // Fallback para localStorage em caso de erro
-    localStorage.setItem('telegramConfig', JSON.stringify(accountData));
-    throw error;
+    // Silenciosamente usar apenas localStorage se Firestore não estiver disponível
+    // Não mostrar erro ao usuário, localStorage já foi salvo
   }
 }
 
@@ -3049,20 +3063,18 @@ async function addTelegramAccount() {
         createdAt: new Date().toISOString()
       });
       
-      // Mostrar sucesso e abrir modal de código imediatamente
-      showTelegramStatusMessage('✅ Código SMS enviado com sucesso! Verifique seu celular.', 'success');
+      // Fechar modal de configuração imediatamente
+      document.getElementById('platformModal')?.classList.remove('active');
       
-      // Fechar modal de configuração e abrir modal de código
-      setTimeout(() => {
-        document.getElementById('platformModal')?.classList.remove('active');
-        showTelegramCodeModal(data.sessionId, phone);
-        // Resetar botão
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
-        }
-        hideTelegramStatusMessage();
-      }, 500);
+      // Abrir modal de código imediatamente
+      showTelegramCodeModal(data.sessionId, phone);
+      
+      // Resetar botão
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
+      }
+      hideTelegramStatusMessage();
     } else {
       showTelegramStatusMessage('❌ Erro ao criar sessão: ' + (data.error || 'Erro desconhecido'), 'error');
       if (submitBtn) {

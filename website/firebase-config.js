@@ -34,19 +34,33 @@ const firebaseConfig = {
       // Inicializar Auth
       const auth = firebase.auth();
       
-      // Inicializar Firestore
-      const db = firebase.firestore();
+      // Inicializar Firestore (com tratamento de erro)
+      let db = null;
+      try {
+        db = firebase.firestore();
+        // Configurar para usar apenas localStorage se Firestore não estiver disponível
+        db.settings({
+          ignoreUndefinedProperties: true
+        });
+      } catch (error) {
+        // Se Firestore não estiver disponível, continuar sem ele
+        console.warn('⚠️ Firestore não disponível, usando apenas localStorage');
+      }
       
       // Configurar idioma para português
       auth.languageCode = 'pt';
       
       // Exportar para uso global
       window.firebaseAuth = auth;
-      window.firebaseDb = db;
+      window.firebaseDb = db; // Pode ser null se Firestore não estiver disponível
       
       console.log('✅ Firebase inicializado com sucesso!');
       console.log('✅ Authentication pronto para uso');
-      console.log('✅ Firestore pronto para uso');
+      if (db) {
+        console.log('✅ Firestore pronto para uso');
+      } else {
+        console.log('ℹ️ Usando localStorage para armazenamento');
+      }
       
     } catch (error) {
       console.error('❌ Erro ao inicializar Firebase:', error);
