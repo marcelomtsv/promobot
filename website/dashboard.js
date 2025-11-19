@@ -2814,7 +2814,8 @@ async function handleVerifyTelegramCode(e) {
     
     if (verifyData.success) {
       // Conta verificada com sucesso - salvar no Firebase
-      const telegramConfig = JSON.parse(localStorage.getItem('telegramConfig') || '{}');
+      // Buscar dados da conta do cache ou Firebase
+      const telegramConfig = window.telegramConfigCache || {};
       if (telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash) {
         await saveTelegramAccountToFirebase({
           ...telegramConfig,
