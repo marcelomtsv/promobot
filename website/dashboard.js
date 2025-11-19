@@ -525,7 +525,14 @@ async function openPlatformConfig(platformId) {
       
       return;
     } else if (platformId === 'whatsapp') {
-      modalTitle.textContent = `Configurar ${integration.name}`;
+      modalTitle.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+            <i class="fab fa-whatsapp" style="font-size: 1.25rem; color: white;"></i>
+          </div>
+          <span>Configurar WhatsApp</span>
+        </div>
+      `;
       modalBody.innerHTML = getNotificationConfigHTML(platformId);
       modal.classList.add('active');
       
@@ -1153,19 +1160,10 @@ function getNotificationConfigHTML(type) {
   } else if (type === 'whatsapp') {
     return `
       <div id="whatsappConfigContainer">
-        <div style="margin-bottom: 2rem;">
-          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border-color);">
-            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
-              <i class="fab fa-whatsapp" style="font-size: 1.5rem; color: white;"></i>
-            </div>
-            <div>
-              <h3 style="margin: 0; color: var(--text-dark); font-size: 1.25rem; font-weight: 600;">WhatsApp</h3>
-              <p style="margin: 0.25rem 0 0 0; color: var(--text-light); font-size: 0.9rem;">Configure sua conta do WhatsApp</p>
-            </div>
-          </div>
-        </div>
-        
         <form id="notificationConfigForm">
+          <div style="text-align: center; margin-bottom: 2rem;">
+            <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Configure sua conta do WhatsApp</p>
+          </div>
           <div class="form-group">
             <label>Número do WhatsApp (com código do país)</label>
             <input type="text" id="whatsappNumber" placeholder="5511999999999">
