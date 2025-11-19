@@ -312,7 +312,7 @@ function createIntegrationCard(integration) {
   if (integration.id === 'telegram') {
     // Verificar se há contas do Telegram configuradas
     if (telegramSessions && telegramSessions.length > 0) {
-      const activeSessions = telegramSessions.filter(s => s.status === 'connected');
+      const activeSessions = telegramSessions.filter(s => s.status === 'active' || s.status === 'connected');
       if (activeSessions.length > 0) {
         statusText = 'Ativo';
         statusClass = 'active';
@@ -2381,6 +2381,114 @@ function resetTelegramAccountForm() {
   }
 }
 
+// Variável global para armazenar sessionId durante verificação
+let pendingTelegramSessionId = null;
+let pendingTelegramPhone = null;
+
+// Mostrar modal de código do Telegram
+function showTelegramCodeModal(sessionId, phone) {
+  pendingTelegramSessionId = sessionId;
+  pendingTelegramPhone = phone;
+  
+  const modal = document.getElementById('telegramCodeModal');
+  const codeInput = document.getElementById('telegramVerificationCode');
+  
+  if (modal) {
+    modal.classList.add('active');
+    // Fechar modal de configuração principal
+    document.getElementById('platformModal')?.classList.remove('active');
+    
+    // Focar no input após animação
+    setTimeout(() => {
+      if (codeInput) {
+        codeInput.focus();
+        codeInput.value = '';
+      }
+    }, 300);
+  }
+}
+
+// Fechar modal de código
+function closeTelegramCodeModal() {
+  const modal = document.getElementById('telegramCodeModal');
+  if (modal) {
+    modal.classList.remove('active');
+  }
+  pendingTelegramSessionId = null;
+  pendingTelegramPhone = null;
+}
+
+// Verificar código do Telegram
+async function handleVerifyTelegramCode(e) {
+  e.preventDefault();
+  
+  if (!pendingTelegramSessionId) {
+    alert('Erro: Sessão não encontrada. Tente adicionar a conta novamente.');
+    return;
+  }
+  
+  const code = document.getElementById('telegramVerificationCode').value.trim();
+  if (!code) {
+    alert('Digite o código de verificação');
+    return;
+  }
+  
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+  
+  try {
+    // Verificar código
+    const verifyResponse = await fetch(`${TELEGRAM_API_URL}/api/sessions/${pendingTelegramSessionId}/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+      signal: createTimeoutSignal(30000) // Timeout de 30 segundos
+    });
+    
+    if (!verifyResponse.ok) {
+      const errorData = await verifyResponse.json().catch(() => ({ error: `Status ${verifyResponse.status}` }));
+      throw new Error(errorData.error || `Erro HTTP ${verifyResponse.status}`);
+    }
+    
+    const verifyData = await verifyResponse.json();
+    
+    if (verifyData.success) {
+      // Sucesso!
+      submitBtn.innerHTML = '<i class="fas fa-check"></i> Verificado!';
+      submitBtn.style.background = '#10b981';
+      
+      setTimeout(() => {
+        closeTelegramCodeModal();
+        resetTelegramAccountForm();
+        
+        // Recarregar tudo
+        loadTelegramAccountsList();
+        loadTelegramSessions();
+        loadPlatforms();
+        
+        // Mostrar mensagem de sucesso
+        alert('✅ Conta adicionada e verificada com sucesso!');
+      }, 1000);
+    } else {
+      throw new Error(verifyData.error || 'Código inválido');
+    }
+  } catch (error) {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+    
+    if (error.name === 'AbortError') {
+      alert('⏱️ Tempo esgotado. Tente novamente.');
+    } else {
+      alert('❌ Erro ao verificar código: ' + error.message);
+      // Limpar input para tentar novamente
+      document.getElementById('telegramVerificationCode').value = '';
+      document.getElementById('telegramVerificationCode').focus();
+    }
+  }
+}
+
 // Adicionar conta do Telegram
 async function handleAddTelegramAccount(e) {
   e.preventDefault();
@@ -2422,37 +2530,8 @@ async function handleAddTelegramAccount(e) {
     const data = await response.json();
     
     if (data.success) {
-      // Solicitar código de verificação
-      const code = prompt('Digite o código SMS que você recebeu no Telegram:');
-      if (!code) {
-        alert('Código não fornecido. Tente novamente.');
-        return;
-      }
-      
-      // Verificar código
-      const verifyResponse = await fetch(`${TELEGRAM_API_URL}/api/sessions/${data.sessionId}/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-        signal: createTimeoutSignal(30000) // Timeout de 30 segundos
-      });
-      
-      if (!verifyResponse.ok) {
-        const errorData = await verifyResponse.json().catch(() => ({ error: `Status ${verifyResponse.status}` }));
-        throw new Error(errorData.error || `Erro HTTP ${verifyResponse.status}`);
-      }
-      
-      const verifyData = await verifyResponse.json();
-      
-      if (verifyData.success) {
-        alert('Conta adicionada com sucesso!');
-        resetTelegramAccountForm();
-        loadTelegramAccountsList();
-        loadTelegramSessions();
-        loadPlatforms();
-      } else {
-        alert('Erro ao verificar código: ' + (verifyData.error || 'Código inválido'));
-      }
+      // Mostrar modal para inserir código
+      showTelegramCodeModal(data.sessionId, phone);
     } else {
       alert('Erro ao criar sessão: ' + (data.error || 'Erro desconhecido'));
     }
