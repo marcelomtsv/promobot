@@ -3650,9 +3650,8 @@ function hideTelegramStatusMessage() {
 window.showAddTelegramAccountForm = showAddTelegramAccountForm;
 window.hideAddTelegramAccountForm = hideAddTelegramAccountForm;
 window.toggleApiKeyVisibility = toggleApiKeyVisibility;
-window.verifyDeepSeekApiKey = verifyDeepSeekApiKey;
+window.cadastrarDeepSeek = cadastrarDeepSeek;
 window.testDeepSeekApiConnection = testDeepSeekApiConnection;
-window.addDeepSeekApiKey = addDeepSeekApiKey;
 window.removeDeepSeekApiKey = removeDeepSeekApiKey;
 window.showDeepSeekApiKeyInput = showDeepSeekApiKeyInput;
 
