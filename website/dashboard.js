@@ -1161,7 +1161,7 @@ function getNotificationConfigHTML(type) {
     const savedConfig = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
     const whatsappConfig = savedConfig.whatsapp || {};
     const notificationConfigs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
-    const hasConfig = (whatsappConfig.number || notificationConfigs.whatsapp?.number) || (whatsappConfig.apiKey || notificationConfigs.whatsapp?.apiKey);
+    const hasConfig = (whatsappConfig.number || notificationConfigs.whatsapp?.number);
     const config = whatsappConfig.number ? whatsappConfig : notificationConfigs.whatsapp || {};
     
     return `
@@ -1208,7 +1208,7 @@ function getNotificationConfigHTML(type) {
                 <i class="fas fa-trash"></i> Remover
               </button>
               <button type="button" class="btn btn-primary" onclick="showWhatsAppConfigInput()" style="flex: 1;">
-                <i class="fas fa-edit"></i> Editar
+                <i class="fas fa-edit"></i> Trocar Número
               </button>
             </div>
           </div>
@@ -1258,46 +1258,13 @@ function getNotificationConfigHTML(type) {
               </div>
             </div>
             
-            <!-- Card: API Key (Opcional) -->
-            <div style="background: var(--bg-light); border: 2px solid var(--border-color); border-radius: 16px; padding: 1.5rem; margin-bottom: 2rem;">
-              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;">
-                <div style="width: 44px; height: 44px; background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
-                  <i class="fas fa-key" style="font-size: 1.1rem; color: white;"></i>
-                </div>
-                <div style="flex: 1;">
-                  <h4 style="margin: 0; color: var(--text-dark); font-size: 1rem; font-weight: 600;">API Key</h4>
-                  <p style="margin: 0.25rem 0 0 0; color: var(--text-light); font-size: 0.85rem;">Opcional: chave de API para serviço externo</p>
-                </div>
-                <span style="background: rgba(37, 211, 102, 0.1); color: #25d366; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Opcional</span>
-              </div>
-              
-              <div class="form-group" style="margin: 0;">
-                <div style="position: relative;">
-                  <input 
-                    type="password" 
-                    id="whatsappApiKey" 
-                    value="${config.apiKey || ''}"
-                    placeholder="Digite sua API Key (opcional)" 
-                    style="width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--border-color); border-radius: 10px; background: var(--bg-white); color: var(--text-dark); font-size: 0.95rem; transition: all 0.2s ease;"
-                    onfocus="this.style.borderColor='var(--primary-color)'; this.style.boxShadow='0 0 0 3px rgba(99, 102, 241, 0.1)'"
-                    onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none'"
-                    autocomplete="off"
-                  >
-                </div>
-                <small style="color: var(--text-light); font-size: 0.8rem; display: block; margin-top: 0.75rem; line-height: 1.5;">
-                  <i class="fas fa-info-circle" style="margin-right: 0.25rem;"></i>
-                  Use apenas se estiver integrando com um serviço externo de WhatsApp
-                </small>
-              </div>
-            </div>
-            
             <!-- Botões de Ação -->
             <div class="form-actions" style="display: flex; gap: 0.75rem; margin-top: 2rem;">
               <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1; padding: 0.875rem;">
                 <i class="fas fa-times"></i> Cancelar
               </button>
               <button type="submit" class="btn btn-primary" id="saveWhatsAppBtn" style="flex: 1; padding: 0.875rem; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border: none; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
-                <i class="fas fa-save"></i> Salvar Configuração
+                <i class="fas fa-plus"></i> Cadastrar
               </button>
             </div>
           </form>
@@ -2101,7 +2068,6 @@ function handleNotificationConfig(type, e) {
     if (e) e.preventDefault();
     
     const number = document.getElementById('whatsappNumber')?.value.trim();
-    const apiKey = document.getElementById('whatsappApiKey')?.value.trim();
     const statusMessage = document.getElementById('whatsappStatusMessage');
     const saveBtn = document.getElementById('saveWhatsAppBtn');
 
@@ -2117,20 +2083,20 @@ function handleNotificationConfig(type, e) {
       return;
     }
 
-    // Desabilitar botão durante salvamento
+    // Desabilitar botão durante cadastro
     if (saveBtn) {
       saveBtn.disabled = true;
-      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cadastrando...';
     }
 
     try {
       const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-      configs.whatsapp = { number, apiKey };
+      configs.whatsapp = { number };
       localStorage.setItem('integrationConfigs', JSON.stringify(configs));
 
       // Também salvar em notificationConfigs para compatibilidade
       const notificationConfigs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
-      notificationConfigs.whatsapp = { number, apiKey };
+      notificationConfigs.whatsapp = { number };
       localStorage.setItem('notificationConfigs', JSON.stringify(notificationConfigs));
 
       // Mostrar mensagem de sucesso
@@ -2138,7 +2104,7 @@ function handleNotificationConfig(type, e) {
         statusMessage.style.display = 'block';
         statusMessage.style.background = '#d1fae5';
         statusMessage.style.borderColor = '#10b981';
-        statusMessage.innerHTML = '<span style="color: #065f46;"><i class="fas fa-check-circle"></i> WhatsApp configurado com sucesso!</span>';
+        statusMessage.innerHTML = '<span style="color: #065f46;"><i class="fas fa-check-circle"></i> WhatsApp cadastrado com sucesso!</span>';
       }
 
       // Recarregar modal após 1 segundo
@@ -2154,11 +2120,11 @@ function handleNotificationConfig(type, e) {
         statusMessage.style.display = 'block';
         statusMessage.style.background = '#fee2e2';
         statusMessage.style.borderColor = '#ef4444';
-        statusMessage.innerHTML = '<span style="color: #991b1b;"><i class="fas fa-exclamation-circle"></i> Erro ao salvar: ' + error.message + '</span>';
+        statusMessage.innerHTML = '<span style="color: #991b1b;"><i class="fas fa-exclamation-circle"></i> Erro ao cadastrar: ' + error.message + '</span>';
       }
       if (saveBtn) {
         saveBtn.disabled = false;
-        saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Configuração';
+        saveBtn.innerHTML = '<i class="fas fa-plus"></i> Cadastrar';
       }
     }
     
