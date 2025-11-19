@@ -493,11 +493,20 @@ async function openPlatformConfig(platformId) {
               <p style="color: var(--text-light); margin-bottom: 1.5rem;">
                 A API precisa estar rodando em: <strong>${TELEGRAM_API_URL}</strong>
               </p>
-              <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1.5rem;">
-                Para iniciar a API, execute no terminal:<br>
-                <code style="background: var(--bg-light); padding: 0.5rem; border-radius: 4px; display: inline-block; margin-top: 0.5rem;">cd telegram && npm start</code>
-              </p>
-              <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+              <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
+                <h4 style="color: var(--text-dark); margin-bottom: 0.75rem; font-size: 1rem;">Como iniciar:</h4>
+                <ol style="color: var(--text-light); font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
+                  <li>Abra um terminal na pasta do projeto</li>
+                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">cd telegram</code></li>
+                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">npm start</code></li>
+                  <li>Aguarde a mensagem: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">🚀 Servidor rodando em http://localhost:3003</code></li>
+                  <li>Feche este modal e tente novamente</li>
+                </ol>
+              </div>
+              <div style="display: flex; gap: 0.75rem; justify-content: center;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="openPlatformConfig('telegram')">Tentar Novamente</button>
+              </div>
             </div>
           `;
           return;
