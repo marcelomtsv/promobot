@@ -206,39 +206,10 @@ function showNotification(message, type = 'info') {
   });
 }
 
-// Enhanced Intersection Observer for animations
-const observerOptions = {
-  threshold: 0.1,
-  rootMargin: '0px 0px -50px 0px'
-};
-
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('revealed');
-      entry.target.style.opacity = '1';
-      entry.target.style.transform = 'translateY(0)';
-      
-      // Add staggered animation for multiple elements
-      const siblings = entry.target.parentElement.children;
-      Array.from(siblings).forEach((sibling, index) => {
-        if (sibling === entry.target) {
-          setTimeout(() => {
-            sibling.style.animationDelay = `${index * 0.1}s`;
-          }, 100);
-        }
-      });
-    }
-  });
-}, observerOptions);
-
-// Enhanced scroll reveal animations
+// Scroll reveal removido - elementos aparecem diretamente sem animação
 document.querySelectorAll('.feature, .store, .testimonial, .pricing-card, .action-card, .step, .credit-card, .contact-item').forEach(el => {
-  el.classList.add('scroll-reveal');
-  el.style.opacity = '0';
-  el.style.transform = 'translateY(30px)';
-  el.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
-  observer.observe(el);
+  el.style.opacity = '1';
+  el.style.transform = 'none';
 });
 
 // Enhanced navbar scroll effect with smooth transitions

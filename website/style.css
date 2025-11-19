@@ -261,13 +261,15 @@ html {
   }
 }
 
-/* Enhanced section headers */
+/* Section headers - sem animação de subindo */
 .section-header h2 {
-  animation: fadeInUp 0.8s ease-out;
+  animation: none;
+  opacity: 1;
 }
 
 .section-header p {
-  animation: fadeInUp 0.8s ease-out 0.2s both;
+  animation: none;
+  opacity: 1;
 }
 
 /* Enhanced loading animations */
@@ -292,16 +294,15 @@ html {
   animation: shimmer 1.5s infinite;
 }
 
-/* Enhanced scroll animations */
+/* Scroll reveal removido - elementos aparecem diretamente */
 .scroll-reveal {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  transform: none;
 }
 
 .scroll-reveal.revealed {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
 /* Enhanced mobile animations */
