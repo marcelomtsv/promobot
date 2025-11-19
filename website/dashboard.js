@@ -1205,63 +1205,38 @@ function getNotificationConfigHTML(type) {
         ` : `
           <!-- Formulário: Adicionar -->
           <form id="notificationConfigForm">
-            <!-- Hero Section -->
-            <div style="text-align: center; margin-bottom: 2.5rem; padding: 1.5rem; background: linear-gradient(135deg, rgba(37, 211, 102, 0.08) 0%, rgba(18, 140, 126, 0.08) 100%); border-radius: 16px; border: 1px solid rgba(37, 211, 102, 0.15);">
-              <div style="width: 64px; height: 64px; margin: 0 auto 1rem; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 20px rgba(37, 211, 102, 0.3);">
-                <i class="fab fa-whatsapp" style="font-size: 2rem; color: white;"></i>
-              </div>
-              <h3 style="margin: 0 0 0.75rem 0; color: var(--text-dark); font-size: 1.25rem; font-weight: 700;">Adicione sua conta do WhatsApp</h3>
-              <p style="color: var(--text-light); margin: 0; font-size: 0.95rem; line-height: 1.6; max-width: 400px; margin-left: auto; margin-right: auto;">
-                Envie promoções automaticamente para seus grupos e contatos do WhatsApp
-              </p>
-            </div>
-            
             <!-- Status Message -->
-            <div id="whatsappStatusMessage" style="display: none; margin-bottom: 1.5rem; padding: 1rem; border-radius: 12px; background: var(--bg-white); border: 1px solid var(--border-color); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);"></div>
+            <div id="whatsappStatusMessage" style="display: none; margin-bottom: 1.5rem; padding: 0.875rem 1rem; border-radius: 8px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
             
-            <!-- Card: Número do WhatsApp -->
-            <div style="background: var(--bg-white); border: 2px solid rgba(37, 211, 102, 0.2); border-radius: 16px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 16px rgba(37, 211, 102, 0.08); transition: all 0.3s ease;" onmouseover="this.style.borderColor='rgba(37, 211, 102, 0.3)'; this.style.boxShadow='0 6px 24px rgba(37, 211, 102, 0.12)'" onmouseout="this.style.borderColor='rgba(37, 211, 102, 0.2)'; this.style.boxShadow='0 4px 16px rgba(37, 211, 102, 0.08)'">
-              <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
-                <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
-                  <i class="fas fa-phone-alt" style="font-size: 1.2rem; color: white;"></i>
+            <!-- Input Simples -->
+            <div class="form-group" style="margin-bottom: 2rem;">
+              <label style="display: block; margin-bottom: 0.75rem; color: var(--text-dark); font-size: 0.9rem; font-weight: 500;">Número do WhatsApp</label>
+              <div style="position: relative;">
+                <div style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 0.5rem; pointer-events: none; z-index: 1;">
+                  <i class="fab fa-whatsapp" style="color: #25d366; font-size: 1rem;"></i>
+                  <span style="color: var(--text-light); font-size: 0.875rem;">+</span>
                 </div>
-                <div style="flex: 1;">
-                  <h4 style="margin: 0; color: var(--text-dark); font-size: 1.05rem; font-weight: 700;">Número do WhatsApp</h4>
-                  <p style="margin: 0.375rem 0 0 0; color: var(--text-light); font-size: 0.875rem;">Digite seu número com código do país</p>
-                </div>
-              </div>
-              
-              <div class="form-group" style="margin: 0;">
-                <div style="position: relative;">
-                  <div style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 0.5rem; pointer-events: none;">
-                    <i class="fab fa-whatsapp" style="color: #25d366; font-size: 1.1rem;"></i>
-                    <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">+</span>
-                  </div>
-                  <input 
-                    type="text" 
-                    id="whatsappNumber" 
-                    value="${config.number || ''}"
-                    placeholder="5511999999999" 
-                    style="width: 100%; padding: 0.875rem 1rem 0.875rem 3.5rem; border: 2px solid var(--border-color); border-radius: 10px; background: var(--bg-white); color: var(--text-dark); font-size: 1rem; font-weight: 500; transition: all 0.2s ease;"
-                    onfocus="this.style.borderColor='#25d366'; this.style.boxShadow='0 0 0 3px rgba(37, 211, 102, 0.1)'"
-                    onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='none'"
-                    autocomplete="off"
-                  >
-                </div>
-                <small style="color: var(--text-light); font-size: 0.8rem; display: block; margin-top: 0.75rem; line-height: 1.5;">
-                  <i class="fas fa-info-circle" style="margin-right: 0.25rem;"></i>
-                  Formato: código do país + DDD + número (ex: 5511999999999)
-                </small>
+                <input 
+                  type="text" 
+                  id="whatsappNumber" 
+                  value="${config.number || ''}"
+                  placeholder="5511999999999" 
+                  style="width: 100%; padding: 0.875rem 1rem 0.875rem 3.25rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark); font-size: 0.95rem; transition: all 0.2s ease;"
+                  onfocus="this.style.borderColor='#25d366'; this.style.outline='none'"
+                  onblur="this.style.borderColor='var(--border-color)'"
+                  autocomplete="off"
+                  required
+                >
               </div>
             </div>
             
             <!-- Botões de Ação -->
-            <div class="form-actions" style="display: flex; gap: 0.75rem; margin-top: 2rem;">
-              <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1; padding: 0.875rem;">
-                <i class="fas fa-times"></i> Cancelar
+            <div class="form-actions" style="display: flex; gap: 0.75rem;">
+              <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">
+                Cancelar
               </button>
-              <button type="submit" class="btn btn-primary" id="saveWhatsAppBtn" style="flex: 1; padding: 0.875rem; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border: none; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
-                <i class="fas fa-plus"></i> Cadastrar
+              <button type="submit" class="btn btn-primary" id="saveWhatsAppBtn" style="flex: 1; background: #25d366; border: none;">
+                Cadastrar
               </button>
             </div>
           </form>
