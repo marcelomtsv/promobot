@@ -346,7 +346,7 @@ function createIntegrationCard(integration) {
   }
   
   const descriptions = {
-    'telegram': 'Gerencie suas contas do Telegram e receba mensagens em tempo real',
+    'telegram': 'Configure o Telegram para receber mensagens em tempo real',
     'whatsapp': 'Configure o WhatsApp para receber notificações',
     'deepseek': 'IA para análise inteligente de promoções',
     'botfather': 'Crie e gerencie bots do Telegram'
@@ -366,7 +366,7 @@ function createIntegrationCard(integration) {
     <div class="platform-actions">
       <button class="btn-sm btn-primary" onclick="openPlatformConfig('${integration.id}')">
         <i class="fas fa-cog"></i>
-        ${integration.id === 'telegram' ? 'Gerenciar Contas' : 'Configurar'}
+        Configurar
       </button>
     </div>
   `;
