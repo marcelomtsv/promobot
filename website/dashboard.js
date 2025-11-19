@@ -3168,17 +3168,37 @@ async function addTelegramAccount() {
       return;
     }
 
-    // Verificar se já existe uma conta e remover da API antes de adicionar nova
-    const existingAccount = window.telegramConfigCache;
-    if (existingAccount && existingAccount.sessionId) {
+    // Remover TODAS as sessões existentes da API antes de adicionar nova
+    try {
+      // Primeiro, tentar buscar todas as sessões para ver se há alguma
+      const sessionsResponse = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
+        method: 'GET',
+        signal: createTimeoutSignal(5000)
+      }).catch(() => null);
+      
+      if (sessionsResponse && sessionsResponse.ok) {
+        const sessionsData = await sessionsResponse.json().catch(() => ({ sessions: [] }));
+        const existingSessions = sessionsData.sessions || [];
+        
+        // Se houver sessões, remover todas
+        if (existingSessions.length > 0) {
+          // Remover todas as sessões de uma vez
+          await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
+            method: 'DELETE',
+            signal: createTimeoutSignal(5000)
+          }).catch(() => {}); // Ignorar erros
+        }
+      }
+    } catch (e) {
+      // Ignorar erros ao verificar/remover sessões antigas
+      // Tentar remover todas mesmo assim
       try {
-        // Remover conta existente da API
-        await fetch(`${TELEGRAM_API_URL}/api/sessions/${existingAccount.sessionId}`, {
+        await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
           method: 'DELETE',
           signal: createTimeoutSignal(5000)
-        }).catch(() => {}); // Ignorar erros se a sessão já não existir
-      } catch (e) {
-        // Ignorar erros ao remover sessão antiga
+        }).catch(() => {});
+      } catch (e2) {
+        // Ignorar
       }
     }
 
