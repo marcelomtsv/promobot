@@ -285,7 +285,7 @@ function animateCounter(elementId, target, prefix = '', suffix = '') {
 }
 
 // Carregar plataformas e integrações
-function loadPlatforms() {
+async function loadPlatforms() {
   const platformsList = document.getElementById('platformsList');
   const integrationsList = document.getElementById('integrationsList');
   const activePreview = document.getElementById('activePlatformsPreview');
@@ -294,6 +294,23 @@ function loadPlatforms() {
   if (platformsList) platformsList.innerHTML = '';
   if (integrationsList) integrationsList.innerHTML = '';
   if (activePreview) activePreview.innerHTML = '';
+
+  // Verificar sincronização do Telegram antes de criar cards
+  if (currentUser && currentUser.uid) {
+    try {
+      const syncStatus = await checkTelegramAccountSync();
+      // Atualizar cache com dados sincronizados
+      if (syncStatus.isActive && syncStatus.firebaseAccount) {
+        window.telegramConfigCache = syncStatus.firebaseAccount;
+      } else if (!syncStatus.isActive) {
+        window.telegramConfigCache = {};
+      }
+      // Atualizar telegramSessions com dados da API
+      telegramSessions = syncStatus.apiSessions || [];
+    } catch (error) {
+      // Ignorar erros
+    }
+  }
 
   // Carregar integrações destacadas
   if (integrationsList) {
