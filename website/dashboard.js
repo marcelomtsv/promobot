@@ -475,7 +475,14 @@ async function openPlatformConfig(platformId) {
   const integration = integrations.find(i => i.id === platformId);
   if (integration) {
     if (platformId === 'telegram') {
-      modalTitle.textContent = `Configurar ${integration.name}`;
+      modalTitle.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);">
+            <i class="fab fa-telegram-plane" style="font-size: 1.25rem; color: white;"></i>
+          </div>
+          <span>Configurar Telegram</span>
+        </div>
+      `;
       modalBody.innerHTML = getTelegramConfigHTML();
       modal.classList.add('active');
       
@@ -649,10 +656,6 @@ function getTelegramConfigHTML() {
         <!-- Formulário: Adicionar Conta -->
         <form id="telegramConfigForm">
           <div style="text-align: center; margin-bottom: 2rem;">
-            <div style="width: 60px; height: 60px; margin: 0 auto 1rem; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3);">
-              <i class="fab fa-telegram-plane" style="font-size: 1.5rem; color: white;"></i>
-            </div>
-            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Telegram</h3>
             <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Adicionar Conta</p>
           </div>
           
