@@ -2323,19 +2323,36 @@ async function loadTelegramAccountsList() {
       return;
     }
     
-    container.innerHTML = telegramSessions.map(session => `
+    container.innerHTML = telegramSessions.map(session => {
+      // Determinar status correto
+      let statusText = 'Desconectada';
+      let statusClass = 'soon';
+      const isActive = session.status === 'active' || session.status === 'connected';
+      
+      if (isActive) {
+        statusText = 'Conectada';
+        statusClass = 'active';
+      } else if (session.status === 'paused') {
+        statusText = 'Pausada';
+        statusClass = 'soon';
+      } else if (session.status === 'pending') {
+        statusText = 'Aguardando código';
+        statusClass = 'soon';
+      }
+      
+      return `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem;">
         <div>
-          <strong style="color: var(--text-dark);">${session.name}</strong>
+          <strong style="color: var(--text-dark);">${session.name || 'Sem nome'}</strong>
           <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.25rem;">
-            ${session.phone} • 
-            <span class="platform-status ${session.status === 'connected' ? 'active' : 'soon'}" style="display: inline-block; padding: 2px 8px; font-size: 0.75rem;">
-              ${session.status === 'connected' ? 'Conectada' : session.status === 'paused' ? 'Pausada' : 'Desconectada'}
+            ${session.phone || 'Sem telefone'} • 
+            <span class="platform-status ${statusClass}" style="display: inline-block; padding: 2px 8px; font-size: 0.75rem;">
+              ${statusText}
             </span>
           </div>
         </div>
         <div style="display: flex; gap: 0.5rem;">
-          ${session.status === 'connected' ? `
+          ${isActive ? `
             <button class="btn-sm btn-outline" onclick="pauseTelegramSession('${session.id}')" title="Pausar">
               <i class="fas fa-pause"></i>
             </button>
@@ -2343,13 +2360,18 @@ async function loadTelegramAccountsList() {
             <button class="btn-sm btn-primary" onclick="resumeTelegramSession('${session.id}')" title="Retomar">
               <i class="fas fa-play"></i>
             </button>
+          ` : session.status === 'pending' ? `
+            <button class="btn-sm btn-primary" onclick="showTelegramCodeModal('${session.id}', '${session.phone || ''}')" title="Verificar código">
+              <i class="fas fa-key"></i> Verificar
+            </button>
           ` : ''}
           <button class="btn-sm btn-outline" onclick="deleteTelegramSession('${session.id}')" title="Excluir" style="color: var(--accent-color);">
             <i class="fas fa-trash"></i>
           </button>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   } catch (error) {
     container.innerHTML = '<p style="color: var(--accent-color); text-align: center; padding: 1rem;">Erro ao carregar contas.</p>';
   }
