@@ -4,15 +4,17 @@
   "description": "PromoBOT - Sistema completo com Website e APIs",
   "private": true,
   "scripts": {
-    "install:all": "npm install && cd website && npm install && cd ../botfather && npm install && cd ../deepseek && npm install",
+    "install:all": "npm install && cd website && npm install && cd ../botfather && npm install && cd ../deepseek && npm install && cd ../telegram && npm install",
     "dev": "concurrently \"npm:dev:*\"",
     "dev:website": "cd website && npm run dev",
     "dev:botfather": "cd botfather && npm run dev",
     "dev:deepseek": "cd deepseek && npm run dev",
+    "dev:telegram": "cd telegram && npm run dev",
     "start": "concurrently \"npm:start:*\"",
     "start:website": "cd website && npm start",
     "start:botfather": "cd botfather && npm start",
-    "start:deepseek": "cd deepseek && npm start"
+    "start:deepseek": "cd deepseek && npm start",
+    "start:telegram": "cd telegram && npm start"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
