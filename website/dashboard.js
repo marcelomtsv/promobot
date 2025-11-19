@@ -29,8 +29,7 @@ let monitoringInterval = null;
 let isMonitoring = false;
 let autoScrollEnabled = true;
 
-// WebSocket para mensagens do Telegram
-let telegramWebSocket = null;
+// Sessões do Telegram
 let telegramSessions = [];
 
 // ===== CONFIGURAÇÃO DA API =====
@@ -82,8 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupEventListeners();
   loadPlatforms();
   initMonitoring();
-  // Inicializar Telegram WebSocket para receber mensagens
-  initTelegramWebSocket();
+  // Carregar sessões do Telegram
   loadTelegramSessions();
   
   // Restaurar aba ativa salva (já aplicada no script inline, apenas garantir sincronização)
@@ -949,20 +947,30 @@ function getBotFatherConfigHTML() {
   `;
 }
 
-// HTML de configuração de notificações
+// HTML de configuração de notificações (padronizado)
 function getNotificationConfigHTML(type) {
   if (type === 'telegram') {
     return `
       <div id="telegramConfigContainer">
-        <div style="margin-bottom: 1.5rem;">
-          <h4 style="margin-bottom: 1rem; color: var(--text-dark);">Contas do Telegram</h4>
-          <div id="telegramAccountsList" style="margin-bottom: 1rem;">
+        <div style="margin-bottom: 2rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border-color);">
+            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);">
+              <i class="fab fa-telegram-plane" style="font-size: 1.5rem; color: white;"></i>
+            </div>
+            <div>
+              <h3 style="margin: 0; color: var(--text-dark); font-size: 1.25rem; font-weight: 600;">Telegram</h3>
+              <p style="margin: 0.25rem 0 0 0; color: var(--text-light); font-size: 0.9rem;">Gerencie sua conta do Telegram</p>
+            </div>
+          </div>
+          
+          <div id="telegramAccountsList" style="margin-bottom: 1.5rem;">
             <!-- Contas serão carregadas aqui -->
           </div>
         </div>
-        <div id="addTelegramAccountForm" style="padding: 1rem; background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 1rem;">
-          <h4 style="margin-bottom: 1rem; color: var(--text-dark);">Adicionar Nova Conta</h4>
-          <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1rem;">
+        
+        <div id="addTelegramAccountForm" style="padding: 1.5rem; background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 1.5rem;">
+          <h4 style="margin: 0 0 0.75rem 0; color: var(--text-dark); font-size: 1.1rem; font-weight: 600;">Adicionar Conta</h4>
+          <p style="color: var(--text-light); font-size: 0.9rem; margin: 0 0 1.5rem 0; line-height: 1.5;">
             Preencha os dados abaixo para adicionar uma conta do Telegram. Você receberá um código SMS para confirmar.
           </p>
           <form id="addTelegramAccountFormElement">
@@ -981,17 +989,17 @@ function getNotificationConfigHTML(type) {
               <label>API ID</label>
               <input type="text" id="telegramApiId" placeholder="12345678" required>
               <small style="color: var(--text-light); font-size: 0.85rem;">
-                Obtenha em <a href="https://my.telegram.org/apps" target="_blank">my.telegram.org/apps</a>
+                Obtenha em <a href="https://my.telegram.org/apps" target="_blank" style="color: var(--primary-color);">my.telegram.org/apps</a>
               </small>
             </div>
             <div class="form-group">
               <label>API Hash</label>
               <input type="text" id="telegramApiHash" placeholder="abcdef1234567890abcdef1234567890" required>
               <small style="color: var(--text-light); font-size: 0.85rem;">
-                Obtenha em <a href="https://my.telegram.org/apps" target="_blank">my.telegram.org/apps</a>
+                Obtenha em <a href="https://my.telegram.org/apps" target="_blank" style="color: var(--primary-color);">my.telegram.org/apps</a>
               </small>
             </div>
-            <div class="form-actions">
+            <div class="form-actions" style="margin-top: 1.5rem;">
               <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
               <button type="submit" class="btn btn-primary">
                 <i class="fas fa-plus"></i>
@@ -1000,30 +1008,51 @@ function getNotificationConfigHTML(type) {
             </div>
           </form>
         </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+        
+        <div class="form-actions" style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()" style="width: 100%;">Fechar</button>
         </div>
       </div>
     `;
   } else if (type === 'whatsapp') {
     return `
-      <form id="notificationConfigForm">
-        <div class="form-group">
-          <label>Número do WhatsApp (com código do país)</label>
-          <input type="text" id="whatsappNumber" placeholder="5511999999999">
-          <small style="color: var(--text-light); font-size: 0.85rem;">
-            Formato: código do país + DDD + número (ex: 5511999999999)
-          </small>
+      <div id="whatsappConfigContainer">
+        <div style="margin-bottom: 2rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border-color);">
+            <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+              <i class="fab fa-whatsapp" style="font-size: 1.5rem; color: white;"></i>
+            </div>
+            <div>
+              <h3 style="margin: 0; color: var(--text-dark); font-size: 1.25rem; font-weight: 600;">WhatsApp</h3>
+              <p style="margin: 0.25rem 0 0 0; color: var(--text-light); font-size: 0.9rem;">Configure sua conta do WhatsApp</p>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label>API Key (se usar serviço externo)</label>
-          <input type="text" id="whatsappApiKey" placeholder="Opcional">
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Salvar Configuração</button>
-        </div>
-      </form>
+        
+        <form id="notificationConfigForm">
+          <div class="form-group">
+            <label>Número do WhatsApp (com código do país)</label>
+            <input type="text" id="whatsappNumber" placeholder="5511999999999">
+            <small style="color: var(--text-light); font-size: 0.85rem;">
+              Formato: código do país + DDD + número (ex: 5511999999999)
+            </small>
+          </div>
+          <div class="form-group">
+            <label>API Key (se usar serviço externo)</label>
+            <input type="text" id="whatsappApiKey" placeholder="Opcional">
+            <small style="color: var(--text-light); font-size: 0.85rem;">
+              Opcional: chave de API se usar serviço externo
+            </small>
+          </div>
+          <div class="form-actions" style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i>
+              Salvar Configuração
+            </button>
+          </div>
+        </form>
+      </div>
     `;
   }
 }
@@ -1966,7 +1995,6 @@ function simulateMonitoringCycle() {
             }, 2000);
           } else {
             addConsoleLine('warning', `⚠️ Nenhum método de notificação configurado. Promoção não será enviada.`);
-            addConsoleLine('info', '💡 Configure Telegram ou WhatsApp nas Configurações para receber notificações.');
             addConsoleLine('info', '───────────────────────────────────────────────────────────');
           }
         }, 1500);
@@ -2154,64 +2182,6 @@ window.toggleSidebar = toggleSidebar;
 
 // ==================== TELEGRAM MANAGEMENT ====================
 
-// Inicializar WebSocket para mensagens do Telegram
-function initTelegramWebSocket() {
-  // Usar URL da API configurada
-  const wsUrl = TELEGRAM_WS_URL;
-  
-  try {
-    telegramWebSocket = new WebSocket(wsUrl);
-    
-    telegramWebSocket.onopen = () => {
-      addConsoleLine('info', '🔌 Conectado ao servidor de mensagens do Telegram');
-    };
-    
-    telegramWebSocket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        // A API envia mensagens em batch
-        if (data.type === 'batch_messages' && data.data) {
-          data.data.forEach(message => {
-            const session = telegramSessions.find(s => s.id === message.sessionId);
-            const sessionName = session ? session.name : 'Desconhecida';
-            
-            addConsoleLine('found', `📨 [${sessionName}] Mensagem recebida de ${message.senderName || 'Desconhecido'}: ${message.message || 'Sem texto'}`);
-          });
-        } else if (data.type === 'new_message') {
-          // Fallback para formato individual
-          const message = data.data;
-          const session = telegramSessions.find(s => s.id === message.sessionId);
-          const sessionName = session ? session.name : 'Desconhecida';
-          
-          addConsoleLine('found', `📨 [${sessionName}] Mensagem recebida de ${message.senderName || 'Desconhecido'}: ${message.message || 'Sem texto'}`);
-        } else if (data.type === 'connected') {
-          addConsoleLine('info', '✅ WebSocket conectado e pronto para receber mensagens');
-        }
-      } catch (error) {
-        console.error('Erro ao processar mensagem WebSocket:', error);
-      }
-    };
-    
-    telegramWebSocket.onerror = (error) => {
-      addConsoleLine('error', '❌ Erro na conexão WebSocket do Telegram');
-    };
-    
-    telegramWebSocket.onclose = () => {
-      addConsoleLine('warning', '⚠️ Conexão WebSocket fechada. Tentando reconectar em 3 segundos...');
-      setTimeout(() => {
-        initTelegramWebSocket();
-      }, 3000);
-    };
-  } catch (error) {
-    addConsoleLine('error', `❌ Erro ao conectar WebSocket: ${error.message}`);
-    // Tentar reconectar após 5 segundos
-    setTimeout(() => {
-      initTelegramWebSocket();
-    }, 5000);
-  }
-}
-
 // Helper para criar timeout (compatibilidade com navegadores antigos)
 function createTimeoutSignal(ms) {
   const controller = new AbortController();
@@ -2319,7 +2289,12 @@ async function loadTelegramAccountsList() {
     await loadTelegramSessions();
     
     if (telegramSessions.length === 0) {
-      container.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 1rem;">Nenhuma conta configurada ainda.</p>';
+      container.innerHTML = `
+        <div style="text-align: center; padding: 2rem; background: var(--bg-light); border: 1px dashed var(--border-color); border-radius: 12px;">
+          <i class="fas fa-inbox" style="font-size: 2rem; color: var(--text-light); margin-bottom: 0.75rem; opacity: 0.5;"></i>
+          <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Nenhuma conta configurada ainda.</p>
+        </div>
+      `;
       return;
     }
     
@@ -2341,31 +2316,38 @@ async function loadTelegramAccountsList() {
       }
       
       return `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.5rem;">
-        <div>
-          <strong style="color: var(--text-dark);">${session.name || 'Sem nome'}</strong>
-          <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.25rem;">
-            ${session.phone || 'Sem telefone'} • 
-            <span class="platform-status ${statusClass}" style="display: inline-block; padding: 2px 8px; font-size: 0.75rem;">
-              ${statusText}
-            </span>
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 0.75rem; transition: all 0.2s ease;">
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+              <i class="fab fa-telegram-plane" style="color: white; font-size: 1.1rem;"></i>
+            </div>
+            <div>
+              <strong style="color: var(--text-dark); font-size: 1rem; display: block;">${session.name || 'Sem nome'}</strong>
+              <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.25rem;">
+                ${session.phone || 'Sem telefone'}
+              </div>
+            </div>
           </div>
+          <span class="platform-status ${statusClass}" style="display: inline-block; padding: 4px 12px; font-size: 0.75rem; border-radius: 6px; margin-top: 0.5rem;">
+            ${statusText}
+          </span>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
           ${isActive ? `
-            <button class="btn-sm btn-outline" onclick="pauseTelegramSession('${session.id}')" title="Pausar">
+            <button class="btn-sm btn-outline" onclick="pauseTelegramSession('${session.id}')" title="Pausar" style="padding: 0.5rem 0.75rem;">
               <i class="fas fa-pause"></i>
             </button>
           ` : session.status === 'paused' ? `
-            <button class="btn-sm btn-primary" onclick="resumeTelegramSession('${session.id}')" title="Retomar">
+            <button class="btn-sm btn-primary" onclick="resumeTelegramSession('${session.id}')" title="Retomar" style="padding: 0.5rem 0.75rem;">
               <i class="fas fa-play"></i>
             </button>
           ` : session.status === 'pending' ? `
-            <button class="btn-sm btn-primary" onclick="showTelegramCodeModal('${session.id}', '${session.phone || ''}')" title="Verificar código">
+            <button class="btn-sm btn-primary" onclick="showTelegramCodeModal('${session.id}', '${session.phone || ''}')" title="Verificar código" style="padding: 0.5rem 0.75rem;">
               <i class="fas fa-key"></i> Verificar
             </button>
           ` : ''}
-          <button class="btn-sm btn-outline" onclick="deleteTelegramSession('${session.id}')" title="Excluir" style="color: var(--accent-color);">
+          <button class="btn-sm btn-outline" onclick="deleteTelegramSession('${session.id}')" title="Excluir" style="color: var(--accent-color); padding: 0.5rem 0.75rem;">
             <i class="fas fa-trash"></i>
           </button>
         </div>

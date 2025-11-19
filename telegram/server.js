@@ -1,5 +1,4 @@
 import express from 'express';
-import { WebSocketServer } from 'ws';
 import http from 'http';
 import dotenv from 'dotenv';
 import { TelegramClient } from 'telegram';
@@ -11,7 +10,6 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server, perMessageDeflate: true });
 
 // CORS - Necessário porque navegador considera portas diferentes como origens diferentes
 // Exemplo: localhost:3000 (website) → localhost:3003 (API) = cross-origin
@@ -44,87 +42,8 @@ app.use(express.json({ limit: '10mb' }));
 
 // Armazenamento
 const sessions = new Map();
-const wsClients = new Set();
-const messageHandlers = new Map();
-const entityCache = new Map(); // Cache de entidades para evitar chamadas repetidas
 let API_ID = parseInt(process.env.API_ID || '0');
 let API_HASH = process.env.API_HASH || '';
-
-// Batching de mensagens para WebSocket
-const messageQueue = [];
-let batchTimer = null;
-const BATCH_INTERVAL = 100; // 100ms - agrupa mensagens (aumentado para reduzir carga)
-const MAX_BATCH_SIZE = 50; // Máximo de mensagens por batch (reduzido)
-
-// Broadcast otimizado com batching
-function broadcastMessage(data) {
-  messageQueue.push(data);
-  
-  if (messageQueue.length >= MAX_BATCH_SIZE) {
-    flushBatch();
-  } else if (!batchTimer) {
-    batchTimer = setTimeout(flushBatch, BATCH_INTERVAL);
-  }
-}
-
-function flushBatch() {
-  if (messageQueue.length === 0) return;
-  
-  const batch = messageQueue.splice(0, MAX_BATCH_SIZE);
-  const wsData = JSON.stringify({ type: 'batch_messages', data: batch });
-  
-  // Enviar para todos os clientes conectados
-  const clientsToRemove = [];
-  wsClients.forEach(ws => {
-    if (ws.readyState === 1) {
-      try {
-        ws.send(wsData);
-      } catch (e) {
-        clientsToRemove.push(ws);
-      }
-    } else {
-      clientsToRemove.push(ws);
-    }
-  });
-  
-  clientsToRemove.forEach(ws => wsClients.delete(ws));
-  
-  if (batchTimer) {
-    clearTimeout(batchTimer);
-    batchTimer = null;
-  }
-  
-  // Se ainda há mensagens na fila, agendar próximo flush
-  if (messageQueue.length > 0) {
-    batchTimer = setTimeout(flushBatch, BATCH_INTERVAL);
-  }
-}
-
-// Cache de entidades com TTL
-async function getCachedEntity(client, entityId, ttl = 300000) { // 5 minutos
-  const cacheKey = `${client.session.save()}_${entityId}`;
-  const cached = entityCache.get(cacheKey);
-  
-  if (cached && Date.now() - cached.timestamp < ttl) {
-    return cached.data;
-  }
-  
-  try {
-    const entity = await client.getEntity(entityId);
-    const name = entity.firstName || entity.title || entity.username || 'Desconhecido';
-    entityCache.set(cacheKey, { data: name, timestamp: Date.now() });
-    
-    // Limpar cache antigo (manter apenas últimos 10000)
-    if (entityCache.size > 10000) {
-      const firstKey = entityCache.keys().next().value;
-      entityCache.delete(firstKey);
-    }
-    
-    return name;
-  } catch (e) {
-    return 'Desconhecido';
-  }
-}
 
 // Salvar credenciais
 function saveCredentials(apiId, apiHash) {
@@ -134,49 +53,6 @@ function saveCredentials(apiId, apiHash) {
   dotenv.config();
 }
 
-// Handler otimizado de mensagens
-function setupMessageHandlers(client, sessionId) {
-  if (messageHandlers.has(sessionId)) {
-    try {
-      client.removeEventHandler(messageHandlers.get(sessionId));
-    } catch (e) {}
-  }
-
-  const handlerId = client.addEventHandler(async (event) => {
-    // Processar apenas se sessão está ativa
-    const session = sessions.get(sessionId);
-    if (!session || session.status !== 'active') return;
-    
-    if (event.className === 'UpdateNewMessage') {
-      const msg = event.message;
-      if (msg && msg.message) {
-        // Processar de forma assíncrona não bloqueante com delay mínimo
-        setImmediate(async () => {
-          // Pequeno delay para não sobrecarregar
-          await new Promise(resolve => setTimeout(resolve, Math.random() * 10));
-          
-          let senderName = null;
-          if (msg.fromId) {
-            senderName = await getCachedEntity(client, msg.fromId);
-          }
-
-          const data = {
-            sessionId,
-            id: msg.id,
-            message: msg.message,
-            senderName,
-            fromId: msg.fromId?.toString() || null,
-            timestamp: Date.now(),
-          };
-
-          broadcastMessage(data);
-        });
-      }
-    }
-  });
-
-  messageHandlers.set(sessionId, handlerId);
-}
 
 // ========== API ENDPOINTS ==========
 
@@ -210,12 +86,22 @@ app.get('/api/sessions', (req, res) => {
   res.json({ sessions: list });
 });
 
-// Criar sessão
+// Criar sessão (apenas 1 conta permitida)
 app.post('/api/sessions', async (req, res) => {
   try {
     const { name, phone, apiId, apiHash } = req.body;
     if (!name || !phone) return res.status(400).json({ error: 'Nome e telefone obrigatórios' });
     if (!apiId || !apiHash) return res.status(400).json({ error: 'API_ID e API_HASH obrigatórios' });
+
+    // Verificar se já existe uma conta ativa
+    const existingSessions = Array.from(sessions.values());
+    const activeSession = existingSessions.find(s => s.status === 'active' || s.status === 'connected');
+    
+    if (activeSession) {
+      return res.status(400).json({ 
+        error: 'Já existe uma conta do Telegram configurada. Remova a conta existente antes de adicionar uma nova.' 
+      });
+    }
 
     const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const stringSession = new StringSession('');
@@ -268,8 +154,6 @@ app.post('/api/sessions/:id/verify', async (req, res) => {
     session.sessionString = sessionString;
     session.phoneCodeHash = undefined;
 
-    setupMessageHandlers(client, id);
-
     res.json({ success: true, sessionString });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -295,6 +179,16 @@ app.post('/api/sessions/connect', async (req, res) => {
       return res.status(401).json({ error: 'Sessão inválida' });
     }
 
+    // Verificar se já existe uma conta ativa
+    const existingSessions = Array.from(sessions.values());
+    const activeSession = existingSessions.find(s => s.status === 'active' || s.status === 'connected');
+    
+    if (activeSession) {
+      return res.status(400).json({ 
+        error: 'Já existe uma conta do Telegram configurada. Remova a conta existente antes de adicionar uma nova.' 
+      });
+    }
+
     sessions.set(sessionId, {
       client,
       name,
@@ -305,8 +199,6 @@ app.post('/api/sessions/connect', async (req, res) => {
       sessionString,
       createdAt: Date.now(),
     });
-
-    setupMessageHandlers(client, sessionId);
 
     res.json({ success: true, sessionId });
   } catch (error) {
@@ -348,12 +240,6 @@ app.delete('/api/sessions/:id', async (req, res) => {
     const session = sessions.get(req.params.id);
     if (session) {
       try {
-        if (messageHandlers.has(req.params.id)) {
-          try {
-            session.client.removeEventHandler(messageHandlers.get(req.params.id));
-          } catch (e) {}
-          messageHandlers.delete(req.params.id);
-        }
         await session.client.disconnect();
       } catch (e) {}
       sessions.delete(req.params.id);
@@ -369,29 +255,14 @@ app.delete('/api/sessions', async (req, res) => {
   try {
     const disconnectPromises = [];
     for (const [id, session] of sessions.entries()) {
-      if (messageHandlers.has(id)) {
-        try {
-          session.client.removeEventHandler(messageHandlers.get(id));
-        } catch (e) {}
-        messageHandlers.delete(id);
-      }
       disconnectPromises.push(session.client.disconnect().catch(() => {}));
     }
     await Promise.all(disconnectPromises);
     sessions.clear();
-    entityCache.clear();
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
-
-// WebSocket otimizado
-wss.on('connection', (ws, req) => {
-  wsClients.add(ws);
-  ws.on('close', () => wsClients.delete(ws));
-  ws.on('error', () => wsClients.delete(ws));
-  ws.send(JSON.stringify({ type: 'connected' }));
 });
 
 // Health check endpoint
@@ -399,20 +270,9 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    sessions: sessions.size,
-    connections: wsClients.size
+    sessions: sessions.size
   });
 });
-
-// Limpar cache periodicamente
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of entityCache.entries()) {
-    if (now - value.timestamp > 600000) { // 10 minutos
-      entityCache.delete(key);
-    }
-  }
-}, 300000); // A cada 5 minutos
 
 // Endpoint raiz
 app.get('/', (req, res) => {
@@ -481,8 +341,6 @@ server.listen(PORT, HOST, () => {
   console.log('╚═══════════════════════════════════════════════════════╝');
   console.log('');
   console.log(`🚀 Servidor rodando em http://${HOST}:${PORT}`);
-  console.log(`📡 WebSocket disponível em ws://${HOST}:${PORT}`);
-  console.log(`⚡ Otimizado para milhares de conexões simultâneas`);
   console.log('');
   if (!API_ID || !API_HASH) {
     console.log('⚠️  Configure API_ID e API_HASH via variáveis de ambiente');
