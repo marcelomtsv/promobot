@@ -355,18 +355,16 @@ async function loadPlatforms() {
   if (integrationsList) integrationsList.innerHTML = '';
   if (activePreview) activePreview.innerHTML = '';
 
-  // Verificar sincronização do Telegram antes de criar cards
+  // Verificar conta do Telegram no Firebase (apenas Firebase - mais leve)
   if (currentUser && currentUser.uid) {
     try {
-      const syncStatus = await checkTelegramAccountSync();
-      // Atualizar cache com dados sincronizados
-      if (syncStatus.isActive && syncStatus.firebaseAccount) {
-        window.telegramConfigCache = syncStatus.firebaseAccount;
-      } else if (!syncStatus.isActive) {
+      const accountStatus = await checkTelegramAccountFromFirebase();
+      // Atualizar cache
+      if (accountStatus.hasAccount && accountStatus.firebaseAccount) {
+        window.telegramConfigCache = accountStatus.firebaseAccount;
+      } else {
         window.telegramConfigCache = {};
       }
-      // Atualizar telegramSessions com dados da API
-      telegramSessions = syncStatus.apiSessions || [];
     } catch (error) {
       // Ignorar erros
     }
@@ -410,16 +408,17 @@ function createIntegrationCard(integration) {
   let statusClass = 'soon';
   
   if (integration.id === 'telegram') {
-    // Verificar sincronização entre Firebase e API
-    // Só mostra "Ativo" se tiver nos dois lugares
+    // Verificar apenas Firebase (muito mais leve)
     const telegramConfig = window.telegramConfigCache || {};
-    const hasFirebaseAccount = telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash;
-    const hasApiAccount = telegramSessions && telegramSessions.length > 0 && 
-                          telegramSessions.some(s => s.status === 'active' || s.status === 'connected');
+    const hasAccount = telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash;
+    const isActive = hasAccount && telegramConfig.status === 'active';
     
-    if (hasFirebaseAccount && hasApiAccount) {
+    if (isActive) {
       statusText = 'Ativo';
       statusClass = 'active';
+    } else if (hasAccount) {
+      statusText = 'Pendente';
+      statusClass = 'soon';
     } else {
       statusText = 'Não configurado';
       statusClass = 'soon';
