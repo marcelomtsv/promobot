@@ -343,12 +343,12 @@ function createIntegrationCard(integration) {
   card.innerHTML = `
     <div class="platform-header">
       <div class="platform-name">
-        <i class="${integration.icon}" style="color: ${integration.color};"></i>
+        <i class="${integration.icon}" style="color: ${integration.color}; font-size: 1.75rem;"></i>
         <span>${integration.name}</span>
       </div>
       <span class="platform-status ${statusClass}">${statusText}</span>
     </div>
-    <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1rem;">
+    <p style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.25rem; flex: 1;">
       ${descriptions[integration.id] || 'Integração disponível'}
     </p>
     <div class="platform-actions">

@@ -64,15 +64,16 @@
       min-height: 100vh;
     }
 
-    /* Sidebar */
+    /* Sidebar - Modernizado */
     .sidebar {
       width: 280px;
       background: var(--bg-white);
-      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+      box-shadow: 2px 0 20px rgba(0, 0, 0, 0.08);
       position: fixed;
       height: 100vh;
       overflow-y: auto;
       z-index: 100;
+      border-right: 1px solid var(--border-color);
     }
 
     .sidebar-header {
@@ -81,12 +82,24 @@
       display: flex;
       align-items: center;
       gap: 12px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.02) 100%);
     }
 
     .sidebar-header .logo {
       font-size: 1.5rem;
       font-weight: 800;
-      color: var(--primary-color);
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .sidebar-header i {
+      font-size: 1.75rem;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .sidebar-menu {
@@ -110,9 +123,10 @@
     }
 
     .menu-item.active {
-      background: rgba(0, 82, 212, 0.1);
+      background: linear-gradient(90deg, rgba(99, 102, 241, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%);
       color: var(--primary-color);
-      border-left: 3px solid var(--primary-color);
+      border-left: 4px solid var(--primary-color);
+      font-weight: 600;
     }
 
     .menu-item i {
@@ -125,6 +139,8 @@
       flex: 1;
       margin-left: 280px;
       padding: 2rem;
+      background: var(--bg-light);
+      min-height: 100vh;
     }
 
     .top-bar {
@@ -134,8 +150,9 @@
       margin-bottom: 2rem;
       background: var(--bg-white);
       padding: 1.5rem 2rem;
-      border-radius: 12px;
-      box-shadow: var(--shadow-light);
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border-color);
     }
 
     .user-info {
@@ -273,12 +290,19 @@
 
     .stat-card {
       background: var(--bg-white);
-      padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: var(--shadow-light);
+      padding: 1.75rem;
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 1.25rem;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
     }
 
     .stat-icon {
@@ -311,52 +335,69 @@
     /* Content Sections */
     .content-section {
       background: var(--bg-white);
-      border-radius: 12px;
-      box-shadow: var(--shadow-light);
-      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+      padding: 2.5rem;
       margin-bottom: 2rem;
+      border: 1px solid var(--border-color);
     }
 
     .section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.5rem;
-      padding-bottom: 1rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.25rem;
       border-bottom: 2px solid var(--bg-light);
+      flex-wrap: wrap;
+      gap: 1rem;
     }
 
     .section-header h2 {
-      font-size: 1.5rem;
+      font-size: 1.75rem;
       font-weight: 700;
+      color: var(--text-dark);
+      letter-spacing: -0.02em;
+      margin: 0;
     }
 
-    /* Platforms Grid */
+    .section-header p {
+      color: var(--text-light);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* Platforms Grid - Otimizado */
     .platforms-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
     }
 
     .platform-card {
       border: 2px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1.5rem;
-      transition: all 0.3s ease;
+      border-radius: 16px;
+      padding: 1.75rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: pointer;
       position: relative;
+      background: var(--bg-white);
+      display: flex;
+      flex-direction: column;
+      min-height: 180px;
     }
 
     .platform-card:hover {
       border-color: var(--primary-color);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 82, 212, 0.15);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 82, 212, 0.15);
     }
 
-    /* Integration Cards - Destaque */
+    /* Integration Cards - Design Moderno */
     .integration-card {
       border: 2px solid var(--primary-color);
-      background: linear-gradient(135deg, rgba(0, 82, 212, 0.05) 0%, rgba(111, 177, 252, 0.05) 100%);
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
       position: relative;
       overflow: hidden;
     }
@@ -373,8 +414,8 @@
 
     .integration-card:hover {
       border-color: var(--primary-color);
-      box-shadow: 0 6px 20px rgba(0, 82, 212, 0.25);
-      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(99, 102, 241, 0.2);
+      transform: translateY(-4px);
     }
 
     .integrations-section {
@@ -382,97 +423,144 @@
     }
 
     .integrations-section .section-header {
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
     }
 
     .integrations-section .section-header h2 {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      font-size: 1.75rem;
+      margin: 0;
     }
 
-    .integrations-section .section-header h2::before {
-      content: '⭐';
+    .integrations-section .section-header h2 i {
       font-size: 1.5rem;
+      color: var(--secondary-color);
+    }
+
+    .integrations-section .section-header p {
+      color: var(--text-light);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin: 0;
+      max-width: 600px;
     }
 
     .platform-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       margin-bottom: 1rem;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
 
     .platform-name {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       font-weight: 600;
       font-size: 1.1rem;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .platform-name i {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .platform-name span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .platform-favicon {
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       object-fit: contain;
-      border-radius: 4px;
+      border-radius: 6px;
+      flex-shrink: 0;
     }
 
     .platform-status {
-      padding: 4px 12px;
+      padding: 6px 14px;
       border-radius: 20px;
       font-size: 0.75rem;
       font-weight: 600;
       text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0;
+      letter-spacing: 0.5px;
     }
 
     .platform-status.active {
-      background: #d1fae5;
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
       color: #065f46;
+      border: 1px solid #10b981;
     }
 
     .platform-status.soon {
-      background: #fef3c7;
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
       color: #92400e;
+      border: 1px solid #f59e0b;
+    }
+
+    .platform-card p {
+      color: var(--text-light);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin-bottom: 1.25rem;
+      flex: 1;
+      min-height: 48px;
     }
 
     .platform-actions {
       display: flex;
       gap: 8px;
-      margin-top: 1rem;
+      margin-top: auto;
     }
 
     .btn-sm {
-      padding: 8px 16px;
-      border-radius: 6px;
+      padding: 10px 18px;
+      border-radius: 8px;
       border: none;
       cursor: pointer;
-      font-size: 0.85rem;
+      font-size: 0.875rem;
       font-weight: 600;
-      transition: all 0.2s ease;
-      display: flex;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      white-space: nowrap;
     }
 
     .btn-sm.btn-primary {
-      background: var(--primary-color);
+      background: var(--gradient-primary);
       color: white;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
     }
 
     .btn-sm.btn-primary:hover {
-      background: #003d9e;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
     }
 
     .btn-sm.btn-outline {
       background: transparent;
-      border: 1px solid var(--border-color);
+      border: 2px solid var(--border-color);
       color: var(--text-dark);
     }
 
     .btn-sm.btn-outline:hover {
       border-color: var(--primary-color);
       color: var(--primary-color);
+      background: rgba(99, 102, 241, 0.05);
     }
 
     /* Modal */
@@ -836,11 +924,22 @@
 
       .platforms-grid {
         grid-template-columns: 1fr;
-        gap: 0.75rem;
+        gap: 1rem;
       }
 
       .platform-card {
-        padding: 1rem;
+        padding: 1.25rem;
+        min-height: 160px;
+      }
+
+      .platform-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      .platform-status {
+        align-self: flex-start;
       }
 
       .content-section {
@@ -913,7 +1012,11 @@
 
       .platforms-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
+        gap: 1.25rem;
+      }
+
+      .platform-card {
+        min-height: 170px;
       }
 
       .monitoring-console {
@@ -938,6 +1041,7 @@
 
       .platforms-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
       }
     }
 
@@ -953,6 +1057,7 @@
 
       .platforms-grid {
         grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
       }
     }
 
@@ -973,7 +1078,7 @@
 
       .platforms-grid {
         grid-template-columns: repeat(4, 1fr);
-        gap: 1.5rem;
+        gap: 2rem;
       }
 
       .content-section {
@@ -1101,10 +1206,15 @@
         <!-- Integrações e Ferramentas -->
         <div class="content-section integrations-section">
           <div class="section-header">
-            <h2>🔗 Integrações</h2>
-            <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.5rem;">
-              Configure as ferramentas essenciais para o funcionamento do PromoBOT
-            </p>
+            <div style="flex: 1;">
+              <h2>
+                <i class="fas fa-link"></i>
+                Integrações
+              </h2>
+              <p style="color: var(--text-light); font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.6;">
+                Configure as ferramentas essenciais para o funcionamento do PromoBOT
+              </p>
+            </div>
           </div>
           <div class="platforms-grid" id="integrationsList">
             <!-- Será preenchido via JavaScript -->
@@ -1114,10 +1224,15 @@
         <!-- Lojas Online -->
         <div class="content-section" style="margin-top: 2rem;">
           <div class="section-header">
-            <h2>🛒 Lojas Online</h2>
-            <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.5rem;">
-              Configure as lojas online que deseja monitorar em busca de promoções
-            </p>
+            <div style="flex: 1;">
+              <h2>
+                <i class="fas fa-shopping-cart"></i>
+                Lojas Online
+              </h2>
+              <p style="color: var(--text-light); font-size: 0.95rem; margin-top: 0.5rem; line-height: 1.6;">
+                Configure as lojas online que deseja monitorar em busca de promoções
+              </p>
+            </div>
           </div>
           <div class="platforms-grid" id="platformsList">
             <!-- Será preenchido via JavaScript -->
