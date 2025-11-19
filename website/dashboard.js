@@ -456,14 +456,9 @@ function createIntegrationCard(integration) {
       statusClass = 'soon';
     }
   } else if (integration.id === 'whatsapp') {
-    const whatsappConfig = window.integrationConfigsCache.whatsapp || {};
-    if (whatsappConfig.number) {
-      statusText = 'Ativo';
-      statusClass = 'active';
-    } else {
-      statusText = 'Não configurado';
-      statusClass = 'soon';
-    }
+    // WhatsApp ainda não tem sistema implementado - sempre "Em Breve"
+    statusText = 'Em Breve';
+    statusClass = 'soon';
   } else if (integration.id === 'deepseek') {
     // Verificar configuração do DeepSeek
     const deepseekConfig = window.integrationConfigsCache.deepseek || {};
@@ -476,8 +471,17 @@ function createIntegrationCard(integration) {
       statusClass = 'soon';
     }
   } else if (integration.id === 'botfather') {
-    statusText = 'Ativo';
-    statusClass = 'active';
+    // Verificar configuração do BotFather
+    const botfatherConfig = window.integrationConfigsCache.botfather || {};
+    const hasConfig = botfatherConfig.botToken && botfatherConfig.channel && botfatherConfig.group;
+    
+    if (hasConfig) {
+      statusText = 'Ativo';
+      statusClass = 'active';
+    } else {
+      statusText = 'Não configurado';
+      statusClass = 'soon';
+    }
   }
   
   const descriptions = {
@@ -488,9 +492,12 @@ function createIntegrationCard(integration) {
   };
   
   // Determinar texto do botão baseado no status
-  const isActive = statusClass === 'active';
-  const buttonText = isActive ? 'Gerenciar' : 'Cadastrar';
-  const buttonIcon = isActive ? 'fas fa-edit' : 'fas fa-plus';
+  // WhatsApp sempre desabilitado (Em Breve)
+  const isWhatsApp = integration.id === 'whatsapp';
+  const isActive = statusClass === 'active' && !isWhatsApp;
+  const buttonText = isWhatsApp ? 'Em Breve' : (isActive ? 'Gerenciar' : 'Cadastrar');
+  const buttonIcon = isWhatsApp ? 'fas fa-clock' : (isActive ? 'fas fa-edit' : 'fas fa-plus');
+  const buttonDisabled = isWhatsApp ? 'disabled' : '';
   
   // Adicionar ID único ao card para evitar duplicação
   card.setAttribute('data-integration-id', integration.id);
@@ -508,10 +515,17 @@ function createIntegrationCard(integration) {
       ${descriptions[integration.id] || 'Integração disponível'}
     </p>
     <div class="platform-actions">
-      <button class="btn-sm btn-primary" onclick="openPlatformConfig('${integration.id}')">
-        <i class="${buttonIcon}"></i>
-        ${buttonText}
-      </button>
+      ${isWhatsApp ? `
+        <button class="btn-sm btn-outline" disabled>
+          <i class="${buttonIcon}"></i>
+          ${buttonText}
+        </button>
+      ` : `
+        <button class="btn-sm btn-primary" onclick="openPlatformConfig('${integration.id}')">
+          <i class="${buttonIcon}"></i>
+          ${buttonText}
+        </button>
+      `}
     </div>
   `;
   
@@ -1116,7 +1130,7 @@ function getDeepSeekConfigHTML() {
   `;
 }
 
-// HTML de configuração do Bot Father
+// HTML de configuração do Bot Father (ESTILO UNIFICADO COM TELEGRAM)
 function getBotFatherConfigHTML() {
   const botfatherConfig = window.integrationConfigsCache.botfather || {};
   const hasConfig = botfatherConfig.botToken && botfatherConfig.channel && botfatherConfig.group;
@@ -1124,12 +1138,12 @@ function getBotFatherConfigHTML() {
   return `
     <div id="botfatherConfigContainer">
       ${hasConfig ? `
-        <!-- Status: Configurado e Ativo -->
+        <!-- Status: Configurado e Ativo (ESTILO UNIFICADO) -->
         <div style="text-align: center; padding: 2rem 1rem;">
           <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
             <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
           </div>
-          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Bot Father Configurado</h3>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Bot Father Cadastrado</h3>
           <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua configuração está ativa e funcionando</p>
           
           <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: left;">
@@ -1163,15 +1177,10 @@ function getBotFatherConfigHTML() {
           </div>
         </div>
       ` : `
-        <!-- Formulário: Adicionar Configuração -->
+        <!-- Formulário: Adicionar Configuração (ESTILO UNIFICADO) -->
         <form id="botfatherConfigForm">
-          <div style="text-align: center; margin-bottom: 2rem;">
-            <div style="width: 60px; height: 60px; margin: 0 auto 1rem; background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-              <i class="fas fa-robot" style="font-size: 1.5rem; color: white;"></i>
-            </div>
-            <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Bot Father Cadastrado</h3>
-            <p style="color: var(--text-light); margin: 0; font-size: 0.9rem;">Seu bot do Telegram está configurado e funcionando</p>
-          </div>
+          <!-- Status Message -->
+          <div id="botfatherStatusMessage" style="display: none; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
           
           <div class="form-group" style="margin-bottom: 1.5rem;">
             <label style="margin-bottom: 0.5rem; display: block; color: var(--text-dark); font-weight: 500;">Bot Token</label>
