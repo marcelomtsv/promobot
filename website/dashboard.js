@@ -333,28 +333,35 @@ async function loadAllConfigsFromFirebase(forceRefresh = false) {
   }
   
   try {
-    // Carregar userData com cache inteligente
-    const userData = await CacheManager.load(
-      'userData',
-      async () => await loadUserDataFromFirebase(),
-      forceRefresh
-    );
+    // OTIMIZADO: Carregar userData com cache inteligente e timeout
+    const userData = await Promise.race([
+      CacheManager.load(
+        'userData',
+        async () => await loadUserDataFromFirebase(),
+        forceRefresh
+      ),
+      new Promise((resolve) => setTimeout(() => resolve(null), 2000))
+    ]);
     
     if (userData) {
-      // Atualizar caches específicos
-      if (userData.integrationConfigs) {
-        CacheManager.set('integrationConfigs', userData.integrationConfigs);
-      }
-      if (userData.notificationConfigs) {
-        CacheManager.set('notificationConfigs', userData.notificationConfigs);
-      }
-      if (userData.telegramAccount) {
-        CacheManager.set('telegramAccount', userData.telegramAccount);
-      }
+      // Atualizar caches específicos (não bloqueia)
+      requestAnimationFrame(() => {
+        if (userData.integrationConfigs) {
+          CacheManager.set('integrationConfigs', userData.integrationConfigs);
+        }
+        if (userData.notificationConfigs) {
+          CacheManager.set('notificationConfigs', userData.notificationConfigs);
+        }
+        if (userData.telegramAccount) {
+          CacheManager.set('telegramAccount', userData.telegramAccount);
+        }
+      });
     }
   } catch (error) {
-    console.error('Erro ao carregar configurações:', error);
-    // Em caso de erro, manter cache existente
+    // Em caso de erro, manter cache existente (não quebrar a aplicação)
+    if (!error.message.includes('Timeout')) {
+      console.error('Erro ao carregar configurações:', error);
+    }
   }
 }
 
@@ -618,81 +625,84 @@ async function loadPlatforms() {
   }
   isLoadingPlatforms = true;
   
-  const platformsList = document.getElementById('platformsList');
-  const integrationsList = document.getElementById('integrationsList');
-  const activePreview = document.getElementById('activePlatformsPreview');
-  
-  // Limpar COMPLETAMENTE (remover todos os filhos)
-  if (platformsList) {
-    while (platformsList.firstChild) {
-      platformsList.removeChild(platformsList.firstChild);
-    }
-  }
-  if (integrationsList) {
-    while (integrationsList.firstChild) {
-      integrationsList.removeChild(integrationsList.firstChild);
-    }
-  }
-  if (activePreview) {
-    while (activePreview.firstChild) {
-      activePreview.removeChild(activePreview.firstChild);
-    }
-  }
+  try {
+    const platformsList = document.getElementById('platformsList');
+    const integrationsList = document.getElementById('integrationsList');
+    const activePreview = document.getElementById('activePlatformsPreview');
+    
+    // OTIMIZADO: Limpar usando innerHTML (muito mais rápido que removeChild)
+    if (platformsList) platformsList.innerHTML = '';
+    if (integrationsList) integrationsList.innerHTML = '';
+    if (activePreview) activePreview.innerHTML = '';
 
-  // Verificar conta do Telegram no Firebase (apenas Firebase - mais leve)
-  if (currentUser && currentUser.uid) {
-    try {
-      const accountStatus = await checkTelegramAccountFromFirebase();
-      // Atualizar cache
-      if (accountStatus.hasAccount && accountStatus.firebaseAccount) {
-        CacheManager.set('telegramAccount', accountStatus.firebaseAccount);
-      } else {
-        CacheManager.set('telegramAccount', {});
-      }
-    } catch (error) {
-      // Ignorar erros
+    // OTIMIZADO: Executar operações Firebase em paralelo (não bloqueia)
+    const telegramCheckPromise = currentUser && currentUser.uid
+      ? checkTelegramAccountFromFirebase().catch(() => ({ hasAccount: false, firebaseAccount: null }))
+      : Promise.resolve({ hasAccount: false, firebaseAccount: null });
+
+    // Aguardar verificação do Telegram (com timeout)
+    const accountStatus = await Promise.race([
+      telegramCheckPromise,
+      new Promise((resolve) => setTimeout(() => resolve({ hasAccount: false, firebaseAccount: null }), 2000))
+    ]);
+    
+    // Atualizar cache (não bloqueia renderização)
+    if (accountStatus.hasAccount && accountStatus.firebaseAccount) {
+      CacheManager.set('telegramAccount', accountStatus.firebaseAccount);
+    } else {
+      CacheManager.set('telegramAccount', {});
     }
-  }
 
-  // Carregar integrações destacadas (verificar duplicatas antes de adicionar)
-  if (integrationsList) {
-    integrations.forEach(integration => {
-      // Verificar se o card já existe antes de adicionar
-      const existingCard = document.getElementById(`integration-card-${integration.id}`);
-      if (!existingCard) {
-        const card = createIntegrationCard(integration);
-        integrationsList.appendChild(card);
-      }
-    });
-  }
+    // OTIMIZADO: Usar DocumentFragment para renderização em lote (muito mais rápido)
+    const integrationsFragment = document.createDocumentFragment();
+    const platformsFragment = document.createDocumentFragment();
+    const activePreviewFragment = document.createDocumentFragment();
 
-  // Carregar plataformas de e-commerce
-  if (platformsList) {
-    platforms.forEach(platform => {
-      const card = createPlatformCard(platform);
-      platformsList.appendChild(card);
-    });
-  }
+    // Carregar integrações destacadas (verificar duplicatas antes de adicionar)
+    if (integrationsList) {
+      integrations.forEach(integration => {
+        // Verificar se o card já existe antes de adicionar
+        const existingCard = document.getElementById(`integration-card-${integration.id}`);
+        if (!existingCard) {
+          const card = createIntegrationCard(integration);
+          integrationsFragment.appendChild(card);
+        }
+      });
+      integrationsList.appendChild(integrationsFragment);
+    }
 
-  // Preview de plataformas ativas (apenas e-commerce - apenas as que têm configuração)
-  if (activePreview) {
-    platforms.forEach(platform => {
-      // Verificar se há configuração salva no Firebase para esta loja
-      const integrationConfigs = window.integrationConfigsCache || {};
-      const platformConfig = integrationConfigs[platform.id] || {};
-      const hasConfig = platformConfig && Object.keys(platformConfig).length > 0 && 
-                        Object.values(platformConfig).some(val => val && val.toString().trim() !== '');
-      
-      // Mostrar apenas se tiver configuração (status ativo)
-      if (hasConfig) {
-        const previewCard = createPlatformCard(platform);
-        activePreview.appendChild(previewCard);
-      }
-    });
+    // Carregar plataformas de e-commerce
+    if (platformsList) {
+      platforms.forEach(platform => {
+        const card = createPlatformCard(platform);
+        platformsFragment.appendChild(card);
+      });
+      platformsList.appendChild(platformsFragment);
+    }
+
+    // Preview de plataformas ativas (apenas e-commerce - apenas as que têm configuração)
+    if (activePreview) {
+      const integrationConfigs = CacheManager.get('integrationConfigs') || {};
+      platforms.forEach(platform => {
+        // Verificar se há configuração salva no Firebase para esta loja
+        const platformConfig = integrationConfigs[platform.id] || {};
+        const hasConfig = platformConfig && Object.keys(platformConfig).length > 0 && 
+                          Object.values(platformConfig).some(val => val && val.toString().trim() !== '');
+        
+        // Mostrar apenas se tiver configuração (status ativo)
+        if (hasConfig) {
+          const previewCard = createPlatformCard(platform);
+          activePreviewFragment.appendChild(previewCard);
+        }
+      });
+      activePreview.appendChild(activePreviewFragment);
+    }
+  } catch (error) {
+    console.error('Erro ao carregar plataformas:', error);
+  } finally {
+    // Liberar flag após completar (sempre, mesmo em caso de erro)
+    isLoadingPlatforms = false;
   }
-  
-  // Liberar flag após completar
-  isLoadingPlatforms = false;
 }
 
 // Criar card de integração destacada
@@ -3726,29 +3736,39 @@ async function saveUserDataToFirebase(data) {
   try {
     const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
     // Usar set com merge para operação atômica e mais rápida
-    // Não incluir updatedAt se não for necessário (reduz tamanho da operação)
     const updateData = { ...data };
     if (!updateData.updatedAt) {
       updateData.updatedAt = new Date().toISOString();
     }
-    await docRef.set(updateData, { merge: true });
+    
+    // OTIMIZADO: Adicionar timeout para não travar
+    await Promise.race([
+      docRef.set(updateData, { merge: true }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout ao salvar')), 5000))
+    ]);
   } catch (error) {
+    if (error.message.includes('Timeout')) {
+      throw new Error('Operação demorou muito. Tente novamente.');
+    }
     if (error.code === 'not-found' || error.message.includes('does not exist')) {
       throw new Error('Firestore não está configurado. Configure o banco de dados no Firebase Console.');
     }
     // Retry automático para erros temporários (importante para alta concorrência)
     if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
-      // Tentar novamente uma vez após 500ms
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Tentar novamente uma vez após 300ms (reduzido de 500ms)
+      await new Promise(resolve => setTimeout(resolve, 300));
       const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-      await docRef.set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
+      await Promise.race([
+        docRef.set({ ...data, updatedAt: new Date().toISOString() }, { merge: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout ao salvar')), 5000))
+      ]);
       return;
     }
     throw error;
   }
 }
 
-// Carregar dados do usuário do Firestore (OTIMIZADO com timeout)
+// Carregar dados do usuário do Firestore (OTIMIZADO com timeout e cache do Firebase)
 async function loadUserDataFromFirebase() {
   if (!currentUser || !currentUser.uid) {
     return null;
@@ -3760,18 +3780,33 @@ async function loadUserDataFromFirebase() {
   
   try {
     const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-    // Usar getSource para melhor performance (não recarrega se já estiver em cache)
-    const doc = await Promise.race([
-      docRef.get(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
-    ]);
-    if (doc.exists) {
+    // OTIMIZADO: Usar get com source: 'cache' primeiro (muito mais rápido)
+    // Se não tiver em cache, busca do servidor
+    let doc;
+    try {
+      // Tentar cache primeiro (instantâneo)
+      doc = await Promise.race([
+        docRef.get({ source: 'cache' }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), 100))
+      ]);
+    } catch (cacheError) {
+      // Se não tiver em cache, buscar do servidor (com timeout)
+      doc = await Promise.race([
+        docRef.get({ source: 'server' }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+      ]);
+    }
+    
+    if (doc && doc.exists) {
       return doc.data();
     }
     return null;
   } catch (error) {
     // Em caso de erro, retornar null silenciosamente (cache será usado)
-    console.warn('Erro ao carregar do Firebase (usando cache):', error.message);
+    // Não logar erros de timeout (normal em alta concorrência)
+    if (!error.message.includes('Timeout') && !error.message.includes('Cache timeout')) {
+      console.warn('Erro ao carregar do Firebase:', error.message);
+    }
     return null;
   }
 }
