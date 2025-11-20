@@ -2128,47 +2128,6 @@ function voltarDeepSeekConfig() {
   });
 }
 
-// Função genérica para mostrar loading animado
-function showLoadingAnimation(message = 'Processando...', color = '#6366f1') {
-  const modalBody = document.getElementById('modalBody');
-  if (!modalBody) return;
-  
-  modalBody.innerHTML = `
-    <div style="text-align: center; padding: 3rem 2rem;">
-      <div style="width: 80px; height: 80px; margin: 0 auto 2rem; position: relative;">
-        <!-- Spinner animado -->
-        <div style="width: 80px; height: 80px; border: 4px solid rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, 0.1); border-top: 4px solid ${color}; border-right: 4px solid ${color}; border-radius: 50%; animation: spin 1s linear infinite; position: absolute; top: 0; left: 0;"></div>
-        <!-- Ícone central pulsante -->
-        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: pulse 2s ease-in-out infinite;">
-          <i class="fas fa-spinner" style="font-size: 2rem; color: ${color};"></i>
-        </div>
-      </div>
-      <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem; animation: fadeInUp 0.5s ease-out;">${message}</h3>
-      <p style="color: var(--text-light); margin: 0; font-size: 0.9rem; animation: fadeInUp 0.5s ease-out 0.1s both;">Aguarde um momento...</p>
-    </div>
-    <style>
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        50% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.95); }
-      }
-      @keyframes fadeInUp {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-    </style>
-  `;
-}
-
 // Confirmar remoção da API Key do DeepSeek
 async function confirmarRemoverDeepSeek() {
   if (!currentUser || !currentUser.uid) {
