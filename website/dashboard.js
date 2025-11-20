@@ -2216,7 +2216,7 @@ async function confirmarRemoverDeepSeek() {
 }
 
 // Mostrar formulário para trocar API Key
-function showDeepSeekApiKeyInput() {
+async function showDeepSeekApiKeyInput() {
   const modal = document.getElementById('platformModal');
   const modalBody = document.getElementById('modalBody');
   
