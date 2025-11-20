@@ -360,39 +360,79 @@ async function loadAllConfigsFromFirebase(forceRefresh = false) {
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
-  // Carregar tema salvo (já aplicado no script inline, apenas atualizar ícone)
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  const themeIcon = document.getElementById('themeIcon');
-  if (themeIcon) {
-    if (savedTheme === 'dark') {
-      themeIcon.className = 'fas fa-sun';
-    } else {
-      themeIcon.className = 'fas fa-moon';
+  try {
+    // Carregar tema salvo (já aplicado no script inline, apenas atualizar ícone)
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    const themeIcon = document.getElementById('themeIcon');
+    if (themeIcon) {
+      if (savedTheme === 'dark') {
+        themeIcon.className = 'fas fa-sun';
+      } else {
+        themeIcon.className = 'fas fa-moon';
+      }
     }
-  }
-  
-  // Carregar dados do usuário PRIMEIRO para evitar flash
-  await checkAuth();
-  
-  // Carregar perfil imediatamente após autenticação
-  if (currentUser) {
-    loadUserProfile();
-    // Carregar todas as configurações do Firebase
-    await loadAllConfigsFromFirebase();
-  }
-  
-  // Configurar resto
-  setupEventListeners();
-  // Carregar plataformas (OTIMIZADO - não precisa mais carregar sessões separadamente)
-  await loadPlatforms();
-  initMonitoring();
-  
-  // Restaurar aba ativa salva (já aplicada no script inline, apenas garantir sincronização)
-  const savedPanel = localStorage.getItem('activePanel') || 'overview';
-  // Verificar se já está ativa (aplicada pelo script inline)
-  const activePanel = document.querySelector('.content-panel.active');
-  if (!activePanel || activePanel.id !== savedPanel + 'Panel') {
-    showPanel(savedPanel);
+    
+    // Carregar dados do usuário PRIMEIRO para evitar flash
+    await checkAuth();
+    
+    // Carregar perfil imediatamente após autenticação
+    if (currentUser) {
+      try {
+        loadUserProfile();
+      } catch (error) {
+        console.error('Erro ao carregar perfil:', error);
+      }
+      
+      // Carregar todas as configurações do Firebase
+      try {
+        await loadAllConfigsFromFirebase();
+      } catch (error) {
+        console.error('Erro ao carregar configurações:', error);
+      }
+    }
+    
+    // Configurar resto
+    try {
+      setupEventListeners();
+    } catch (error) {
+      console.error('Erro ao configurar event listeners:', error);
+    }
+    
+    // Carregar plataformas (OTIMIZADO - não precisa mais carregar sessões separadamente)
+    try {
+      await loadPlatforms();
+    } catch (error) {
+      console.error('Erro ao carregar plataformas:', error);
+    }
+    
+    try {
+      initMonitoring();
+    } catch (error) {
+      console.error('Erro ao inicializar monitoramento:', error);
+    }
+    
+    // Restaurar aba ativa salva (já aplicada no script inline, apenas garantir sincronização)
+    const savedPanel = localStorage.getItem('activePanel') || 'overview';
+    // Verificar se já está ativa (aplicada pelo script inline)
+    const activePanel = document.querySelector('.content-panel.active');
+    if (!activePanel || activePanel.id !== savedPanel + 'Panel') {
+      try {
+        showPanel(savedPanel);
+      } catch (error) {
+        console.error('Erro ao mostrar painel:', error);
+      }
+    }
+  } catch (error) {
+    console.error('Erro crítico na inicialização:', error);
+    // Mostrar mensagem de erro ao usuário
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #ef4444; color: white; padding: 1rem; border-radius: 8px; z-index: 10000; max-width: 400px;';
+    errorDiv.innerHTML = `
+      <strong>Erro ao carregar dashboard</strong>
+      <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">${error.message || 'Erro desconhecido'}</p>
+      <button onclick="location.reload()" style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: white; color: #ef4444; border: none; border-radius: 4px; cursor: pointer;">Recarregar</button>
+    `;
+    document.body.appendChild(errorDiv);
   }
 });
 
