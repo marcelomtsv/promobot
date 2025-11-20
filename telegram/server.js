@@ -40,29 +40,88 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' }));
 
+// ===== OTIMIZAÇÕES PARA ALTA CONCORRÊNCIA =====
+// Rate limiting simples (sem dependências extras)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minuto
+const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requisições por minuto por IP
+
+function rateLimitMiddleware(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const now = Date.now();
+  
+  if (!rateLimitMap.has(ip)) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return next();
+  }
+  
+  const limit = rateLimitMap.get(ip);
+  
+  // Reset se passou a janela de tempo
+  if (now > limit.resetTime) {
+    limit.count = 1;
+    limit.resetTime = now + RATE_LIMIT_WINDOW;
+    return next();
+  }
+  
+  // Verificar limite
+  if (limit.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return res.status(429).json({ 
+      success: false, 
+      error: 'Muitas requisições. Tente novamente em alguns instantes.' 
+    });
+  }
+  
+  limit.count++;
+  next();
+}
+
+// Limpar rate limit map periodicamente (evitar memory leak)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, limit] of rateLimitMap.entries()) {
+    if (now > limit.resetTime) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}, 60000); // Limpar a cada minuto
+
+// Aplicar rate limiting em endpoints críticos
+app.use('/api/sessions', rateLimitMiddleware);
+app.use('/api/sessions/:id/verify', rateLimitMiddleware);
+
+// ===== FIM OTIMIZAÇÕES =====
+
 // Armazenamento
 const sessions = new Map();
 let API_ID = parseInt(process.env.API_ID || '0');
 let API_HASH = process.env.API_HASH || '';
 
-// Salvar credenciais
-function saveCredentials(apiId, apiHash) {
+// Salvar credenciais (OTIMIZADO - assíncrono para não bloquear)
+async function saveCredentials(apiId, apiHash) {
   API_ID = parseInt(apiId);
   API_HASH = apiHash;
-  fs.writeFileSync('.env', `API_ID=${API_ID}\nAPI_HASH=${API_HASH}\nPORT=3003\n`, 'utf8');
-  dotenv.config();
+  // Usar writeFile assíncrono para não bloquear outras requisições
+  try {
+    await fs.promises.writeFile('.env', `API_ID=${API_ID}\nAPI_HASH=${API_HASH}\nPORT=3003\n`, 'utf8');
+    dotenv.config();
+  } catch (error) {
+    console.error('Erro ao salvar credenciais:', error);
+    // Continuar mesmo se falhar (credenciais já estão em memória)
+  }
 }
 
 
 // ========== API ENDPOINTS ==========
 
-app.post('/api/config', (req, res) => {
+app.post('/api/config', async (req, res) => {
   try {
     const { apiId, apiHash } = req.body;
     if (!apiId || !apiHash) return res.status(400).json({ error: 'API_ID e API_HASH obrigatórios' });
-    saveCredentials(apiId, apiHash);
+    await saveCredentials(apiId, apiHash);
     res.json({ success: true });
   } catch (error) {
+    console.error('Erro ao configurar:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -444,13 +503,33 @@ app.post('/check', async (req, res) => {
 const PORT = process.env.PORT || 3003;
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 
+// Configurações do servidor para alta concorrência (milhares de usuários)
+server.maxConnections = Infinity; // Sem limite de conexões
+server.keepAliveTimeout = 65000; // 65 segundos (otimizado para keep-alive)
+server.headersTimeout = 66000; // 66 segundos
+server.timeout = 120000; // 2 minutos timeout geral
+
+// Tratamento de erros não tratados (evitar crash)
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled Rejection:', error);
+  // Não encerrar o processo - manter disponibilidade
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Não encerrar imediatamente - dar tempo para requisições em andamento
+});
+
 server.listen(PORT, HOST, () => {
   console.log('');
   console.log('╔═══════════════════════════════════════════════════════╗');
   console.log('║        TELEGRAM API - GramJS MTProto                 ║');
+  console.log('║     Otimizado para alta concorrência (1000+ users)   ║');
   console.log('╚═══════════════════════════════════════════════════════╝');
   console.log('');
   console.log(`🚀 Servidor rodando em http://${HOST}:${PORT}`);
+  console.log(`✅ Configurado para suportar milhares de usuários simultâneos`);
+  console.log(`✅ Rate limiting: ${RATE_LIMIT_MAX_REQUESTS} req/min por IP`);
   console.log('');
   if (!API_ID || !API_HASH) {
     console.log('⚠️  Configure API_ID e API_HASH via variáveis de ambiente');

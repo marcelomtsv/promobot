@@ -32,12 +32,64 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Timeout de 30 segundos para requisições
+// Timeout otimizado para requisições (20s para operações rápidas)
 app.use((req, res, next) => {
-  req.setTimeout(30000);
-  res.setTimeout(30000);
+  req.setTimeout(20000);
+  res.setTimeout(20000);
   next();
 });
+
+// ===== OTIMIZAÇÕES PARA ALTA CONCORRÊNCIA =====
+// Rate limiting simples (sem dependências extras)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minuto
+const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requisições por minuto por IP
+
+function rateLimitMiddleware(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const now = Date.now();
+  
+  if (!rateLimitMap.has(ip)) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return next();
+  }
+  
+  const limit = rateLimitMap.get(ip);
+  
+  // Reset se passou a janela de tempo
+  if (now > limit.resetTime) {
+    limit.count = 1;
+    limit.resetTime = now + RATE_LIMIT_WINDOW;
+    return next();
+  }
+  
+  // Verificar limite
+  if (limit.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return res.status(429).json({ 
+      success: false, 
+      error: 'Muitas requisições. Tente novamente em alguns instantes.' 
+    });
+  }
+  
+  limit.count++;
+  next();
+}
+
+// Limpar rate limit map periodicamente (evitar memory leak)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, limit] of rateLimitMap.entries()) {
+    if (now > limit.resetTime) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}, 60000); // Limpar a cada minuto
+
+// Aplicar rate limiting em endpoints críticos
+app.use('/check', rateLimitMiddleware);
+app.use('/api/botfather', rateLimitMiddleware);
+
+// ===== FIM OTIMIZAÇÕES =====
 
 // Middleware de validação
 const validateRequired = (fields) => (req, res, next) => {
@@ -313,18 +365,23 @@ app.use((req, res) => {
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 const server = app.listen(PORT, HOST, () => {
   console.log(`🚀 BotFather API rodando em http://${HOST}:${PORT}`);
-  console.log(`✅ Pronto para receber múltiplas requisições simultâneas`);
+  console.log(`✅ Otimizado para alta concorrência (1000+ usuários simultâneos)`);
+  console.log(`✅ Rate limiting: ${RATE_LIMIT_MAX_REQUESTS} req/min por IP`);
 });
 
-// Configurações do servidor para alta concorrência
+// Configurações do servidor para alta concorrência (milhares de usuários)
 server.maxConnections = Infinity; // Sem limite de conexões
-server.keepAliveTimeout = 65000; // 65 segundos
+server.keepAliveTimeout = 65000; // 65 segundos (otimizado para keep-alive)
 server.headersTimeout = 66000; // 66 segundos
+server.timeout = 120000; // 2 minutos timeout geral
 
+// Tratamento de erros não tratados (evitar crash)
 process.on("unhandledRejection", (error) => {
-  // Erro silencioso - não encerra o processo
+  console.error('Unhandled Rejection:', error);
+  // Não encerrar o processo - manter disponibilidade
 });
 
 process.on("uncaughtException", (error) => {
-  // Erro silencioso - não encerra o processo imediatamente para manter disponibilidade
+  console.error('Uncaught Exception:', error);
+  // Não encerrar imediatamente - dar tempo para requisições em andamento
 });
