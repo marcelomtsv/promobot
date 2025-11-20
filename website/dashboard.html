@@ -11,6 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="preconnect" href="https://www.google.com">
+  <link rel="dns-prefetch" href="https://www.google.com">
   
   <!-- CSS com font-display: swap para melhor performance -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1275,14 +1277,32 @@
       -moz-osx-font-smoothing: grayscale;
     }
     
-    /* Lazy Loading para imagens */
+    /* Lazy Loading para imagens - OTIMIZADO */
     img[loading="lazy"] {
       opacity: 0;
-      transition: opacity 0.3s;
+      transition: opacity 0.2s ease-in;
+      will-change: opacity;
     }
     
     img[loading="lazy"].loaded {
       opacity: 1;
+    }
+    
+    /* Placeholder enquanto carrega favicons */
+    .platform-favicon {
+      background: var(--bg-light);
+      min-width: 24px;
+      min-height: 24px;
+      object-fit: contain;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+    
+    /* Otimização geral de imagens */
+    img {
+      image-rendering: -webkit-optimize-contrast;
+      max-width: 100%;
+      height: auto;
     }
     
     /* Otimização de fontes */

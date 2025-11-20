@@ -816,8 +816,9 @@ function createPlatformCard(platform) {
   const statusText = hasConfig ? 'Ativo' : 'Em Breve';
   
   // Usar favicon se disponível, senão usar ícone FontAwesome
+  // OTIMIZADO: lazy loading, decoding async, e fallback rápido
   const iconHTML = platform.favicon 
-    ? `<img src="${platform.favicon}" alt="${platform.name}" class="platform-favicon" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+    ? `<img src="${platform.favicon}" alt="${platform.name}" class="platform-favicon" loading="lazy" decoding="async" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';" onload="this.classList.add('loaded');">
        <i class="${platform.icon}" style="display: none;"></i>`
     : `<i class="${platform.icon}"></i>`;
   
