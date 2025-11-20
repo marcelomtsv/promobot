@@ -3331,8 +3331,6 @@ async function checkTelegramApiStatus() {
   }
 }
 
-// Removido: loadTelegramSessions() e loadTelegramAccountsList()
-// Sistema simplificado - cada usuário tem apenas UMA conta gerenciada via Firebase
 
 // Variável global para armazenar sessionId durante verificação
 let pendingTelegramSessionId = null;
