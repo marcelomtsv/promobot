@@ -879,7 +879,7 @@ async function getPlatformConfigHTML(platform) {
 }
 
 // HTML de configuração do Telegram (padrão DeepSeek)
-function getTelegramConfigHTML() {
+async function getTelegramConfigHTML() {
   // Carregar diretamente do Firebase (só mostra como ativo se tiver no Firebase E na API)
   let telegramConfig = {};
   if (currentUser && currentUser.uid && window.firebaseDb) {
@@ -1546,7 +1546,7 @@ function getNotificationConfigHTML(type) {
       </div>
     `;
   } else if (type === 'whatsapp') {
-    // Carregar diretamente do Firebase
+    // Carregar diretamente do Firebase (função já é async)
     let whatsappConfig = {};
     if (currentUser && currentUser.uid && window.firebaseDb) {
       try {
@@ -3523,13 +3523,17 @@ async function loadTelegramAccountFromFirebase(forceRefresh = false) {
     // Recarregar o HTML do modal
     const container = document.getElementById('telegramConfigContainer');
     if (container) {
-      container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
+      getTelegramConfigHTML().then(html => {
+        container.innerHTML = html.match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
+      });
     }
   } catch (error) {
     // Se der erro, mostrar formulário vazio
     const container = document.getElementById('telegramConfigContainer');
     if (container) {
-      container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
+      getTelegramConfigHTML().then(html => {
+        container.innerHTML = html.match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
+      });
     }
   }
 }
@@ -3729,8 +3733,8 @@ function voltarTelegramConfig() {
   if (!modalBody) return;
   
   // Recarregar dados do Firebase e mostrar tela de configurado
-  loadTelegramAccountFromFirebase(true).then(() => {
-    modalBody.innerHTML = getTelegramConfigHTML();
+  loadTelegramAccountFromFirebase(true).then(async () => {
+    modalBody.innerHTML = await getTelegramConfigHTML();
   });
 }
 
