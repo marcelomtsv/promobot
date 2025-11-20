@@ -776,9 +776,10 @@ function createPlatformCard(platform) {
   const statusText = hasConfig ? 'Ativo' : 'Em Breve';
   
   // Usar favicon se disponível, senão usar ícone FontAwesome
+  // OTIMIZADO: Adicionar cache busting e melhor tratamento de erro
   const iconHTML = platform.favicon 
-    ? `<img src="${platform.favicon}" alt="${platform.name}" class="platform-favicon" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-       <i class="${platform.icon}" style="display: none;"></i>`
+    ? `<img src="${platform.favicon}&t=${Date.now()}" alt="${platform.name}" class="platform-favicon" loading="lazy" decoding="async" crossorigin="anonymous" referrerpolicy="no-referrer" onerror="this.style.display='none'; const nextIcon = this.nextElementSibling; if (nextIcon) nextIcon.style.display='inline';" onload="this.classList.add('loaded'); const nextIcon = this.nextElementSibling; if (nextIcon) nextIcon.style.display='none';">
+       <i class="${platform.icon}" style="display: inline-block;"></i>`
     : `<i class="${platform.icon}"></i>`;
   
   card.innerHTML = `
