@@ -1481,7 +1481,7 @@ async function getBotFatherConfigHTML(forceForm = false) {
 }
 
 // HTML de configuração de notificações (padronizado)
-function getNotificationConfigHTML(type) {
+async function getNotificationConfigHTML(type) {
   if (type === 'telegram') {
     return `
       <div id="telegramConfigContainer">
@@ -3466,7 +3466,7 @@ async function checkTelegramAccountSync(forceRefresh = false) {
   let hasFirebaseAccount = false;
   let firebaseAccount = null;
   
-  // Verificar apenas Firebase (muito mais leve e rápido) - usando CacheManager
+  // Verificar diretamente do Firebase (sempre do servidor)
   if (currentUser && currentUser.uid && window.firebaseDb) {
     try {
       // Tentar obter do cache primeiro
@@ -3822,14 +3822,11 @@ async function confirmarRemoverTelegramAccount() {
 }
 
 // Mostrar formulário para trocar conta
-function showTelegramAccountInput() {
-  // Não limpar cache aqui - manter dados para possível reuso
-  // Cache será atualizado quando nova conta for salva
-  
-  // Recarregar o modal
+async function showTelegramAccountInput() {
+  // Recarregar o modal (sempre do Firebase)
   const modalBody = document.getElementById('modalBody');
   if (modalBody) {
-    modalBody.innerHTML = getTelegramConfigHTML();
+    modalBody.innerHTML = await getTelegramConfigHTML();
     setTimeout(() => {
       const form = document.getElementById('telegramConfigForm');
       if (form) {
