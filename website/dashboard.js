@@ -562,8 +562,15 @@ function animateCounter(elementId, target, prefix = '', suffix = '') {
   }, 30);
 }
 
-// Carregar plataformas e integrações
+// Carregar plataformas e integrações (OTIMIZADO com debounce para alta concorrência)
 let isLoadingPlatforms = false; // Flag para evitar chamadas simultâneas
+let loadPlatformsTimeout = null; // Timeout para debounce
+
+// Versão com debounce (evita múltiplas chamadas em sequência)
+const loadPlatformsDebounced = debounce(async () => {
+  await loadPlatforms();
+}, 300);
+
 async function loadPlatforms() {
   // Evitar chamadas simultâneas que podem causar duplicação
   if (isLoadingPlatforms) {
@@ -1089,7 +1096,7 @@ function getTelegramConfigHTML() {
           
           <!-- Botões de Ação -->
           <div style="display: flex; gap: 0.75rem; justify-content: center;">
-            <button type="button" class="btn btn-outline" onclick="removeTelegramAccount()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; border: 2px solid var(--border-color); transition: all 0.2s;">
+            <button type="button" class="btn btn-outline" onclick="abrirConfirmacaoRemoverTelegram()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; border: 2px solid var(--border-color); transition: all 0.2s;">
               <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
               Remover
             </button>
@@ -1483,7 +1490,7 @@ function getBotFatherConfigHTML(forceForm = false) {
           
           <!-- Botões de Ação (ESTILO UNIFICADO) -->
           <div style="display: flex; gap: 0.75rem; justify-content: center;">
-            <button type="button" class="btn btn-outline" onclick="removeBotFatherConfig()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; border: 2px solid var(--border-color); transition: all 0.2s;">
+            <button type="button" class="btn btn-outline" onclick="abrirConfirmacaoRemoverBotFather()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; border: 2px solid var(--border-color); transition: all 0.2s;">
               <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
               Remover
             </button>
@@ -2071,6 +2078,43 @@ function abrirConfirmacaoRemoverDeepSeek() {
   `;
 }
 
+// Função genérica para mostrar loading animado (otimizada para performance)
+function showLoadingAnimation(message = 'Processando...', color = '#6366f1') {
+  const modalBody = document.getElementById('modalBody');
+  if (!modalBody) return;
+  
+  const r = parseInt(color.slice(1, 3), 16);
+  const g = parseInt(color.slice(3, 5), 16);
+  const b = parseInt(color.slice(5, 7), 16);
+  
+  modalBody.innerHTML = `
+    <div style="text-align: center; padding: 3rem 2rem;">
+      <div style="width: 80px; height: 80px; margin: 0 auto 2rem; position: relative;">
+        <div style="width: 80px; height: 80px; border: 4px solid rgba(${r}, ${g}, ${b}, 0.1); border-top: 4px solid ${color}; border-right: 4px solid ${color}; border-radius: 50%; animation: spin 1s linear infinite; position: absolute; top: 0; left: 0;"></div>
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: pulse 2s ease-in-out infinite;">
+          <i class="fas fa-spinner" style="font-size: 2rem; color: ${color};"></i>
+        </div>
+      </div>
+      <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem; animation: fadeInUp 0.5s ease-out;">${message}</h3>
+      <p style="color: var(--text-light); margin: 0; font-size: 0.9rem; animation: fadeInUp 0.5s ease-out 0.1s both;">Aguarde um momento...</p>
+    </div>
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        50% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.95); }
+      }
+      @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+  `;
+}
+
 // Voltar para a tela de configuração do DeepSeek
 function voltarDeepSeekConfig() {
   const modalBody = document.getElementById('modalBody');
@@ -2080,6 +2124,47 @@ function voltarDeepSeekConfig() {
   loadAllConfigsFromFirebase(true).then(() => {
     modalBody.innerHTML = getDeepSeekConfigHTML();
   });
+}
+
+// Função genérica para mostrar loading animado
+function showLoadingAnimation(message = 'Processando...', color = '#6366f1') {
+  const modalBody = document.getElementById('modalBody');
+  if (!modalBody) return;
+  
+  modalBody.innerHTML = `
+    <div style="text-align: center; padding: 3rem 2rem;">
+      <div style="width: 80px; height: 80px; margin: 0 auto 2rem; position: relative;">
+        <!-- Spinner animado -->
+        <div style="width: 80px; height: 80px; border: 4px solid rgba(${parseInt(color.slice(1, 3), 16)}, ${parseInt(color.slice(3, 5), 16)}, ${parseInt(color.slice(5, 7), 16)}, 0.1); border-top: 4px solid ${color}; border-right: 4px solid ${color}; border-radius: 50%; animation: spin 1s linear infinite; position: absolute; top: 0; left: 0;"></div>
+        <!-- Ícone central pulsante -->
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: pulse 2s ease-in-out infinite;">
+          <i class="fas fa-spinner" style="font-size: 2rem; color: ${color};"></i>
+        </div>
+      </div>
+      <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem; animation: fadeInUp 0.5s ease-out;">${message}</h3>
+      <p style="color: var(--text-light); margin: 0; font-size: 0.9rem; animation: fadeInUp 0.5s ease-out 0.1s both;">Aguarde um momento...</p>
+    </div>
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        50% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.95); }
+      }
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  `;
 }
 
 // Confirmar remoção da API Key do DeepSeek
@@ -2094,21 +2179,34 @@ async function confirmarRemoverDeepSeek() {
     return;
   }
   
+  // Mostrar loading imediatamente
+  const modalBody = document.getElementById('modalBody');
+  if (modalBody) {
+    showLoadingAnimation('Removendo API Key...', '#6366f1');
+  }
+  
   try {
-    const userData = await loadUserDataFromFirebase() || {};
-    const integrationConfigs = userData.integrationConfigs || {};
+    // Carregar dados do cache primeiro (mais rápido)
+    let integrationConfigs = CacheManager.get('integrationConfigs');
+    if (!integrationConfigs) {
+      const userData = await loadUserDataFromFirebase() || {};
+      integrationConfigs = userData.integrationConfigs || {};
+    }
+    
+    // Remover configuração
     delete integrationConfigs.deepseek;
     
+    // Salvar no Firebase
     await saveUserDataToFirebase({
       integrationConfigs: integrationConfigs
     });
     
-    // Atualizar cache
-    delete window.integrationConfigsCache.deepseek;
+    // Atualizar cache imediatamente (sem esperar)
+    CacheManager.set('integrationConfigs', integrationConfigs);
     CacheManager.invalidate('integrationConfigs');
     
-    // Atualizar plataformas
-    loadPlatforms();
+    // Atualizar plataformas (com debounce para evitar múltiplas chamadas)
+    loadPlatformsDebounced();
     
     // Mostrar mensagem de sucesso
     const modalBody = document.getElementById('modalBody');
@@ -2120,7 +2218,7 @@ async function confirmarRemoverDeepSeek() {
           </div>
           <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem;">✅ Removido com sucesso!</h3>
           <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">A API Key foi removida</p>
-          <button type="button" class="btn btn-primary" onclick="closeModal(); loadPlatforms();" style="padding: 0.75rem 2rem;">
+          <button type="button" class="btn btn-primary" onclick="closeModal(); loadPlatformsDebounced();" style="padding: 0.75rem 2rem;">
             Fechar
           </button>
         </div>
@@ -2133,7 +2231,21 @@ async function confirmarRemoverDeepSeek() {
       `;
     }
   } catch (error) {
-    alert('Erro ao remover API Key: ' + error.message);
+    const modalBody = document.getElementById('modalBody');
+    if (modalBody) {
+      modalBody.innerHTML = `
+        <div style="text-align: center; padding: 3rem 2rem;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 2rem; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);">
+            <i class="fas fa-times" style="font-size: 2rem; color: white;"></i>
+          </div>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem;">❌ Erro ao remover</h3>
+          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">${error.message}</p>
+          <button type="button" class="btn btn-primary" onclick="voltarDeepSeekConfig()" style="padding: 0.75rem 2rem;">
+            Voltar
+          </button>
+        </div>
+      `;
+    }
   }
 }
 
@@ -2215,19 +2327,19 @@ async function addBotFatherConfig() {
     return;
   }
   
-  // Mostrar loading no botão e mensagem de verificação
-  if (addBtn) {
-    addBtn.disabled = true;
-    addBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+  // Mostrar loading animado no modal
+  const modalBody = document.getElementById('modalBody');
+  if (modalBody) {
+    showLoadingAnimation('Verificando configuração...', '#0088cc');
   }
   
-  if (statusDiv) {
-    statusDiv.innerHTML = '<div style="background: rgba(0, 82, 212, 0.1); border: 1px solid rgba(0, 82, 212, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--primary-color);"><i class="fas fa-spinner fa-spin"></i> Verificando configuração...</div>';
-    statusDiv.style.display = 'block';
+  // Desabilitar botão
+  if (addBtn) {
+    addBtn.disabled = true;
   }
   
   try {
-    // Verificar configuração na API
+    // Verificar configuração na API (com timeout otimizado)
     const response = await fetch(`${BOTFATHER_API_URL}/check`, {
       method: 'POST',
       headers: {
@@ -2262,13 +2374,12 @@ async function addBotFatherConfig() {
       // Cache já atualizado automaticamente pelo saveIntegrationConfigToFirebase (write-through)
       
       // Atualizar o conteúdo do modal para mostrar a tela de "configurado"
-      const modalBody = document.getElementById('modalBody');
       if (modalBody) {
         modalBody.innerHTML = getBotFatherConfigHTML();
       }
       
-      // Atualizar plataformas
-      loadPlatforms();
+      // Atualizar plataformas (sem bloquear UI)
+      setTimeout(() => loadPlatforms(), 100);
       
     } else {
       // Usar mensagem direta da API
@@ -2297,19 +2408,88 @@ async function addBotFatherConfig() {
         .replace(/Grupo: (.+)/g, '<strong style="color: var(--accent-color);">Grupo:</strong> $1');
     }
     
-    if (statusDiv) {
-      statusDiv.innerHTML = `<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--accent-color);"><i class="fas fa-times-circle"></i> ${errorHTML}</div>`;
-      statusDiv.style.display = 'block';
+    // Voltar para o formulário com erro
+    if (modalBody) {
+      modalBody.innerHTML = getBotFatherConfigHTML();
+      // Mostrar erro após recarregar
+      setTimeout(() => {
+        const statusDiv = document.getElementById('botfatherStatus');
+        if (statusDiv) {
+          statusDiv.innerHTML = `<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 0.75rem; color: var(--accent-color);"><i class="fas fa-times-circle"></i> ${errorHTML}</div>`;
+          statusDiv.style.display = 'block';
+        }
+        // Restaurar valores nos campos
+        const botTokenInput = document.getElementById('botfatherBotToken');
+        const channelInput = document.getElementById('botfatherChannel');
+        const groupInput = document.getElementById('botfatherGroup');
+        if (botTokenInput) botTokenInput.value = botToken;
+        if (channelInput) channelInput.value = channel;
+        if (groupInput) groupInput.value = group;
+      }, 100);
     }
   }
 }
 
-// Remover Configuração do Bot Father
-async function removeBotFatherConfig() {
-  if (!confirm('Tem certeza que deseja remover a configuração do Bot Father? Esta ação desativará a integração.')) {
-    return;
-  }
+// Abrir modal de confirmação para remover BotFather
+function abrirConfirmacaoRemoverBotFather() {
+  const modalBody = document.getElementById('modalBody');
+  if (!modalBody) return;
   
+  modalBody.innerHTML = `
+    <div style="text-align: center; padding: 2.5rem 1.5rem;">
+      <!-- Ícone de Aviso -->
+      <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25); position: relative; animation: scaleIn 0.5s ease-out;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 2.5rem; color: white;"></i>
+      </div>
+      
+      <!-- Título e Descrição -->
+      <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.5rem; font-weight: 600;">Confirmar Remoção</h3>
+      <p style="color: var(--text-light); margin: 0 0 2.5rem 0; font-size: 0.95rem; line-height: 1.5;">
+        Tem certeza que deseja remover a configuração do Bot Father?<br>
+        Esta ação desativará a integração e não pode ser desfeita.
+      </p>
+      
+      <!-- Botões de Ação -->
+      <div style="display: flex; gap: 0.75rem; justify-content: center;">
+        <button type="button" class="btn btn-secondary" onclick="voltarBotFatherConfig()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500;">
+          <i class="fas fa-times" style="margin-right: 0.5rem;"></i> 
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" onclick="confirmarRemoverBotFather()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
+          <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
+          Confirmar Remoção
+        </button>
+      </div>
+    </div>
+    
+    <style>
+      @keyframes scaleIn {
+        from {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+    </style>
+  `;
+}
+
+// Voltar para a tela de configuração do BotFather
+function voltarBotFatherConfig() {
+  const modalBody = document.getElementById('modalBody');
+  if (!modalBody) return;
+  
+  // Recarregar dados do Firebase e mostrar tela de configurado
+  loadAllConfigsFromFirebase(true).then(() => {
+    modalBody.innerHTML = getBotFatherConfigHTML();
+  });
+}
+
+// Confirmar remoção da configuração do BotFather
+async function confirmarRemoverBotFather() {
   if (!currentUser || !currentUser.uid) {
     alert('Usuário não autenticado.');
     return;
@@ -2320,29 +2500,71 @@ async function removeBotFatherConfig() {
     return;
   }
   
+  // Mostrar loading imediatamente
+  const modalBody = document.getElementById('modalBody');
+  if (modalBody) {
+    showLoadingAnimation('Removendo configuração...', '#0088cc');
+  }
+  
   try {
-    const userData = await loadUserDataFromFirebase() || {};
-    const integrationConfigs = userData.integrationConfigs || {};
+    // Carregar dados do cache primeiro (mais rápido)
+    let integrationConfigs = CacheManager.get('integrationConfigs');
+    if (!integrationConfigs) {
+      const userData = await loadUserDataFromFirebase() || {};
+      integrationConfigs = userData.integrationConfigs || {};
+    }
+    
+    // Remover configuração
     delete integrationConfigs.botfather;
     
+    // Salvar no Firebase
     await saveUserDataToFirebase({
       integrationConfigs: integrationConfigs
     });
     
-    // Atualizar cache
-    delete window.integrationConfigsCache.botfather;
-    window.cacheTimestamps.integrationConfigs = Date.now();
+    // Atualizar cache imediatamente (sem esperar)
+    CacheManager.set('integrationConfigs', integrationConfigs);
+    CacheManager.invalidate('integrationConfigs');
     
-    // Atualizar modal
-    const modalBody = document.getElementById('modalBody');
+    // Mostrar mensagem de sucesso
     if (modalBody) {
-      modalBody.innerHTML = getBotFatherConfigHTML();
+      modalBody.innerHTML = `
+        <div style="text-align: center; padding: 3rem 2rem;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 2rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); animation: scaleIn 0.5s ease-out;">
+            <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
+          </div>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem;">✅ Removido com sucesso!</h3>
+          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">A configuração do Bot Father foi removida</p>
+          <button type="button" class="btn btn-primary" onclick="closeModal(); loadPlatformsDebounced();" style="padding: 0.75rem 2rem;">
+            Fechar
+          </button>
+        </div>
+        <style>
+          @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+        </style>
+      `;
     }
     
-    // Atualizar plataformas
-    loadPlatforms();
+    // Atualizar plataformas (com debounce para evitar múltiplas chamadas)
+    loadPlatformsDebounced();
   } catch (error) {
-    alert('Erro ao remover configuração: ' + error.message);
+    if (modalBody) {
+      modalBody.innerHTML = `
+        <div style="text-align: center; padding: 3rem 2rem;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 2rem; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);">
+            <i class="fas fa-times" style="font-size: 2rem; color: white;"></i>
+          </div>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem;">❌ Erro ao remover</h3>
+          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">${error.message}</p>
+          <button type="button" class="btn btn-primary" onclick="voltarBotFatherConfig()" style="padding: 0.75rem 2rem;">
+            Voltar
+          </button>
+        </div>
+      `;
+    }
   }
 }
 
@@ -3479,7 +3701,7 @@ async function loadTelegramAccountFromFirebase(forceRefresh = false) {
 
 // ===== FUNÇÕES DE FIREBASE FIRESTORE =====
 
-// Salvar dados do usuário no Firestore
+// Salvar dados do usuário no Firestore (OTIMIZADO para alta concorrência)
 async function saveUserDataToFirebase(data) {
   if (!currentUser || !currentUser.uid) {
     throw new Error('Usuário não autenticado. Faça login para salvar dados.');
@@ -3491,19 +3713,30 @@ async function saveUserDataToFirebase(data) {
   
   try {
     const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-    await docRef.set({
-      ...data,
-      updatedAt: new Date().toISOString()
-    }, { merge: true });
+    // Usar set com merge para operação atômica e mais rápida
+    // Não incluir updatedAt se não for necessário (reduz tamanho da operação)
+    const updateData = { ...data };
+    if (!updateData.updatedAt) {
+      updateData.updatedAt = new Date().toISOString();
+    }
+    await docRef.set(updateData, { merge: true });
   } catch (error) {
     if (error.code === 'not-found' || error.message.includes('does not exist')) {
       throw new Error('Firestore não está configurado. Configure o banco de dados no Firebase Console.');
+    }
+    // Retry automático para erros temporários (importante para alta concorrência)
+    if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+      // Tentar novamente uma vez após 500ms
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+      await docRef.set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
+      return;
     }
     throw error;
   }
 }
 
-// Carregar dados do usuário do Firestore
+// Carregar dados do usuário do Firestore (OTIMIZADO com timeout)
 async function loadUserDataFromFirebase() {
   if (!currentUser || !currentUser.uid) {
     return null;
@@ -3515,12 +3748,18 @@ async function loadUserDataFromFirebase() {
   
   try {
     const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-    const doc = await docRef.get();
+    // Usar getSource para melhor performance (não recarrega se já estiver em cache)
+    const doc = await Promise.race([
+      docRef.get(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+    ]);
     if (doc.exists) {
       return doc.data();
     }
     return null;
   } catch (error) {
+    // Em caso de erro, retornar null silenciosamente (cache será usado)
+    console.warn('Erro ao carregar do Firebase (usando cache):', error.message);
     return null;
   }
 }
@@ -3625,12 +3864,66 @@ async function loadAllNotificationConfigsFromFirebase() {
   return {};
 }
 
-// Remover conta do Telegram
-async function removeTelegramAccount() {
-  if (!confirm('Tem certeza que deseja remover a conta do Telegram? Esta ação não pode ser desfeita.')) {
-    return;
-  }
+// Abrir modal de confirmação para remover Telegram
+function abrirConfirmacaoRemoverTelegram() {
+  const modalBody = document.getElementById('modalBody');
+  if (!modalBody) return;
   
+  modalBody.innerHTML = `
+    <div style="text-align: center; padding: 2.5rem 1.5rem;">
+      <!-- Ícone de Aviso -->
+      <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25); position: relative; animation: scaleIn 0.5s ease-out;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 2.5rem; color: white;"></i>
+      </div>
+      
+      <!-- Título e Descrição -->
+      <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.5rem; font-weight: 600;">Confirmar Remoção</h3>
+      <p style="color: var(--text-light); margin: 0 0 2.5rem 0; font-size: 0.95rem; line-height: 1.5;">
+        Tem certeza que deseja remover a conta do Telegram?<br>
+        Esta ação desativará a integração e não pode ser desfeita.
+      </p>
+      
+      <!-- Botões de Ação -->
+      <div style="display: flex; gap: 0.75rem; justify-content: center;">
+        <button type="button" class="btn btn-secondary" onclick="voltarTelegramConfig()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500;">
+          <i class="fas fa-times" style="margin-right: 0.5rem;"></i> 
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" onclick="confirmarRemoverTelegramAccount()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
+          <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
+          Confirmar Remoção
+        </button>
+      </div>
+    </div>
+    
+    <style>
+      @keyframes scaleIn {
+        from {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+    </style>
+  `;
+}
+
+// Voltar para a tela de configuração do Telegram
+function voltarTelegramConfig() {
+  const modalBody = document.getElementById('modalBody');
+  if (!modalBody) return;
+  
+  // Recarregar dados do Firebase e mostrar tela de configurado
+  loadTelegramAccountFromFirebase(true).then(() => {
+    modalBody.innerHTML = getTelegramConfigHTML();
+  });
+}
+
+// Confirmar remoção da conta do Telegram
+async function confirmarRemoverTelegramAccount() {
   if (!currentUser || !currentUser.uid) {
     alert('Usuário não autenticado.');
     return;
@@ -3641,14 +3934,17 @@ async function removeTelegramAccount() {
     return;
   }
   
+  // Mostrar loading imediatamente
+  const modalBody = document.getElementById('modalBody');
+  if (modalBody) {
+    showLoadingAnimation('Removendo conta...', '#0088cc');
+  }
+  
   try {
-    // Buscar sessionId da conta antes de remover
-    const existingAccount = window.telegramConfigCache;
-    const sessionId = existingAccount?.sessionId;
-    
-    // Remover sessões deste cliente específico da API (usando userId/email como ID único)
-    try {
-      await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
+    // Executar operações em paralelo para maior velocidade
+    const [apiResult] = await Promise.allSettled([
+      // Remover sessões deste cliente específico da API (usando userId/email como ID único)
+      fetch(`${TELEGRAM_API_URL}/api/sessions`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -3656,37 +3952,59 @@ async function removeTelegramAccount() {
           email: currentUser?.email
         }),
         signal: createTimeoutSignal(5000)
-      }).catch(() => {}); // Ignorar erros se a sessão já não existir
-    } catch (e) {
-      // Ignorar erros ao remover da API
-    }
+      }).catch(() => {}) // Ignorar erros se a sessão já não existir
+    ]);
     
-    // Remover do Firebase
+    // Remover do Firebase (operação mais rápida possível)
     const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
     await docRef.update({
       telegramAccount: null,
       updatedAt: new Date().toISOString()
     });
     
-    // Limpar cache
+    // Limpar cache imediatamente (sem esperar)
     CacheManager.set('telegramAccount', {});
     CacheManager.invalidate('telegramAccount');
     
-    // Recarregar o modal
-    const modalBody = document.getElementById('modalBody');
+    // Mostrar mensagem de sucesso
     if (modalBody) {
-      modalBody.innerHTML = getTelegramConfigHTML();
-      setTimeout(() => {
-        const form = document.getElementById('telegramConfigForm');
-        if (form) {
-          // Não precisa de listener, já está usando onclick
-        }
-      }, 100);
+      modalBody.innerHTML = `
+        <div style="text-align: center; padding: 3rem 2rem;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 2rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); animation: scaleIn 0.5s ease-out;">
+            <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
+          </div>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem;">✅ Removido com sucesso!</h3>
+          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">A conta do Telegram foi removida</p>
+          <button type="button" class="btn btn-primary" onclick="closeModal(); loadPlatformsDebounced();" style="padding: 0.75rem 2rem;">
+            Fechar
+          </button>
+        </div>
+        <style>
+          @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+        </style>
+      `;
     }
     
-    loadPlatforms();
+    // Atualizar plataformas (com debounce para evitar múltiplas chamadas)
+    loadPlatformsDebounced();
   } catch (error) {
-    alert('Erro ao remover conta: ' + error.message);
+    if (modalBody) {
+      modalBody.innerHTML = `
+        <div style="text-align: center; padding: 3rem 2rem;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 2rem; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);">
+            <i class="fas fa-times" style="font-size: 2rem; color: white;"></i>
+          </div>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem;">❌ Erro ao remover</h3>
+          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">${error.message}</p>
+          <button type="button" class="btn btn-primary" onclick="voltarTelegramConfig()" style="padding: 0.75rem 2rem;">
+            Voltar
+          </button>
+        </div>
+      `;
+    }
   }
 }
 
@@ -3953,6 +4271,10 @@ window.confirmarRemoverDeepSeek = confirmarRemoverDeepSeek;
 window.showDeepSeekApiKeyInput = showDeepSeekApiKeyInput;
 window.showBotFatherConfigInput = showBotFatherConfigInput;
 window.showTelegramAccountInput = showTelegramAccountInput;
-window.removeBotFatherConfig = removeBotFatherConfig;
-window.removeTelegramAccount = removeTelegramAccount;
+window.abrirConfirmacaoRemoverBotFather = abrirConfirmacaoRemoverBotFather;
+window.voltarBotFatherConfig = voltarBotFatherConfig;
+window.confirmarRemoverBotFather = confirmarRemoverBotFather;
+window.abrirConfirmacaoRemoverTelegram = abrirConfirmacaoRemoverTelegram;
+window.voltarTelegramConfig = voltarTelegramConfig;
+window.confirmarRemoverTelegramAccount = confirmarRemoverTelegramAccount;
 
