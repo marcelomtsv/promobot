@@ -108,7 +108,13 @@ service cloud.firestore {
 1. **ID do Documento**: Sempre é o `uid` do usuário autenticado
 2. **Merge Strategy**: Usa `{ merge: true }` para não sobrescrever campos existentes
 3. **Timestamps**: Todos os timestamps são em formato ISO 8601 (string)
-4. **Cache**: O sistema usa cache em memória (`window.telegramConfigCache`, etc.) para melhor performance
+4. **Cache Profissional**: 
+   - Sistema centralizado `CacheManager` com write-through strategy
+   - Cache sempre sincronizado com Firebase
+   - Prevenção de race conditions
+   - TTL configurável por tipo de dado
+   - Invalidação inteligente automática
+   - Veja `SISTEMA_CACHE.md` para detalhes completos
 5. **Validação**: 
    - Telefone deve começar com `+` e ter 10-15 dígitos
    - API_HASH deve ter pelo menos 20 caracteres
@@ -131,9 +137,36 @@ firestore/
 
 ## 🔄 Fluxo de Dados
 
-1. **Salvar**: `saveUserDataToFirebase()` → Firestore → Atualiza cache
-2. **Carregar**: Firestore → `loadUserDataFromFirebase()` → Atualiza cache
-3. **Cache**: Usado para evitar leituras desnecessárias do Firestore (TTL: 1 minuto)
+### Sistema de Cache Profissional (Write-Through)
+
+O sistema utiliza um **CacheManager** profissional com estratégia write-through:
+
+1. **Salvar (Write-Through)**:
+   ```
+   saveIntegrationConfigToFirebase() 
+   → Salva no Firestore 
+   → Atualiza cache imediatamente (CacheManager.set)
+   → Invalida caches relacionados automaticamente
+   ```
+
+2. **Carregar (Cache-First)**:
+   ```
+   Verifica cache (CacheManager.get)
+   → Se válido: retorna do cache
+   → Se inválido: carrega do Firestore → atualiza cache
+   → Previne race conditions com locks
+   ```
+
+3. **Cache**:
+   - **TTL Configurável**: Cada tipo de dado tem seu próprio TTL
+     - `integrationConfigs`: 2 minutos
+     - `notificationConfigs`: 2 minutos
+     - `telegramAccount`: 1 minuto
+     - `userData`: 1 minuto
+   - **Invalidação Inteligente**: Caches relacionados são invalidados automaticamente
+   - **Prevenção de Race Conditions**: Locks previnem múltiplas chamadas simultâneas
+
+📖 **Documentação completa**: Veja `SISTEMA_CACHE.md` para detalhes técnicos
 
 ## ⚠️ Observações Importantes
 

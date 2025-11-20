@@ -90,40 +90,104 @@ app.post("/check", async (req, res) => {
       return res.json({
         success: true,
         valid: false,
-        message: "Token inválido"
+        message: "Token inválido ou não existe"
       });
     }
     
-    // 2. Testar CHANNEL (se fornecido)
+    const result = {
+      success: true,
+      valid: true,
+      message: "Configuração válida",
+      details: {
+        token: {
+          valid: true,
+          bot: tokenResult.bot
+        }
+      }
+    };
+    
+    // 2. Testar CHANNEL (se fornecido) - Validação completa
     if (channel) {
       const channelResult = await verifyChat(bot_token, channel);
       if (!channelResult.hasAccess) {
+        // Mensagens mais específicas
+        let errorMessage = "Canal: ";
+        if (channelResult.error === "não encontrado" || channelResult.error?.includes("not found")) {
+          errorMessage += "Canal não encontrado. Verifique se o ID/nome está correto.";
+        } else if (channelResult.error === "sem permissão" || channelResult.error?.includes("not a member")) {
+          errorMessage += "Bot não está no canal ou não tem permissões. Adicione o bot ao canal como administrador.";
+        } else if (channelResult.error?.includes("sem acesso") || channelResult.error?.includes("Forbidden")) {
+          errorMessage += "Bot não tem acesso ao canal. Adicione o bot ao canal primeiro.";
+        } else {
+          errorMessage += channelResult.error || "Erro ao verificar canal";
+        }
+        
         return res.json({
           success: true,
           valid: false,
-          message: `Canal: ${channelResult.error || "sem acesso"}`
+          message: errorMessage,
+          details: {
+            token: { valid: true, bot: tokenResult.bot },
+            channel: {
+              exists: channelResult.error !== "não encontrado" && !channelResult.error?.includes("not found"),
+              botInChannel: channelResult.error !== "sem permissão" && !channelResult.error?.includes("not a member"),
+              hasPermissions: false
+            }
+          }
         });
       }
+      
+      // Canal válido - adicionar informações
+      result.details.channel = {
+        exists: true,
+        botHasAccess: true,
+        permissions: channelResult.permissions || {}
+      };
     }
     
-    // 3. Testar GROUP (se fornecido)
+    // 3. Testar GROUP (se fornecido) - Validação completa
     if (group) {
       const groupResult = await verifyChat(bot_token, group);
       if (!groupResult.hasAccess) {
+        // Mensagens mais específicas
+        let errorMessage = "Grupo: ";
+        if (groupResult.error === "não encontrado" || groupResult.error?.includes("not found")) {
+          errorMessage += "Grupo não encontrado. Verifique se o ID/nome está correto.";
+        } else if (groupResult.error === "sem permissão" || groupResult.error?.includes("not a member")) {
+          errorMessage += "Bot não está no grupo ou não tem permissões. Adicione o bot ao grupo e dê permissões de administrador.";
+        } else if (groupResult.error?.includes("sem acesso") || groupResult.error?.includes("Forbidden")) {
+          errorMessage += "Bot não tem acesso ao grupo. Adicione o bot ao grupo primeiro.";
+        } else {
+          errorMessage += groupResult.error || "Erro ao verificar grupo";
+        }
+        
         return res.json({
           success: true,
           valid: false,
-          message: `Grupo: ${groupResult.error || "sem acesso"}`
+          message: errorMessage,
+          details: {
+            token: { valid: true, bot: tokenResult.bot },
+            channel: channel ? result.details.channel : null,
+            group: {
+              exists: groupResult.error !== "não encontrado" && !groupResult.error?.includes("not found"),
+              botInGroup: groupResult.error !== "sem permissão" && !groupResult.error?.includes("not a member"),
+              hasPermissions: false
+            }
+          }
         });
       }
+      
+      // Grupo válido - adicionar informações
+      result.details.group = {
+        exists: true,
+        botInGroup: true,
+        hasPermissions: true,
+        permissions: groupResult.permissions || {}
+      };
     }
     
     // Tudo válido
-    return res.json({
-      success: true,
-      valid: true,
-      message: "Configuração válida"
-    });
+    return res.json(result);
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -133,66 +197,12 @@ app.post("/check", async (req, res) => {
   }
 });
 
-// Endpoint /api/botfather/check (mesmo comportamento)
+// Endpoint /api/botfather/check (mesmo comportamento - redireciona para /check)
 app.post("/api/botfather/check", async (req, res) => {
-  try {
-    const { bot_token, channel, group } = req.body;
-    
-    if (!bot_token) {
-      return res.status(400).json({
-        success: false,
-        valid: false,
-        error: "Bot token é obrigatório"
-      });
-    }
-    
-    // 1. Verificar TOKEN
-    const tokenResult = await verifyToken(bot_token);
-    if (!tokenResult.valid) {
-      return res.json({
-        success: true,
-        valid: false,
-        message: "Token inválido"
-      });
-    }
-    
-    // 2. Testar CHANNEL (se fornecido)
-    if (channel) {
-      const channelResult = await verifyChat(bot_token, channel);
-      if (!channelResult.hasAccess) {
-        return res.json({
-          success: true,
-          valid: false,
-          message: `Canal: ${channelResult.error || "sem acesso"}`
-        });
-      }
-    }
-    
-    // 3. Testar GROUP (se fornecido)
-    if (group) {
-      const groupResult = await verifyChat(bot_token, group);
-      if (!groupResult.hasAccess) {
-        return res.json({
-          success: true,
-          valid: false,
-          message: `Grupo: ${groupResult.error || "sem acesso"}`
-        });
-      }
-    }
-    
-    // Tudo válido
-    return res.json({
-      success: true,
-      valid: true,
-      message: "Configuração válida"
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      valid: false,
-      error: error.message
-    });
-  }
+  // Reutilizar a mesma lógica do endpoint /check
+  return app._router.stack.find(layer => layer.route?.path === '/check' && layer.route?.methods?.post)
+    ? app._router.handle(req, res)
+    : res.status(404).json({ success: false, error: "Endpoint não encontrado" });
 });
 
 app.post("/api/botfather/verify-token", validateRequired(["token"]), async (req, res) => {

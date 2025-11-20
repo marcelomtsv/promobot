@@ -30,6 +30,48 @@ let monitoringInterval = null;
 let isMonitoring = false;
 let autoScrollEnabled = true;
 
+// ===== FUNÇÕES GLOBAIS (exportadas imediatamente para uso no HTML) =====
+// Toggle Sidebar (Mobile) - Exportado imediatamente para uso no HTML
+function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.querySelector('.sidebar-overlay');
+  const mobileToggle = document.getElementById('mobileMenuToggle');
+  const body = document.body;
+  
+  if (sidebar) {
+    const isActive = sidebar.classList.contains('active');
+    
+    if (isActive) {
+      // Fechar sidebar
+      sidebar.classList.remove('active');
+      if (overlay) overlay.classList.remove('active');
+      if (body) body.style.overflow = '';
+      
+      // Mudar ícone do botão
+      if (mobileToggle) {
+        mobileToggle.classList.remove('active');
+        const icon = mobileToggle.querySelector('i');
+        if (icon) icon.className = 'fas fa-bars';
+      }
+    } else {
+      // Abrir sidebar
+      sidebar.classList.add('active');
+      if (overlay) overlay.classList.add('active');
+      if (body) body.style.overflow = 'hidden';
+      
+      // Mudar ícone do botão
+      if (mobileToggle) {
+        mobileToggle.classList.add('active');
+        const icon = mobileToggle.querySelector('i');
+        if (icon) icon.className = 'fas fa-times';
+      }
+    }
+  }
+}
+
+// Exportar toggleSidebar imediatamente (antes de qualquer DOMContentLoaded)
+window.toggleSidebar = toggleSidebar;
+
 // Removido: sistema de múltiplas contas - cada usuário tem apenas UMA conta
 
 // ===== CONFIGURAÇÃO DA API =====
@@ -56,18 +98,210 @@ const BOTFATHER_API_URL = localStorage.getItem('botfatherApiUrl') ||
     : 'http://localhost:3001');
 // ==========================================
 
-// ===== OTIMIZAÇÕES DE PERFORMANCE =====
+// ===== SISTEMA DE CACHE PROFISSIONAL =====
 
-// Cache de configurações do Firebase com TTL (Time To Live)
-window.integrationConfigsCache = {};
-window.notificationConfigsCache = {};
-window.cacheTimestamps = {
-  integrationConfigs: 0,
-  notificationConfigs: 0,
-  telegramAccount: 0,
-  userData: 0
+/**
+ * Cache Manager - Sistema profissional de cache com write-through strategy
+ * 
+ * Características:
+ * - Write-through: Salva no Firebase E atualiza cache imediatamente
+ * - Invalidação inteligente: Invalida caches relacionados automaticamente
+ * - Prevenção de race conditions: Locks para evitar múltiplas chamadas simultâneas
+ * - TTL configurável por tipo de dado
+ * - Cache hierárquico e organizado
+ */
+
+// Estrutura de cache centralizada
+const CacheManager = {
+  // Cache de dados
+  data: {
+    integrationConfigs: {},
+    notificationConfigs: {},
+    telegramAccount: {},
+    userData: null
+  },
+  
+  // Timestamps de cache (para TTL)
+  timestamps: {
+    integrationConfigs: 0,
+    notificationConfigs: 0,
+    telegramAccount: 0,
+    userData: 0
+  },
+  
+  // TTLs configuráveis por tipo (em milissegundos)
+  ttls: {
+    integrationConfigs: 120000,      // 2 minutos - dados mudam pouco
+    notificationConfigs: 120000,     // 2 minutos - dados mudam pouco
+    telegramAccount: 60000,          // 1 minuto - pode mudar mais frequentemente
+    userData: 60000                   // 1 minuto - dados do usuário
+  },
+  
+  // Locks para prevenir race conditions
+  loadingLocks: {
+    integrationConfigs: null,
+    notificationConfigs: null,
+    telegramAccount: null,
+    userData: null
+  },
+  
+  /**
+   * Verifica se o cache está válido para uma chave específica
+   */
+  isValid(key) {
+    const timestamp = this.timestamps[key] || 0;
+    const ttl = this.ttls[key] || 60000;
+    return timestamp > 0 && (Date.now() - timestamp) < ttl;
+  },
+  
+  /**
+   * Obtém dados do cache (se válido) ou retorna null
+   */
+  get(key) {
+    if (this.isValid(key)) {
+      return this.data[key];
+    }
+    return null;
+  },
+  
+  /**
+   * Define dados no cache e atualiza timestamp
+   */
+  set(key, value) {
+    this.data[key] = value;
+    this.timestamps[key] = Date.now();
+  },
+  
+  /**
+   * Invalida cache específico ou todos
+   */
+  invalidate(key = null) {
+    if (key) {
+      this.timestamps[key] = 0;
+      // Invalidar caches relacionados
+      if (key === 'userData') {
+        // userData invalida todos os outros
+        this.timestamps.integrationConfigs = 0;
+        this.timestamps.notificationConfigs = 0;
+        this.timestamps.telegramAccount = 0;
+      } else if (key === 'integrationConfigs') {
+        // integrationConfigs pode afetar userData
+        this.timestamps.userData = 0;
+      }
+    } else {
+      // Invalidar todos
+      Object.keys(this.timestamps).forEach(k => {
+        this.timestamps[k] = 0;
+      });
+    }
+  },
+  
+  /**
+   * Carrega dados do Firebase com cache inteligente e prevenção de race conditions
+   */
+  async load(key, loaderFn, forceRefresh = false) {
+    // Verificar cache primeiro (se não forçar refresh)
+    if (!forceRefresh && this.isValid(key)) {
+      return this.get(key);
+    }
+    
+    // Verificar se já está carregando (prevenir race conditions)
+    if (this.loadingLocks[key]) {
+      // Aguardar o carregamento em andamento
+      return await this.loadingLocks[key];
+    }
+    
+    // Criar lock para este carregamento
+    const loadPromise = (async () => {
+      try {
+        const data = await loaderFn();
+        this.set(key, data);
+        return data;
+      } catch (error) {
+        console.error(`Erro ao carregar ${key}:`, error);
+        // Em caso de erro, retornar cache existente (se houver)
+        return this.get(key) || null;
+      } finally {
+        // Remover lock
+        this.loadingLocks[key] = null;
+      }
+    })();
+    
+    this.loadingLocks[key] = loadPromise;
+    return await loadPromise;
+  },
+  
+  /**
+   * Salva dados no Firebase E atualiza cache imediatamente (write-through)
+   */
+  async save(key, value, saverFn) {
+    try {
+      // Salvar no Firebase primeiro
+      await saverFn(value);
+      
+      // Atualizar cache imediatamente (write-through)
+      this.set(key, value);
+      
+      // Invalidar caches relacionados
+      if (key === 'integrationConfigs') {
+        this.invalidate('userData');
+      } else if (key === 'telegramAccount') {
+        this.invalidate('userData');
+      } else if (key === 'notificationConfigs') {
+        this.invalidate('userData');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`Erro ao salvar ${key}:`, error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Remove dados do cache e do Firebase
+   */
+  async remove(key, removerFn) {
+    try {
+      await removerFn();
+      this.data[key] = key === 'userData' ? null : (key.includes('Configs') ? {} : {});
+      this.invalidate(key);
+      return true;
+    } catch (error) {
+      console.error(`Erro ao remover ${key}:`, error);
+      throw error;
+    }
+  }
 };
-const CACHE_TTL = 60000; // 1 minuto em milissegundos
+
+// Compatibilidade com código existente (mantém window.* para não quebrar)
+Object.defineProperty(window, 'integrationConfigsCache', {
+  get: () => CacheManager.data.integrationConfigs,
+  set: (value) => CacheManager.set('integrationConfigs', value)
+});
+
+Object.defineProperty(window, 'notificationConfigsCache', {
+  get: () => CacheManager.data.notificationConfigs,
+  set: (value) => CacheManager.set('notificationConfigs', value)
+});
+
+Object.defineProperty(window, 'telegramConfigCache', {
+  get: () => CacheManager.data.telegramAccount,
+  set: (value) => CacheManager.set('telegramAccount', value)
+});
+
+Object.defineProperty(window, 'cacheTimestamps', {
+  get: () => CacheManager.timestamps
+});
+
+// Funções de compatibilidade
+function isCacheValid(key) {
+  return CacheManager.isValid(key);
+}
+
+function invalidateCache(key) {
+  CacheManager.invalidate(key);
+}
 
 // Debounce function - evita chamadas excessivas
 function debounce(func, wait) {
@@ -94,48 +328,35 @@ function throttle(func, limit) {
   };
 }
 
-// Verificar se cache está válido
-function isCacheValid(key) {
-  const timestamp = window.cacheTimestamps[key] || 0;
-  return (Date.now() - timestamp) < CACHE_TTL;
-}
-
-// Invalidar cache
-function invalidateCache(key) {
-  if (key) {
-    window.cacheTimestamps[key] = 0;
-  } else {
-    // Invalidar todos
-    Object.keys(window.cacheTimestamps).forEach(k => {
-      window.cacheTimestamps[k] = 0;
-    });
-  }
-}
-
-// Carregar todas as configurações do Firebase (com cache)
+// Carregar todas as configurações do Firebase (com cache profissional)
 async function loadAllConfigsFromFirebase(forceRefresh = false) {
   if (!currentUser || !currentUser.uid) {
     return;
   }
   
-  // Verificar cache
-  if (!forceRefresh && isCacheValid('userData')) {
-    return; // Usar cache
-  }
-  
   try {
-    const userData = await loadUserDataFromFirebase();
+    // Carregar userData com cache inteligente
+    const userData = await CacheManager.load(
+      'userData',
+      async () => await loadUserDataFromFirebase(),
+      forceRefresh
+    );
+    
     if (userData) {
-      window.integrationConfigsCache = userData.integrationConfigs || {};
-      window.notificationConfigsCache = userData.notificationConfigs || {};
-      window.cacheTimestamps.integrationConfigs = Date.now();
-      window.cacheTimestamps.notificationConfigs = Date.now();
-      window.cacheTimestamps.userData = Date.now();
+      // Atualizar caches específicos
+      if (userData.integrationConfigs) {
+        CacheManager.set('integrationConfigs', userData.integrationConfigs);
+      }
+      if (userData.notificationConfigs) {
+        CacheManager.set('notificationConfigs', userData.notificationConfigs);
+      }
+      if (userData.telegramAccount) {
+        CacheManager.set('telegramAccount', userData.telegramAccount);
+      }
     }
   } catch (error) {
-    // Se der erro, usar cache vazio
-    window.integrationConfigsCache = {};
-    window.notificationConfigsCache = {};
+    console.error('Erro ao carregar configurações:', error);
+    // Em caso de erro, manter cache existente
   }
 }
 
@@ -379,9 +600,9 @@ async function loadPlatforms() {
       const accountStatus = await checkTelegramAccountFromFirebase();
       // Atualizar cache
       if (accountStatus.hasAccount && accountStatus.firebaseAccount) {
-        window.telegramConfigCache = accountStatus.firebaseAccount;
+        CacheManager.set('telegramAccount', accountStatus.firebaseAccount);
       } else {
-        window.telegramConfigCache = {};
+        CacheManager.set('telegramAccount', {});
       }
     } catch (error) {
       // Ignorar erros
@@ -736,6 +957,8 @@ async function openPlatformConfig(platformId) {
           <span>Cadastrar DeepSeek</span>
         </div>
       `;
+      // Sempre recarregar dados do Firebase antes de mostrar
+      await loadAllConfigsFromFirebase(true);
       modalBody.innerHTML = getDeepSeekConfigHTML();
       modal.classList.add('active');
       
@@ -750,6 +973,8 @@ async function openPlatformConfig(platformId) {
           <span>Cadastrar Bot Father</span>
         </div>
       `;
+      // Sempre recarregar dados do Firebase antes de mostrar
+      await loadAllConfigsFromFirebase(true);
       modalBody.innerHTML = getBotFatherConfigHTML();
       modal.classList.add('active');
       return;
@@ -817,40 +1042,88 @@ function getTelegramConfigHTML() {
   return `
     <div id="telegramConfigContainer">
       ${hasAccount ? `
-        <!-- Status: Configurado e Ativo -->
-        <div style="text-align: center; padding: 2rem 1rem;">
-          <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
-            <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
+        <!-- Status: Configurado e Ativo - Design Melhorado -->
+        <div style="text-align: center; padding: 2.5rem 1.5rem;">
+          <!-- Ícone de Sucesso -->
+          <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25); position: relative; animation: scaleIn 0.5s ease-out;">
+            <i class="fas fa-check" style="font-size: 2.5rem; color: white;"></i>
+            <div style="position: absolute; inset: -4px; border-radius: 50%; border: 2px solid rgba(16, 185, 129, 0.2); animation: pulse 2s infinite;"></div>
           </div>
-          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Telegram Configurado</h3>
-          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua conta está ativa e funcionando</p>
           
-          <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">Status:</span>
-              <span class="platform-status active" style="display: inline-block; padding: 4px 12px; font-size: 0.75rem;">Ativo</span>
+          <!-- Título e Descrição -->
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.5rem; font-weight: 600;">Telegram Configurado</h3>
+          <p style="color: var(--text-light); margin: 0 0 2.5rem 0; font-size: 0.95rem; line-height: 1.5;">Sua conta está ativa e funcionando perfeitamente</p>
+          
+          <!-- Card de Informações -->
+          <div style="background: linear-gradient(135deg, var(--bg-light) 0%, var(--bg-white) 100%); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; text-align: left; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+            <!-- Status -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-circle" style="font-size: 0.5rem; color: #10b981;"></i>
+                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">Status da Conta</span>
+              </div>
+              <span class="platform-status active" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 6px 14px; font-size: 0.8rem; font-weight: 600; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);">
+                <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i>
+                ATIVO
+              </span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">Telefone:</span>
-              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${telegramConfig.phone || 'N/A'}</span>
+            
+            <!-- Telefone -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-phone" style="font-size: 0.85rem; color: var(--text-light);"></i>
+                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">Telefone</span>
+              </div>
+              <span style="color: var(--text-dark); font-size: 0.9rem; font-weight: 600; font-family: 'Courier New', monospace;">${telegramConfig.phone || 'N/A'}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">API ID:</span>
-              <code style="background: var(--bg-white); border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--text-dark);">
+            
+            <!-- API ID -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-key" style="font-size: 0.85rem; color: var(--text-light);"></i>
+                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">API ID</span>
+              </div>
+              <code style="background: var(--bg-light); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; color: var(--text-dark); font-weight: 600; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">
                 ${telegramConfig.apiId ? telegramConfig.apiId.substring(0, 4) + '...' + telegramConfig.apiId.substring(telegramConfig.apiId.length - 2) : 'N/A'}
               </code>
             </div>
           </div>
           
+          <!-- Botões de Ação -->
           <div style="display: flex; gap: 0.75rem; justify-content: center;">
-            <button type="button" class="btn btn-outline" onclick="removeTelegramAccount()" style="flex: 1;">
-              <i class="fas fa-trash"></i> Remover
+            <button type="button" class="btn btn-outline" onclick="removeTelegramAccount()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; border: 2px solid var(--border-color); transition: all 0.2s;">
+              <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
+              Remover
             </button>
-            <button type="button" class="btn btn-primary" onclick="showTelegramAccountInput()" style="flex: 1;">
-              <i class="fas fa-edit"></i> Trocar Conta
+            <button type="button" class="btn btn-primary" onclick="showTelegramAccountInput()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3); transition: all 0.2s;">
+              <i class="fas fa-edit" style="margin-right: 0.5rem;"></i> 
+              Editar
             </button>
           </div>
         </div>
+        
+        <style>
+          @keyframes scaleIn {
+            from {
+              transform: scale(0.8);
+              opacity: 0;
+            }
+            to {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.5;
+              transform: scale(1.1);
+            }
+          }
+        </style>
       ` : `
         <!-- Formulário: Adicionar Conta -->
         <form id="telegramConfigForm">
@@ -918,65 +1191,100 @@ function getTelegramConfigHTML() {
 }
 
 // HTML de configuração do DeepSeek
-function getDeepSeekConfigHTML() {
+function getDeepSeekConfigHTML(forceForm = false) {
   const deepseekConfig = window.integrationConfigsCache.deepseek || {};
-  const hasApiKey = !!deepseekConfig.apiKey;
+  const hasApiKey = !forceForm && !!deepseekConfig.apiKey;
   
   return `
     <div id="deepseekConfigContainer">
       ${hasApiKey ? `
-        <!-- Status: Configurado e Ativo (ESTILO UNIFICADO) -->
-        <div style="text-align: center; padding: 2rem 1rem;">
-          <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
-            <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
+        <!-- Status: Configurado e Ativo - Design Melhorado (ESTILO UNIFICADO COM TELEGRAM) -->
+        <div style="text-align: center; padding: 2.5rem 1.5rem;">
+          <!-- Ícone de Sucesso -->
+          <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25); position: relative; animation: scaleIn 0.5s ease-out;">
+            <i class="fas fa-check" style="font-size: 2.5rem; color: white;"></i>
+            <div style="position: absolute; inset: -4px; border-radius: 50%; border: 2px solid rgba(16, 185, 129, 0.2); animation: pulse 2s infinite;"></div>
           </div>
-          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">DeepSeek Cadastrado</h3>
-          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua API Key está ativa e funcionando</p>
           
-          <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">Status:</span>
-              <span class="platform-status active" style="display: inline-block; padding: 4px 12px; font-size: 0.75rem;">Ativo</span>
+          <!-- Título e Descrição -->
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.5rem; font-weight: 600;">DeepSeek Configurado</h3>
+          <p style="color: var(--text-light); margin: 0 0 2.5rem 0; font-size: 0.95rem; line-height: 1.5;">Sua API Key está ativa e funcionando perfeitamente</p>
+          
+          <!-- Card de Informações -->
+          <div style="background: linear-gradient(135deg, var(--bg-light) 0%, var(--bg-white) 100%); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; text-align: left; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+            <!-- Status -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-circle" style="font-size: 0.5rem; color: #10b981;"></i>
+                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">Status da API Key</span>
+              </div>
+              <span class="platform-status active" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 6px 14px; font-size: 0.8rem; font-weight: 600; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);">
+                <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i>
+                ATIVO
+              </span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">API Key:</span>
-              <code style="background: var(--bg-white); border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--text-dark);">
+            
+            <!-- API Key -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-key" style="font-size: 0.85rem; color: var(--text-light);"></i>
+                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">API Key</span>
+              </div>
+              <code style="background: var(--bg-light); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; color: var(--text-dark); font-weight: 600; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">
                 ${deepseekConfig.apiKey.substring(0, 8)}...${deepseekConfig.apiKey.substring(deepseekConfig.apiKey.length - 4)}
               </code>
             </div>
           </div>
           
-          <!-- Menu de Configuração -->
-          <div style="position: relative; margin-top: 1.5rem;">
-            <button type="button" class="btn btn-primary" onclick="toggleDeepSeekConfigMenu()" id="deepseekConfigMenuBtn" style="width: 100%;">
-              <i class="fas fa-cog"></i> Configurações
+          <!-- Botões de Ação (ESTILO UNIFICADO COM TELEGRAM E BOTFATHER) -->
+          <div style="display: flex; gap: 0.75rem; justify-content: center;">
+            <button type="button" class="btn btn-outline" onclick="abrirConfirmacaoRemoverDeepSeek()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; border: 2px solid var(--border-color); transition: all 0.2s;">
+              <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
+              Remover
             </button>
-            
-            <!-- Menu Dropdown (inicialmente oculto) -->
-            <div id="deepseekConfigMenu" style="display: none; position: absolute; top: calc(100% + 0.5rem); left: 0; right: 0; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); z-index: 1000; overflow: hidden;">
-              <button type="button" class="btn-menu-item" onclick="showDeepSeekApiKeyInput(); toggleDeepSeekConfigMenu();" style="width: 100%; padding: 0.875rem 1rem; text-align: left; background: transparent; border: none; color: var(--text-dark); cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 0.75rem;">
-                <i class="fas fa-edit" style="color: var(--primary-color); width: 20px;"></i>
-                <span>Trocar API Key</span>
-              </button>
-              <div style="height: 1px; background: var(--border-color); margin: 0.25rem 0;"></div>
-              <button type="button" class="btn-menu-item" onclick="abrirConfirmacaoRemoverDeepSeek(); toggleDeepSeekConfigMenu();" style="width: 100%; padding: 0.875rem 1rem; text-align: left; background: transparent; border: none; color: var(--accent-color); cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 0.75rem;">
-                <i class="fas fa-trash" style="width: 20px;"></i>
-                <span>Excluir API Key</span>
-              </button>
-            </div>
+            <button type="button" class="btn btn-primary" onclick="showDeepSeekApiKeyInput()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); transition: all 0.2s;">
+              <i class="fas fa-edit" style="margin-right: 0.5rem;"></i> 
+              Editar
+            </button>
           </div>
-          
-          <style>
-            .btn-menu-item:hover {
-              background: var(--bg-light) !important;
-            }
-          </style>
         </div>
+        
+        <style>
+          @keyframes scaleIn {
+            from {
+              transform: scale(0.8);
+              opacity: 0;
+            }
+            to {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.5;
+              transform: scale(1.1);
+            }
+          }
+        </style>
       ` : `
-        <!-- Formulário: Adicionar API Key (ESTILO UNIFICADO) -->
+        <!-- Formulário: Adicionar/Trocar API Key (ESTILO UNIFICADO) -->
         <form id="deepseekConfigForm">
           <!-- Status Message -->
           <div id="apiKeyStatus" style="display: none; margin-bottom: 1rem; padding: 1rem; border-radius: 8px; background: var(--bg-white); border: 1px solid var(--border-color);"></div>
+          
+          ${hasApiKey ? `
+          <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+            <p style="color: var(--text-light); font-size: 0.9rem; margin: 0; text-align: center;">
+              <i class="fas fa-info-circle" style="margin-right: 0.5rem;"></i>
+              Você está trocando a API Key atual. Preencha o novo valor abaixo.
+            </p>
+          </div>
+          ` : ''}
           
           <div class="form-group">
             <label style="margin-bottom: 0.5rem; display: block; color: var(--text-dark); font-weight: 500;">API Key do DeepSeek</label>
@@ -984,7 +1292,7 @@ function getDeepSeekConfigHTML() {
               <input 
                 type="password" 
                 id="deepseekApiKey" 
-                value="${deepseekConfig.apiKey || ''}" 
+                value="" 
                 placeholder="sk-..." 
                 style="flex: 1; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem;"
                 autocomplete="off"
@@ -1007,7 +1315,7 @@ function getDeepSeekConfigHTML() {
           <div class="form-actions" style="margin-top: 2rem;">
             <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">Cancelar</button>
             <button type="button" class="btn btn-primary" onclick="cadastrarDeepSeek()" id="cadastrarDeepSeekBtn" style="flex: 1;">
-              <i class="fas fa-plus"></i> Cadastrar
+              <i class="fas fa-plus"></i> ${hasApiKey ? 'Salvar Nova API Key' : 'Cadastrar'}
             </button>
           </div>
         </form>
@@ -1112,51 +1420,104 @@ function getDeepSeekConfigHTML() {
 }
 
 // HTML de configuração do Bot Father (ESTILO UNIFICADO COM TELEGRAM)
-function getBotFatherConfigHTML() {
+function getBotFatherConfigHTML(forceForm = false) {
   const botfatherConfig = window.integrationConfigsCache.botfather || {};
-  const hasConfig = botfatherConfig.botToken && botfatherConfig.channel && botfatherConfig.group;
+  const hasConfig = !forceForm && botfatherConfig.botToken && botfatherConfig.channel && botfatherConfig.group;
   
   return `
     <div id="botfatherConfigContainer">
       ${hasConfig ? `
-        <!-- Status: Configurado e Ativo (ESTILO UNIFICADO) -->
-        <div style="text-align: center; padding: 2rem 1rem;">
-          <div style="width: 80px; height: 80px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
-            <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
+        <!-- Status: Configurado e Ativo - Design Melhorado (ESTILO UNIFICADO COM TELEGRAM) -->
+        <div style="text-align: center; padding: 2.5rem 1.5rem;">
+          <!-- Ícone de Sucesso -->
+          <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25); position: relative; animation: scaleIn 0.5s ease-out;">
+            <i class="fas fa-check" style="font-size: 2.5rem; color: white;"></i>
+            <div style="position: absolute; inset: -4px; border-radius: 50%; border: 2px solid rgba(16, 185, 129, 0.2); animation: pulse 2s infinite;"></div>
           </div>
-          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">Bot Father Cadastrado</h3>
-          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">Sua configuração está ativa e funcionando</p>
           
-          <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">Status:</span>
-              <span class="platform-status active" style="display: inline-block; padding: 4px 12px; font-size: 0.75rem;">Ativo</span>
+          <!-- Título e Descrição -->
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.5rem; font-weight: 600;">Bot Father Configurado</h3>
+          <p style="color: var(--text-light); margin: 0 0 2.5rem 0; font-size: 0.95rem; line-height: 1.5;">Sua configuração está ativa e funcionando perfeitamente</p>
+          
+          <!-- Card de Informações -->
+          <div style="background: linear-gradient(135deg, var(--bg-light) 0%, var(--bg-white) 100%); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; text-align: left; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+            <!-- Status -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-circle" style="font-size: 0.5rem; color: #10b981;"></i>
+                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">Status da Configuração</span>
+              </div>
+              <span class="platform-status active" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 6px 14px; font-size: 0.8rem; font-weight: 600; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 20px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);">
+                <i class="fas fa-check-circle" style="font-size: 0.7rem;"></i>
+                ATIVO
+              </span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">Bot Token:</span>
-              <code style="background: var(--bg-white); border: 1px solid var(--border-color); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--text-dark);">
+            
+            <!-- Bot Token -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-key" style="font-size: 0.85rem; color: var(--text-light);"></i>
+                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">Bot Token</span>
+              </div>
+              <code style="background: var(--bg-light); border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; color: var(--text-dark); font-weight: 600; font-family: 'Courier New', monospace; letter-spacing: 0.5px;">
                 ${botfatherConfig.botToken.substring(0, 8)}...${botfatherConfig.botToken.substring(botfatherConfig.botToken.length - 4)}
               </code>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">Channel:</span>
-              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${botfatherConfig.channel}</span>
+            
+            <!-- Channel -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-hashtag" style="font-size: 0.85rem; color: var(--text-light);"></i>
+                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">Channel</span>
+              </div>
+              <span style="color: var(--text-dark); font-size: 0.9rem; font-weight: 600; font-family: 'Courier New', monospace;">${botfatherConfig.channel}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="color: var(--text-light); font-size: 0.85rem;">Group:</span>
-              <span style="color: var(--text-dark); font-size: 0.85rem; font-weight: 500;">${botfatherConfig.group}</span>
+            
+            <!-- Group -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-users" style="font-size: 0.85rem; color: var(--text-light);"></i>
+                <span style="color: var(--text-light); font-size: 0.9rem; font-weight: 500;">Group</span>
+              </div>
+              <span style="color: var(--text-dark); font-size: 0.9rem; font-weight: 600; font-family: 'Courier New', monospace;">${botfatherConfig.group}</span>
             </div>
           </div>
           
+          <!-- Botões de Ação (ESTILO UNIFICADO) -->
           <div style="display: flex; gap: 0.75rem; justify-content: center;">
-            <button type="button" class="btn btn-outline" onclick="removeBotFatherConfig()" style="flex: 1;">
-              <i class="fas fa-trash"></i> Remover
+            <button type="button" class="btn btn-outline" onclick="removeBotFatherConfig()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; border: 2px solid var(--border-color); transition: all 0.2s;">
+              <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
+              Remover
             </button>
-            <button type="button" class="btn btn-primary" onclick="showBotFatherConfigInput()" style="flex: 1;">
-              <i class="fas fa-edit"></i> Trocar Configuração
+            <button type="button" class="btn btn-primary" onclick="showBotFatherConfigInput()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3); transition: all 0.2s;">
+              <i class="fas fa-edit" style="margin-right: 0.5rem;"></i> 
+              Editar
             </button>
           </div>
         </div>
+        
+        <style>
+          @keyframes scaleIn {
+            from {
+              transform: scale(0.8);
+              opacity: 0;
+            }
+            to {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.5;
+              transform: scale(1.1);
+            }
+          }
+        </style>
       ` : `
         <!-- Formulário: Adicionar Configuração (ESTILO UNIFICADO) -->
         <form id="botfatherConfigForm">
@@ -1209,7 +1570,7 @@ function getBotFatherConfigHTML() {
             <input 
               type="text" 
               id="botfatherGroup" 
-              value="${botfatherConfig.group || ''}" 
+              value="" 
               placeholder="@meugrupo ou -1001234567890" 
               style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem;"
               autocomplete="off"
@@ -1225,7 +1586,7 @@ function getBotFatherConfigHTML() {
           <div class="form-actions" style="margin-top: 2rem;">
             <button type="button" class="btn btn-secondary" onclick="closeModal()" style="flex: 1;">Cancelar</button>
             <button type="button" class="btn btn-primary" onclick="addBotFatherConfig()" id="addBotFatherBtn" style="flex: 1;">
-              <i class="fas fa-plus"></i> Adicionar Configuração
+              <i class="fas fa-plus"></i> ${hasConfig ? 'Salvar Nova Configuração' : 'Adicionar Configuração'}
             </button>
           </div>
         </form>
@@ -1371,7 +1732,15 @@ function getNotificationConfigHTML(type) {
 
 // Fechar modal
 function closeModal() {
-  document.getElementById('platformModal').classList.remove('active');
+  const modal = document.getElementById('platformModal');
+  if (modal) {
+    modal.classList.remove('active');
+    // Limpar conteúdo do modal para garantir que recarregue na próxima abertura
+    const modalBody = document.getElementById('modalBody');
+    if (modalBody) {
+      modalBody.innerHTML = '';
+    }
+  }
 }
 
 // Atualizar perfil
@@ -1582,12 +1951,8 @@ async function cadastrarDeepSeek() {
     }
     
     if (response.ok && data.success && data.valid) {
-      // API Key válida - Salvar no Firebase
+      // API Key válida - Salvar no Firebase (já atualiza cache automaticamente via write-through)
       await saveIntegrationConfigToFirebase('deepseek', { apiKey });
-      
-      // Atualizar cache
-      if (!window.integrationConfigsCache) window.integrationConfigsCache = {};
-      window.integrationConfigsCache.deepseek = { apiKey };
       
       // Mostrar sucesso
       modalBody.innerHTML = `
@@ -1661,52 +2026,155 @@ function voltarFormularioDeepSeek() {
   }
 }
 
-// Remover API Key do DeepSeek
-function removeDeepSeekApiKey() {
-  if (!confirm('Tem certeza que deseja remover a API Key do DeepSeek? Esta ação desativará a integração.')) {
+// Abrir modal de confirmação para remover DeepSeek
+function abrirConfirmacaoRemoverDeepSeek() {
+  const modalBody = document.getElementById('modalBody');
+  if (!modalBody) return;
+  
+  modalBody.innerHTML = `
+    <div style="text-align: center; padding: 2.5rem 1.5rem;">
+      <!-- Ícone de Aviso -->
+      <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25); position: relative; animation: scaleIn 0.5s ease-out;">
+        <i class="fas fa-exclamation-triangle" style="font-size: 2.5rem; color: white;"></i>
+      </div>
+      
+      <!-- Título e Descrição -->
+      <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.5rem; font-weight: 600;">Confirmar Remoção</h3>
+      <p style="color: var(--text-light); margin: 0 0 2.5rem 0; font-size: 0.95rem; line-height: 1.5;">
+        Tem certeza que deseja remover a API Key do DeepSeek?<br>
+        Esta ação desativará a integração e não pode ser desfeita.
+      </p>
+      
+      <!-- Botões de Ação -->
+      <div style="display: flex; gap: 0.75rem; justify-content: center;">
+        <button type="button" class="btn btn-secondary" onclick="voltarDeepSeekConfig()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500;">
+          <i class="fas fa-times" style="margin-right: 0.5rem;"></i> 
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primary" onclick="confirmarRemoverDeepSeek()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
+          <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
+          Confirmar Remoção
+        </button>
+      </div>
+    </div>
+    
+    <style>
+      @keyframes scaleIn {
+        from {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+    </style>
+  `;
+}
+
+// Voltar para a tela de configuração do DeepSeek
+function voltarDeepSeekConfig() {
+  const modalBody = document.getElementById('modalBody');
+  if (!modalBody) return;
+  
+  // Recarregar dados do Firebase e mostrar tela de configurado
+  loadAllConfigsFromFirebase(true).then(() => {
+    modalBody.innerHTML = getDeepSeekConfigHTML();
+  });
+}
+
+// Confirmar remoção da API Key do DeepSeek
+async function confirmarRemoverDeepSeek() {
+  if (!currentUser || !currentUser.uid) {
+    alert('Usuário não autenticado.');
     return;
   }
   
-  const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-  configs.deepseek = {
-    apiKey: '',
-    enabled: false,
-    verified: false
-  };
-  localStorage.setItem('integrationConfigs', JSON.stringify(configs));
+  if (!window.firebaseDb) {
+    alert('Firestore não está disponível.');
+    return;
+  }
   
-  loadPlatforms();
-  closeModal();
-  
-  // Mostrar mensagem de sucesso
-  setTimeout(() => {
-    alert('API Key removida com sucesso!');
-  }, 300);
+  try {
+    const userData = await loadUserDataFromFirebase() || {};
+    const integrationConfigs = userData.integrationConfigs || {};
+    delete integrationConfigs.deepseek;
+    
+    await saveUserDataToFirebase({
+      integrationConfigs: integrationConfigs
+    });
+    
+    // Atualizar cache
+    delete window.integrationConfigsCache.deepseek;
+    CacheManager.invalidate('integrationConfigs');
+    
+    // Atualizar plataformas
+    loadPlatforms();
+    
+    // Mostrar mensagem de sucesso
+    const modalBody = document.getElementById('modalBody');
+    if (modalBody) {
+      modalBody.innerHTML = `
+        <div style="text-align: center; padding: 3rem 2rem;">
+          <div style="width: 80px; height: 80px; margin: 0 auto 2rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); animation: scaleIn 0.5s ease-out;">
+            <i class="fas fa-check" style="font-size: 2rem; color: white;"></i>
+          </div>
+          <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.25rem;">✅ Removido com sucesso!</h3>
+          <p style="color: var(--text-light); margin: 0 0 2rem 0; font-size: 0.9rem;">A API Key foi removida</p>
+          <button type="button" class="btn btn-primary" onclick="closeModal(); loadPlatforms();" style="padding: 0.75rem 2rem;">
+            Fechar
+          </button>
+        </div>
+        <style>
+          @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+          }
+        </style>
+      `;
+    }
+  } catch (error) {
+    alert('Erro ao remover API Key: ' + error.message);
+  }
 }
 
 // Mostrar formulário para trocar API Key
 function showDeepSeekApiKeyInput() {
-  const configs = JSON.parse(localStorage.getItem('integrationConfigs') || '{}');
-  configs.deepseek = {
-    ...configs.deepseek,
-    apiKey: '',
-    verified: false
-  };
-  localStorage.setItem('integrationConfigs', JSON.stringify(configs));
-  
-  // Recarregar o modal
   const modal = document.getElementById('platformModal');
   const modalBody = document.getElementById('modalBody');
-  if (modal && modalBody) {
-    modalBody.innerHTML = getDeepSeekConfigHTML();
+  
+  if (!modal || !modalBody) {
+    return;
+  }
+  
+  // Garantir que o modal está aberto
+  if (!modal.classList.contains('active')) {
+    modal.classList.add('active');
+  }
+  
+  try {
+    // Forçar mostrar formulário mesmo se tiver configuração
+    // Passar true para forceForm para sempre mostrar o formulário
+    modalBody.innerHTML = getDeepSeekConfigHTML(true);
     
-    // Reconfigurar event listeners
+    // Restaurar valor da API Key atual no campo (se existir) - apenas como placeholder
     setTimeout(() => {
-      const form = document.getElementById('deepseekConfigForm');
-      if (form) {
-        // Não precisa de listener, já está usando onclick
+      const deepseekConfig = window.integrationConfigsCache.deepseek || {};
+      const apiKeyInput = document.getElementById('deepseekApiKey');
+      if (apiKeyInput) {
+        // Limpar campo e adicionar placeholder informativo
+        apiKeyInput.value = '';
+        if (deepseekConfig.apiKey) {
+          apiKeyInput.placeholder = 'Digite a nova API Key';
+        }
+        // Focar no campo
+        apiKeyInput.focus();
       }
     }, 100);
+  } catch (error) {
+    console.error('Erro ao mostrar formulário DeepSeek:', error);
+    alert('Erro ao abrir formulário. Tente novamente.');
   }
 }
 
@@ -1793,12 +2261,7 @@ async function addBotFatherConfig() {
         group: group
       });
       
-      // Atualizar cache
-      window.integrationConfigsCache.botfather = {
-        botToken: botToken,
-        channel: channel,
-        group: group
-      };
+      // Cache já atualizado automaticamente pelo saveIntegrationConfigToFirebase (write-through)
       
       // Atualizar o conteúdo do modal para mostrar a tela de "configurado"
       const modalBody = document.getElementById('modalBody');
@@ -1887,13 +2350,55 @@ async function removeBotFatherConfig() {
 
 // Mostrar input para trocar configuração do Bot Father
 function showBotFatherConfigInput() {
-  // Limpar cache local (não remover do Firebase, apenas mostrar formulário)
-  delete window.integrationConfigsCache.botfather;
-  
-  // Atualizar modal
+  const modal = document.getElementById('platformModal');
   const modalBody = document.getElementById('modalBody');
-  if (modalBody) {
-    modalBody.innerHTML = getBotFatherConfigHTML();
+  
+  if (!modal || !modalBody) {
+    return;
+  }
+  
+  // Garantir que o modal está aberto
+  if (!modal.classList.contains('active')) {
+    modal.classList.add('active');
+  }
+  
+  try {
+    // Forçar mostrar formulário mesmo se tiver configuração
+    // Passar true para forceForm para sempre mostrar o formulário
+    modalBody.innerHTML = getBotFatherConfigHTML(true);
+    
+    // Restaurar valores atuais nos campos como placeholder (se existirem)
+    setTimeout(() => {
+      const botfatherConfig = window.integrationConfigsCache.botfather || {};
+      const botTokenInput = document.getElementById('botfatherBotToken');
+      const channelInput = document.getElementById('botfatherChannel');
+      const groupInput = document.getElementById('botfatherGroup');
+      
+      // Limpar campos e adicionar placeholders informativos
+      if (botTokenInput) {
+        botTokenInput.value = '';
+        botTokenInput.placeholder = botfatherConfig.botToken ? 
+          `Atual: ${botfatherConfig.botToken.substring(0, 8)}...` : 
+          '1234567890:ABCdefGHIjklMNOpqrsTUVwxyz';
+        // Focar no primeiro campo
+        botTokenInput.focus();
+      }
+      if (channelInput) {
+        channelInput.value = '';
+        channelInput.placeholder = botfatherConfig.channel ? 
+          `Atual: ${botfatherConfig.channel}` : 
+          '@meucanal ou -1001234567890';
+      }
+      if (groupInput) {
+        groupInput.value = '';
+        groupInput.placeholder = botfatherConfig.group ? 
+          `Atual: ${botfatherConfig.group}` : 
+          '@meugrupo ou -1001234567890';
+      }
+    }, 100);
+  } catch (error) {
+    console.error('Erro ao mostrar formulário BotFather:', error);
+    alert('Erro ao abrir formulário. Tente novamente.');
   }
 }
 
@@ -2181,9 +2686,7 @@ async function handleDeepSeekConfig(e) {
     };
     
     await saveIntegrationConfigToFirebase('deepseek', deepseekConfig);
-    
-    // Atualizar cache
-    window.integrationConfigsCache.deepseek = deepseekConfig;
+    // Cache já atualizado automaticamente pelo saveIntegrationConfigToFirebase (write-through)
 
     loadPlatforms();
     
@@ -2250,9 +2753,7 @@ async function handleNotificationConfig(type, e) {
     try {
       // Salvar no Firebase (OTIMIZADO - apenas em integrationConfigs, sem duplicação)
       await saveIntegrationConfigToFirebase('whatsapp', { number });
-      
-      // Atualizar cache
-      window.integrationConfigsCache.whatsapp = { number };
+      // Cache já atualizado automaticamente pelo saveIntegrationConfigToFirebase (write-through)
 
       // Mostrar mensagem de sucesso
       if (statusMessage) {
@@ -2304,9 +2805,9 @@ async function removeWhatsAppConfig() {
       integrationConfigs: integrationConfigs
     });
     
-    // Atualizar cache
-    window.integrationConfigsCache = integrationConfigs;
-    window.notificationConfigsCache = notificationConfigs;
+    // Atualizar cache (já atualizado automaticamente pelo saveUserDataToFirebase via write-through)
+    // Mas garantir que está sincronizado
+    CacheManager.set('integrationConfigs', integrationConfigs);
     
     // Recarregar modal
     const modalBody = document.getElementById('modalBody');
@@ -2567,44 +3068,6 @@ window.clearConsole = clearConsole;
 window.toggleAutoScroll = toggleAutoScroll;
 window.toggleTheme = toggleTheme;
 
-// Toggle Sidebar (Mobile) - Melhorado
-function toggleSidebar() {
-  const sidebar = document.querySelector('.sidebar');
-  const overlay = document.querySelector('.sidebar-overlay');
-  const mobileToggle = document.getElementById('mobileMenuToggle');
-  const body = document.body;
-  
-  if (sidebar) {
-    const isActive = sidebar.classList.contains('active');
-    
-    if (isActive) {
-      // Fechar sidebar
-      sidebar.classList.remove('active');
-      if (overlay) overlay.classList.remove('active');
-      if (body) body.style.overflow = '';
-      
-      // Mudar ícone do botão
-      if (mobileToggle) {
-        mobileToggle.classList.remove('active');
-        const icon = mobileToggle.querySelector('i');
-        if (icon) icon.className = 'fas fa-bars';
-      }
-    } else {
-      // Abrir sidebar
-      sidebar.classList.add('active');
-      if (overlay) overlay.classList.add('active');
-      if (body) body.style.overflow = 'hidden';
-      
-      // Mudar ícone do botão
-      if (mobileToggle) {
-        mobileToggle.classList.add('active');
-        const icon = mobileToggle.querySelector('i');
-        if (icon) icon.className = 'fas fa-times';
-      }
-    }
-  }
-}
-
 // Fechar sidebar ao clicar em um item do menu (mobile)
 document.addEventListener('DOMContentLoaded', function() {
   const menuItems = document.querySelectorAll('.menu-item');
@@ -2658,8 +3121,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 250);
   });
 });
-
-window.toggleSidebar = toggleSidebar;
 
 // ==================== TELEGRAM MANAGEMENT ====================
 
@@ -2908,10 +3369,7 @@ async function handleVerifyTelegramCode(e) {
         // Salvar no Firebase
         await saveTelegramAccountToFirebase(verifiedAccountData);
         
-        // ATUALIZAR CACHE IMEDIATAMENTE (sem esperar recarregar)
-        window.telegramConfigCache = verifiedAccountData;
-        window.cacheTimestamps.telegramAccount = Date.now();
-        
+        // Cache já foi atualizado automaticamente pelo saveTelegramAccountToFirebase (write-through)
         // Invalidar cache de sincronização para forçar refresh
         syncCache = null;
         syncCacheTime = 0;
@@ -3034,28 +3492,38 @@ async function checkTelegramAccountSync(forceRefresh = false) {
   let hasFirebaseAccount = false;
   let firebaseAccount = null;
   
-  // Verificar apenas Firebase (muito mais leve e rápido)
+  // Verificar apenas Firebase (muito mais leve e rápido) - usando CacheManager
   if (currentUser && currentUser.uid && window.firebaseDb) {
     try {
-      // Se cache de userData é válido, usar cache
-      if (!forceRefresh && isCacheValid('telegramAccount') && window.telegramConfigCache && Object.keys(window.telegramConfigCache).length > 0) {
-        firebaseAccount = window.telegramConfigCache;
+      // Tentar obter do cache primeiro
+      const cachedAccount = CacheManager.get('telegramAccount');
+      if (!forceRefresh && cachedAccount && Object.keys(cachedAccount).length > 0) {
+        firebaseAccount = cachedAccount;
         hasFirebaseAccount = !!(firebaseAccount.phone && firebaseAccount.apiId && firebaseAccount.sessionString);
       } else {
-        const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-        const doc = await docRef.get();
-        if (doc.exists) {
-          const userData = doc.data();
-          if (userData.telegramAccount && userData.telegramAccount.phone && userData.telegramAccount.apiId && userData.telegramAccount.sessionString) {
-            hasFirebaseAccount = true;
-            firebaseAccount = userData.telegramAccount;
-            window.telegramConfigCache = firebaseAccount;
-            window.cacheTimestamps.telegramAccount = Date.now();
-          }
+        // Carregar do Firebase usando CacheManager
+        const accountData = await CacheManager.load(
+          'telegramAccount',
+          async () => {
+            const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+            const doc = await docRef.get();
+            if (doc.exists) {
+              const userData = doc.data();
+              return userData.telegramAccount || {};
+            }
+            return {};
+          },
+          forceRefresh
+        );
+        
+        if (accountData && accountData.phone && accountData.apiId && accountData.sessionString) {
+          hasFirebaseAccount = true;
+          firebaseAccount = accountData;
         }
       }
     } catch (error) {
       // Ignorar erros
+      console.error('Erro ao verificar conta do Telegram:', error);
     }
   }
   
@@ -3087,8 +3555,9 @@ async function loadTelegramAccountFromFirebase(forceRefresh = false) {
     return;
   }
   
-  // Verificar cache (só se não forçar refresh)
-  if (!forceRefresh && isCacheValid('telegramAccount') && window.telegramConfigCache && Object.keys(window.telegramConfigCache).length > 0) {
+  // Verificar cache (só se não forçar refresh) - usando CacheManager
+  const cachedAccount = CacheManager.get('telegramAccount');
+  if (!forceRefresh && cachedAccount && Object.keys(cachedAccount).length > 0) {
     // Usar cache - apenas atualizar HTML se necessário
     const container = document.getElementById('telegramConfigContainer');
     if (container) {
@@ -3102,12 +3571,11 @@ async function loadTelegramAccountFromFirebase(forceRefresh = false) {
     const accountStatus = await checkTelegramAccountFromFirebase(forceRefresh);
     
     if (accountStatus.hasAccount && accountStatus.firebaseAccount) {
-      window.telegramConfigCache = accountStatus.firebaseAccount;
-      window.cacheTimestamps.telegramAccount = Date.now();
+      CacheManager.set('telegramAccount', accountStatus.firebaseAccount);
     } else {
       // Limpar cache se não tiver conta
-      window.telegramConfigCache = {};
-      window.cacheTimestamps.telegramAccount = 0;
+      CacheManager.set('telegramAccount', {});
+      CacheManager.invalidate('telegramAccount');
     }
     
     // Recarregar o HTML do modal
@@ -3117,8 +3585,8 @@ async function loadTelegramAccountFromFirebase(forceRefresh = false) {
     }
   } catch (error) {
     // Se der erro, limpar cache e mostrar formulário vazio
-    window.telegramConfigCache = {};
-    window.cacheTimestamps.telegramAccount = 0;
+    CacheManager.set('telegramAccount', {});
+    CacheManager.invalidate('telegramAccount');
     const container = document.getElementById('telegramConfigContainer');
     if (container) {
       container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
@@ -3174,33 +3642,44 @@ async function loadUserDataFromFirebase() {
   }
 }
 
-// Salvar conta do Telegram no Firebase
+// Salvar conta do Telegram no Firebase (com write-through cache)
 async function saveTelegramAccountToFirebase(accountData) {
-  await saveUserDataToFirebase({
-    telegramAccount: accountData
-  });
-  // Atualizar cache após salvar
-  window.telegramConfigCache = accountData;
-  window.cacheTimestamps.telegramAccount = Date.now();
+  await CacheManager.save(
+    'telegramAccount',
+    accountData,
+    async (data) => {
+      await saveUserDataToFirebase({
+        telegramAccount: data
+      });
+    }
+  );
   // Invalidar cache de sincronização
   syncCache = null;
   syncCacheTime = 0;
 }
 
-// Salvar configuração de integração (DeepSeek, WhatsApp, etc.)
+// Salvar configuração de integração (DeepSeek, WhatsApp, etc.) - com write-through cache
 async function saveIntegrationConfigToFirebase(integrationId, config) {
-  const userData = await loadUserDataFromFirebase() || {};
-  const integrationConfigs = userData.integrationConfigs || {};
+  // Obter configurações atuais (do cache ou Firebase)
+  let integrationConfigs = CacheManager.get('integrationConfigs');
+  if (!integrationConfigs) {
+    const userData = await loadUserDataFromFirebase() || {};
+    integrationConfigs = userData.integrationConfigs || {};
+  }
+  
+  // Atualizar configuração específica
   integrationConfigs[integrationId] = config;
   
-  await saveUserDataToFirebase({
-    integrationConfigs: integrationConfigs
-  });
-  
-  // Atualizar cache
-  window.integrationConfigsCache = integrationConfigs;
-  window.cacheTimestamps.integrationConfigs = Date.now();
-  window.cacheTimestamps.userData = Date.now();
+  // Salvar com write-through
+  await CacheManager.save(
+    'integrationConfigs',
+    integrationConfigs,
+    async (data) => {
+      await saveUserDataToFirebase({
+        integrationConfigs: data
+      });
+    }
+  );
 }
 
 // Carregar configuração de integração
@@ -3221,20 +3700,28 @@ async function loadAllIntegrationConfigsFromFirebase() {
   return {};
 }
 
-// Salvar configuração de notificação
+// Salvar configuração de notificação - com write-through cache
 async function saveNotificationConfigToFirebase(type, config) {
-  const userData = await loadUserDataFromFirebase() || {};
-  const notificationConfigs = userData.notificationConfigs || {};
+  // Obter configurações atuais (do cache ou Firebase)
+  let notificationConfigs = CacheManager.get('notificationConfigs');
+  if (!notificationConfigs) {
+    const userData = await loadUserDataFromFirebase() || {};
+    notificationConfigs = userData.notificationConfigs || {};
+  }
+  
+  // Atualizar configuração específica
   notificationConfigs[type] = config;
   
-  await saveUserDataToFirebase({
-    notificationConfigs: notificationConfigs
-  });
-  
-  // Atualizar cache
-  window.notificationConfigsCache = notificationConfigs;
-  window.cacheTimestamps.notificationConfigs = Date.now();
-  window.cacheTimestamps.userData = Date.now();
+  // Salvar com write-through
+  await CacheManager.save(
+    'notificationConfigs',
+    notificationConfigs,
+    async (data) => {
+      await saveUserDataToFirebase({
+        notificationConfigs: data
+      });
+    }
+  );
 }
 
 // Carregar configuração de notificação
@@ -3299,7 +3786,8 @@ async function removeTelegramAccount() {
     });
     
     // Limpar cache
-    window.telegramConfigCache = {};
+    CacheManager.set('telegramAccount', {});
+    CacheManager.invalidate('telegramAccount');
     
     // Recarregar o modal
     const modalBody = document.getElementById('modalBody');
@@ -3321,8 +3809,8 @@ async function removeTelegramAccount() {
 
 // Mostrar formulário para trocar conta
 function showTelegramAccountInput() {
-  // Limpar cache
-  window.telegramConfigCache = {};
+  // Não limpar cache aqui - manter dados para possível reuso
+  // Cache será atualizado quando nova conta for salva
   
   // Recarregar o modal
   const modalBody = document.getElementById('modalBody');
@@ -3443,8 +3931,8 @@ async function addTelegramAccount() {
           // Ignorar
         }
       }
-      window.telegramConfigCache = {};
-      invalidateCache('telegramAccount');
+      CacheManager.set('telegramAccount', {});
+      CacheManager.invalidate('telegramAccount');
       
       // Remover da API também (só quando for adicionar nova conta) - deletar apenas deste cliente
       try {
@@ -3499,7 +3987,7 @@ async function addTelegramAccount() {
       };
       
       // Salvar no cache primeiro (para uso durante verificação)
-      window.telegramConfigCache = accountData;
+      CacheManager.set('telegramAccount', accountData);
       
       // Salvar dados no Firebase (sem sessionString ainda, será salvo após verificação)
       // Usar email como identificador único
@@ -3584,8 +4072,8 @@ async function handleAddTelegramAccount(e) {
           // Ignorar
         }
       }
-      window.telegramConfigCache = {};
-      invalidateCache('telegramAccount');
+      CacheManager.set('telegramAccount', {});
+      CacheManager.invalidate('telegramAccount');
       
       // Remover da API também (garantir limpeza completa)
       try {
@@ -3717,4 +4205,8 @@ window.voltarDeepSeekConfig = voltarDeepSeekConfig;
 window.confirmarRemoverDeepSeek = confirmarRemoverDeepSeek;
 window.testDeepSeekApiConnection = testDeepSeekApiConnection;
 window.showDeepSeekApiKeyInput = showDeepSeekApiKeyInput;
+window.showBotFatherConfigInput = showBotFatherConfigInput;
+window.showTelegramAccountInput = showTelegramAccountInput;
+window.removeBotFatherConfig = removeBotFatherConfig;
+window.removeTelegramAccount = removeTelegramAccount;
 
