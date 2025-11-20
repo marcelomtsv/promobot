@@ -966,8 +966,7 @@ async function openPlatformConfig(platformId) {
         </div>
       `;
       // Sempre recarregar dados do Firebase antes de mostrar
-      await loadAllConfigsFromFirebase(true);
-      modalBody.innerHTML = getDeepSeekConfigHTML();
+      modalBody.innerHTML = await getDeepSeekConfigHTML();
       modal.classList.add('active');
       
       // Não precisa mais de configuração adicional, o HTML já gerencia tudo
@@ -1199,10 +1198,21 @@ function getTelegramConfigHTML() {
 }
 
 // HTML de configuração do DeepSeek
-function getDeepSeekConfigHTML(forceForm = false) {
-  // Usar CacheManager para obter dados atualizados (não cache antigo)
-  const integrationConfigs = CacheManager.get('integrationConfigs') || {};
-  const deepseekConfig = integrationConfigs.deepseek || {};
+async function getDeepSeekConfigHTML(forceForm = false) {
+  // Carregar dados DIRETAMENTE do Firebase (sempre do servidor para garantir dados atualizados)
+  let deepseekConfig = {};
+  if (!forceForm && currentUser && currentUser.uid && window.firebaseDb) {
+    try {
+      const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+      const userDataDoc = await docRef.get({ source: 'server' });
+      if (userDataDoc.exists) {
+        const userData = userDataDoc.data();
+        deepseekConfig = (userData.integrationConfigs || {}).deepseek || {};
+      }
+    } catch (error) {
+      // Ignorar erro, usar objeto vazio
+    }
+  }
   const hasApiKey = !forceForm && !!deepseekConfig.apiKey;
   
   return `
@@ -1984,9 +1994,9 @@ async function cadastrarDeepSeek() {
       `;
       
       // Atualizar dashboard e modal após 1.5 segundos
-      setTimeout(() => {
+      setTimeout(async () => {
         loadPlatforms();
-        modalBody.innerHTML = getDeepSeekConfigHTML();
+        modalBody.innerHTML = await getDeepSeekConfigHTML();
       }, 1500);
       
     } else {
@@ -2027,7 +2037,9 @@ function voltarFormularioDeepSeek() {
   if (!modalBody) return;
   
   // Recarregar formulário com dados mantidos
-  modalBody.innerHTML = getDeepSeekConfigHTML();
+  getDeepSeekConfigHTML().then(html => {
+    modalBody.innerHTML = html;
+  });
   
   // Restaurar valor da API Key se existir
   if (window.deepseekApiKeyTemp) {
@@ -2123,14 +2135,12 @@ function showLoadingAnimation(message = 'Processando...', color = '#6366f1') {
 }
 
 // Voltar para a tela de configuração do DeepSeek
-function voltarDeepSeekConfig() {
+async function voltarDeepSeekConfig() {
   const modalBody = document.getElementById('modalBody');
   if (!modalBody) return;
   
   // Recarregar dados do Firebase e mostrar tela de configurado
-  loadAllConfigsFromFirebase(true).then(() => {
-    modalBody.innerHTML = getDeepSeekConfigHTML();
-  });
+  modalBody.innerHTML = await getDeepSeekConfigHTML();
 }
 
 // Confirmar remoção da API Key do DeepSeek
@@ -2152,29 +2162,21 @@ async function confirmarRemoverDeepSeek() {
   }
   
   try {
-    // Carregar dados do cache primeiro (mais rápido)
-    let integrationConfigs = CacheManager.get('integrationConfigs');
-    if (!integrationConfigs) {
-      const userData = await loadUserDataFromFirebase() || {};
-      integrationConfigs = userData.integrationConfigs || {};
-    }
+    // Carregar dados ATUAIS do Firebase (sempre do servidor, não do cache)
+    const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+    const userDataDoc = await docRef.get({ source: 'server' });
+    const userData = userDataDoc.exists ? userDataDoc.data() : {};
     
-    // Remover configuração do objeto
+    // Remover o campo deepseek do objeto integrationConfigs usando FieldValue.delete()
+    const integrationConfigs = userData.integrationConfigs || {};
     delete integrationConfigs.deepseek;
     
-    // Salvar no Firebase (garantir que está realmente removido)
-    // Usar set com merge para garantir que o campo seja removido
-    const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-    const userData = await loadUserDataFromFirebase() || {};
-    userData.integrationConfigs = integrationConfigs;
-    userData.updatedAt = new Date().toISOString();
-    await docRef.set(userData, { merge: true });
-    
-    // Invalidar cache completamente para forçar recarregamento
-    CacheManager.invalidate('integrationConfigs');
-    CacheManager.invalidate('userData');
-    // Atualizar cache com dados limpos
-    CacheManager.set('integrationConfigs', integrationConfigs);
+    // Salvar no Firebase usando update com FieldValue.delete() para garantir remoção real
+    const FieldValue = window.firebase.firestore.FieldValue;
+    await docRef.update({
+      'integrationConfigs.deepseek': FieldValue.delete(),
+      updatedAt: new Date().toISOString()
+    });
     
     // Atualizar plataformas (com debounce para evitar múltiplas chamadas)
     loadPlatformsDebounced();
@@ -2245,7 +2247,7 @@ async function showDeepSeekApiKeyInput() {
     
     // Forçar mostrar formulário mesmo se tiver configuração
     // Passar true para forceForm para sempre mostrar o formulário
-    modalBody.innerHTML = getDeepSeekConfigHTML(true);
+    modalBody.innerHTML = await getDeepSeekConfigHTML(true);
     
     // Limpar campo completamente (não mostrar dados antigos)
     setTimeout(() => {
@@ -2483,24 +2485,15 @@ async function confirmarRemoverBotFather() {
   }
   
   try {
-    // Carregar dados do cache primeiro (mais rápido)
-    let integrationConfigs = CacheManager.get('integrationConfigs');
-    if (!integrationConfigs) {
-      const userData = await loadUserDataFromFirebase() || {};
-      integrationConfigs = userData.integrationConfigs || {};
-    }
+    // Carregar dados ATUAIS do Firebase (sempre do servidor, não do cache)
+    const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
     
-    // Remover configuração
-    delete integrationConfigs.botfather;
-    
-    // Salvar no Firebase
-    await saveUserDataToFirebase({
-      integrationConfigs: integrationConfigs
+    // Remover do Firebase usando FieldValue.delete() para garantir remoção real
+    const FieldValue = window.firebase.firestore.FieldValue;
+    await docRef.update({
+      'integrationConfigs.botfather': FieldValue.delete(),
+      updatedAt: new Date().toISOString()
     });
-    
-    // Atualizar cache imediatamente (sem esperar)
-    CacheManager.set('integrationConfigs', integrationConfigs);
-    CacheManager.invalidate('integrationConfigs');
     
     // Mostrar mensagem de sucesso
     if (modalBody) {
@@ -2904,18 +2897,19 @@ async function removeWhatsAppConfig() {
     return;
   }
   
+  if (!currentUser || !currentUser.uid || !window.firebaseDb) {
+    alert('Erro: usuário não autenticado ou Firestore não disponível.');
+    return;
+  }
+  
   try {
-    const userData = await loadUserDataFromFirebase() || {};
-    const integrationConfigs = userData.integrationConfigs || {};
-    delete integrationConfigs.whatsapp;
-    
-    await saveUserDataToFirebase({
-      integrationConfigs: integrationConfigs
+    // Remover do Firebase usando FieldValue.delete() para garantir remoção real
+    const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+    const FieldValue = window.firebase.firestore.FieldValue;
+    await docRef.update({
+      'integrationConfigs.whatsapp': FieldValue.delete(),
+      updatedAt: new Date().toISOString()
     });
-    
-    // Atualizar cache (já atualizado automaticamente pelo saveUserDataToFirebase via write-through)
-    // Mas garantir que está sincronizado
-    CacheManager.set('integrationConfigs', integrationConfigs);
     
     // Recarregar modal
     const modalBody = document.getElementById('modalBody');
@@ -3934,16 +3928,13 @@ async function confirmarRemoverTelegramAccount() {
       }).catch(() => {}) // Ignorar erros se a sessão já não existir
     ]);
     
-    // Remover do Firebase (operação mais rápida possível)
+    // Remover do Firebase usando FieldValue.delete() para garantir remoção real
     const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+    const FieldValue = window.firebase.firestore.FieldValue;
     await docRef.update({
-      telegramAccount: null,
+      telegramAccount: FieldValue.delete(),
       updatedAt: new Date().toISOString()
     });
-    
-    // Limpar cache imediatamente (sem esperar)
-    CacheManager.set('telegramAccount', {});
-    CacheManager.invalidate('telegramAccount');
     
     // Mostrar mensagem de sucesso
     if (modalBody) {
