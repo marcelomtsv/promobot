@@ -72,8 +72,6 @@ function toggleSidebar() {
 // Exportar toggleSidebar imediatamente (antes de qualquer DOMContentLoaded)
 window.toggleSidebar = toggleSidebar;
 
-// Removido: sistema de múltiplas contas - cada usuário tem apenas UMA conta
-
 // ===== CONFIGURAÇÃO DA API =====
 // URL da API do Telegram (localhost para desenvolvimento - porta 3003)
 const TELEGRAM_API_URL = localStorage.getItem('telegramApiUrl') || 
@@ -2402,95 +2400,6 @@ function showBotFatherConfigInput() {
   }
 }
 
-// Testar conexão com a API do DeepSeek
-async function testDeepSeekApiConnection() {
-  const statusDiv = document.getElementById('apiKeyStatus');
-  const testBtn = document.getElementById('testApiBtn');
-  
-  // Obter URL da API
-  const urlInput = document.getElementById('deepseekApiUrl');
-  const apiUrl = (urlInput && urlInput.value.trim()) || DEEPSEEK_API_URL || 'https://promobot-deepseek.meoy4a.easypanel.host';
-  
-  if (!apiUrl || apiUrl.trim() === '') {
-    statusDiv.innerHTML = '<span style="color: var(--accent-color);"><i class="fas fa-exclamation-circle"></i> Por favor, insira a URL da API primeiro</span>';
-    statusDiv.style.display = 'block';
-    return;
-  }
-  
-  // Desabilitar botão durante teste
-  testBtn.disabled = true;
-  testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testando...';
-  
-  // Limpar status anterior
-  statusDiv.style.display = 'none';
-  
-  try {
-    // Tentar fazer requisição simples primeiro
-    let response;
-    try {
-      response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        },
-        signal: createTimeoutSignal(10000)
-      });
-    } catch (fetchError) {
-      // Se falhar, tentar novamente
-      response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json'
-        },
-        signal: createTimeoutSignal(10000)
-      });
-    }
-    
-    if (response.ok) {
-      const data = await response.json();
-      statusDiv.innerHTML = `<span style="color: #10b981;"><i class="fas fa-check-circle"></i> API está acessível!<br><small style="color: var(--text-light);">${data.message || 'Conexão estabelecida com sucesso'}</small></span>`;
-      statusDiv.style.display = 'block';
-    } else {
-      statusDiv.innerHTML = `<span style="color: var(--accent-color);"><i class="fas fa-exclamation-triangle"></i> API retornou status ${response.status}<br><small style="color: var(--text-light);">Verifique se a URL está correta</small></span>`;
-      statusDiv.style.display = 'block';
-    }
-  } catch (error) {
-    let errorMessage = 'Não foi possível conectar com a API.';
-    let errorDetails = '';
-    
-    if (error.name === 'AbortError') {
-      errorMessage = 'Timeout: A conexão demorou muito.';
-    } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      errorMessage = 'Erro de conexão com a API.';
-      errorDetails = `
-        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 1rem; margin-top: 0.5rem;">
-          <strong style="color: var(--accent-color); display: block; margin-bottom: 0.5rem;">URL testada:</strong>
-          <code style="color: var(--text-dark); background: var(--bg-white); border: 1px solid var(--border-color); padding: 0.25rem 0.5rem; border-radius: 3px; display: inline-block; margin-bottom: 0.75rem;">${apiUrl}</code>
-          
-          <strong style="color: var(--accent-color); display: block; margin-bottom: 0.5rem;">Possíveis causas:</strong>
-          <ul style="color: var(--text-light); margin: 0.5rem 0; padding-left: 1.5rem;">
-            <li>API offline ou inacessível</li>
-            <li>Extensão do navegador bloqueando requisições</li>
-            <li>Problema de rede/firewall</li>
-            <li>URL da API incorreta</li>
-          </ul>
-          
-          <small style="color: var(--text-light); display: block; margin-top: 0.5rem;">
-            <strong>Teste rápido:</strong> Abra <a href="${apiUrl}" target="_blank" style="color: var(--accent-color); text-decoration: underline;">${apiUrl}</a> no navegador para verificar se a API está acessível.
-          </small>
-        </div>`;
-    } else {
-      errorMessage = `Erro: ${error.message}`;
-    }
-    
-    statusDiv.innerHTML = `<span style="color: var(--accent-color);"><i class="fas fa-times-circle"></i> ${errorMessage}${errorDetails}</span>`;
-    statusDiv.style.display = 'block';
-  } finally {
-    testBtn.disabled = false;
-    testBtn.innerHTML = '<i class="fas fa-network-wired"></i> Testar Conexão';
-  }
-}
-
 // Verificar API Key do DeepSeek
 async function verifyDeepSeekApiKey() {
   const apiKeyInput = document.getElementById('deepseekApiKey');
@@ -3221,32 +3130,6 @@ async function checkTelegramApiStatus() {
 
 // Removido: loadTelegramSessions() e loadTelegramAccountsList()
 // Sistema simplificado - cada usuário tem apenas UMA conta gerenciada via Firebase
-
-// Mostrar formulário de adicionar conta
-function showAddTelegramAccountForm() {
-  const form = document.getElementById('addTelegramAccountForm');
-  if (form) {
-    form.style.display = 'block';
-  }
-}
-
-// Esconder formulário de adicionar conta
-function hideAddTelegramAccountForm() {
-  const form = document.getElementById('addTelegramAccountForm');
-  if (form) {
-    form.style.display = 'none';
-    const formElement = document.getElementById('addTelegramAccountFormElement');
-    if (formElement) formElement.reset();
-  }
-}
-
-// Limpar formulário após adicionar conta
-function resetTelegramAccountForm() {
-  const formElement = document.getElementById('addTelegramAccountFormElement');
-  if (formElement) {
-    formElement.reset();
-  }
-}
 
 // Variável global para armazenar sessionId durante verificação
 let pendingTelegramSessionId = null;
@@ -4024,136 +3907,6 @@ async function addTelegramAccount() {
   }
 }
 
-// Adicionar conta do Telegram (versão antiga - manter para compatibilidade)
-async function handleAddTelegramAccount(e) {
-  e.preventDefault();
-  
-  const name = document.getElementById('telegramAccountName').value.trim();
-  const phone = document.getElementById('telegramPhone').value.trim();
-  const apiId = document.getElementById('telegramApiId').value.trim();
-  const apiHash = document.getElementById('telegramApiHash').value.trim();
-  const submitBtn = document.getElementById('addTelegramAccountBtn');
-  const btnText = document.getElementById('addTelegramAccountBtnText');
-  const statusMessage = document.getElementById('telegramStatusMessage');
-  const form = document.getElementById('addTelegramAccountFormElement');
-  
-  if (!name || !phone || !apiId || !apiHash) {
-    showTelegramStatusMessage('Preencha todos os campos obrigatórios', 'error');
-    return;
-  }
-  
-  // Desabilitar botão e mostrar loading
-  submitBtn.disabled = true;
-  btnText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando código SMS...';
-  hideTelegramStatusMessage();
-  
-  try {
-    // Verificar se a API está disponível
-    const isApiAvailable = await checkTelegramApiStatus();
-    if (!isApiAvailable) {
-      showTelegramStatusMessage('⚠️ API do Telegram não está disponível! A API precisa estar rodando em: ' + TELEGRAM_API_URL, 'error');
-      submitBtn.disabled = false;
-      btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
-      return;
-    }
-
-    // Verificar se já existe conta no Firebase e remover automaticamente antes de adicionar nova
-    const existingAccount = await checkTelegramAccountFromFirebase();
-    if (existingAccount.hasAccount) {
-      // Remover do Firebase automaticamente
-      if (currentUser && currentUser.uid && window.firebaseDb) {
-        try {
-          const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-          await docRef.update({
-            telegramAccount: null,
-            updatedAt: new Date().toISOString()
-          });
-        } catch (e) {
-          // Ignorar
-        }
-      }
-      CacheManager.set('telegramAccount', {});
-      CacheManager.invalidate('telegramAccount');
-      
-      // Remover da API também (garantir limpeza completa)
-      try {
-        await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
-          method: 'DELETE',
-          signal: createTimeoutSignal(5000)
-        }).catch(() => {});
-      } catch (e) {
-        // Ignorar
-      }
-    }
-
-    // Criar nova sessão (enviar código SMS) - enviar userId/email como identificador único
-    const response = await fetch(`${TELEGRAM_API_URL}/api/sessions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        name, 
-        phone, 
-        apiId, 
-        apiHash,
-        userId: currentUser?.uid,
-        email: currentUser?.email
-      }),
-      signal: createTimeoutSignal(30000) // Timeout de 30 segundos
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: `Status ${response.status}` }));
-      const errorMessage = errorData.error || `Erro HTTP ${response.status}`;
-      
-      // Verificar se é erro de conta já existente
-      if (errorMessage.includes('Já existe uma conta')) {
-        showTelegramStatusMessage('⚠️ ' + errorMessage, 'warning');
-        submitBtn.disabled = false;
-        btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
-        return;
-      }
-      
-      throw new Error(errorMessage);
-    }
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      // Salvar dados no Firebase (OTIMIZADO - apenas campos essenciais, sem sessionString ainda)
-      await saveTelegramAccountToFirebase({
-        phone,
-        apiId,
-        apiHash,
-        sessionId: data.sessionId
-      });
-      
-      // Fechar modal de configuração imediatamente
-      document.getElementById('platformModal')?.classList.remove('active');
-      
-      // Abrir modal de código imediatamente
-      showTelegramCodeModal(data.sessionId, phone);
-      
-      // Resetar botão
-      submitBtn.disabled = false;
-      btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
-      hideTelegramStatusMessage();
-    } else {
-      showTelegramStatusMessage('❌ Erro ao criar sessão: ' + (data.error || 'Erro desconhecido'), 'error');
-      submitBtn.disabled = false;
-      btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
-    }
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      showTelegramStatusMessage('⏱️ Timeout ao conectar com a API do Telegram. Verifique se a API está rodando e tente novamente.', 'error');
-    } else if (error.message.includes('Failed to fetch')) {
-      showTelegramStatusMessage('❌ Não foi possível conectar com a API do Telegram. Verifique se a API está rodando em: ' + TELEGRAM_API_URL, 'error');
-    } else {
-      showTelegramStatusMessage('❌ Erro ao adicionar conta: ' + error.message, 'error');
-    }
-    submitBtn.disabled = false;
-    btnText.innerHTML = '<i class="fas fa-plus"></i> Adicionar Conta';
-  }
-}
 
 // Mostrar mensagem de status do Telegram
 function showTelegramStatusMessage(message, type = 'info') {
@@ -4190,20 +3943,13 @@ function hideTelegramStatusMessage() {
   }
 }
 
-// Removido: pauseTelegramSession(), resumeTelegramSession(), deleteTelegramSession()
-// Não precisa mais - cada usuário tem apenas UMA conta, gerenciada via Firebase
-
-// Exportar funções globalmente
-window.showAddTelegramAccountForm = showAddTelegramAccountForm;
-window.hideAddTelegramAccountForm = hideAddTelegramAccountForm;
+// Exportar funções globalmente (apenas as necessárias)
 window.toggleApiKeyVisibility = toggleApiKeyVisibility;
 window.cadastrarDeepSeek = cadastrarDeepSeek;
 window.voltarFormularioDeepSeek = voltarFormularioDeepSeek;
-window.toggleDeepSeekConfigMenu = toggleDeepSeekConfigMenu;
 window.abrirConfirmacaoRemoverDeepSeek = abrirConfirmacaoRemoverDeepSeek;
 window.voltarDeepSeekConfig = voltarDeepSeekConfig;
 window.confirmarRemoverDeepSeek = confirmarRemoverDeepSeek;
-window.testDeepSeekApiConnection = testDeepSeekApiConnection;
 window.showDeepSeekApiKeyInput = showDeepSeekApiKeyInput;
 window.showBotFatherConfigInput = showBotFatherConfigInput;
 window.showTelegramAccountInput = showTelegramAccountInput;
