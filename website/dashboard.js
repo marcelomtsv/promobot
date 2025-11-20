@@ -1197,7 +1197,9 @@ function getTelegramConfigHTML() {
 
 // HTML de configuração do DeepSeek
 function getDeepSeekConfigHTML(forceForm = false) {
-  const deepseekConfig = window.integrationConfigsCache.deepseek || {};
+  // Usar CacheManager para obter dados atualizados (não cache antigo)
+  const integrationConfigs = CacheManager.get('integrationConfigs') || {};
+  const deepseekConfig = integrationConfigs.deepseek || {};
   const hasApiKey = !forceForm && !!deepseekConfig.apiKey;
   
   return `
@@ -2193,17 +2195,22 @@ async function confirmarRemoverDeepSeek() {
       integrationConfigs = userData.integrationConfigs || {};
     }
     
-    // Remover configuração
+    // Remover configuração do objeto
     delete integrationConfigs.deepseek;
     
-    // Salvar no Firebase
-    await saveUserDataToFirebase({
-      integrationConfigs: integrationConfigs
-    });
+    // Salvar no Firebase (garantir que está realmente removido)
+    // Usar set com merge para garantir que o campo seja removido
+    const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
+    const userData = await loadUserDataFromFirebase() || {};
+    userData.integrationConfigs = integrationConfigs;
+    userData.updatedAt = new Date().toISOString();
+    await docRef.set(userData, { merge: true });
     
-    // Atualizar cache imediatamente (sem esperar)
-    CacheManager.set('integrationConfigs', integrationConfigs);
+    // Invalidar cache completamente para forçar recarregamento
     CacheManager.invalidate('integrationConfigs');
+    CacheManager.invalidate('userData');
+    // Atualizar cache com dados limpos
+    CacheManager.set('integrationConfigs', integrationConfigs);
     
     // Atualizar plataformas (com debounce para evitar múltiplas chamadas)
     loadPlatformsDebounced();
@@ -2264,20 +2271,25 @@ function showDeepSeekApiKeyInput() {
   }
   
   try {
+    // Carregar dados ATUAIS do Firebase (não do cache antigo) para verificar se realmente existe
+    const userData = await loadUserDataFromFirebase() || {};
+    const integrationConfigs = userData.integrationConfigs || {};
+    const deepseekConfig = integrationConfigs.deepseek || {};
+    
+    // Atualizar cache com dados atuais
+    CacheManager.set('integrationConfigs', integrationConfigs);
+    
     // Forçar mostrar formulário mesmo se tiver configuração
     // Passar true para forceForm para sempre mostrar o formulário
     modalBody.innerHTML = getDeepSeekConfigHTML(true);
     
-    // Restaurar valor da API Key atual no campo (se existir) - apenas como placeholder
+    // Limpar campo completamente (não mostrar dados antigos)
     setTimeout(() => {
-      const deepseekConfig = window.integrationConfigsCache.deepseek || {};
       const apiKeyInput = document.getElementById('deepseekApiKey');
       if (apiKeyInput) {
-        // Limpar campo e adicionar placeholder informativo
+        // SEMPRE limpar campo - não mostrar dados antigos
         apiKeyInput.value = '';
-        if (deepseekConfig.apiKey) {
-          apiKeyInput.placeholder = 'Digite a nova API Key';
-        }
+        apiKeyInput.placeholder = 'Digite a API Key do DeepSeek';
         // Focar no campo
         apiKeyInput.focus();
       }
