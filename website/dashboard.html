@@ -1277,14 +1277,30 @@
       -moz-osx-font-smoothing: grayscale;
     }
     
-    /* Lazy Loading para imagens */
+    /* Lazy Loading para imagens - OTIMIZADO */
     img[loading="lazy"] {
       opacity: 0;
-      transition: opacity 0.3s;
+      transition: opacity 0.2s ease-in;
+      will-change: opacity;
     }
     
     img[loading="lazy"].loaded {
       opacity: 1;
+    }
+    
+    /* Placeholder enquanto carrega favicons */
+    .platform-favicon {
+      background: var(--bg-light);
+      min-width: 24px;
+      min-height: 24px;
+      object-fit: contain;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+    
+    /* Fallback para quando imagem não carrega */
+    .platform-favicon:not(.loaded) + i {
+      display: inline-block !important;
     }
     
     /* Otimização de fontes */
@@ -1813,6 +1829,50 @@
     })();
   </script>
   <!-- JavaScript com defer para melhor performance -->
+  <!-- Definir toggleSidebar ANTES do script com defer para evitar erro -->
+  <script>
+    // Função toggleSidebar definida inline para estar disponível imediatamente
+    // (antes do script com defer carregar)
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      const overlay = document.querySelector('.sidebar-overlay');
+      const mobileToggle = document.getElementById('mobileMenuToggle');
+      const body = document.body;
+      
+      if (sidebar) {
+        const isActive = sidebar.classList.contains('active');
+        
+        if (isActive) {
+          // Fechar sidebar
+          sidebar.classList.remove('active');
+          if (overlay) overlay.classList.remove('active');
+          if (body) body.style.overflow = '';
+          
+          // Mudar ícone do botão
+          if (mobileToggle) {
+            mobileToggle.classList.remove('active');
+            const icon = mobileToggle.querySelector('i');
+            if (icon) icon.className = 'fas fa-bars';
+          }
+        } else {
+          // Abrir sidebar
+          sidebar.classList.add('active');
+          if (overlay) overlay.classList.add('active');
+          if (body) body.style.overflow = 'hidden';
+          
+          // Mudar ícone do botão
+          if (mobileToggle) {
+            mobileToggle.classList.add('active');
+            const icon = mobileToggle.querySelector('i');
+            if (icon) icon.className = 'fas fa-times';
+          }
+        }
+      }
+    }
+    
+    // Exportar para window imediatamente
+    window.toggleSidebar = toggleSidebar;
+  </script>
   <script src="dashboard.js" defer></script>
 </body>
 </html>
