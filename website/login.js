@@ -266,7 +266,7 @@ class FirebaseAuthSystem {
       }
       
       setTimeout(() => {
-        window.location.href = 'dashboard.html';
+        window.location.href = 'painel.html';
       }, 2000);
 
     } catch (error) {
@@ -526,7 +526,7 @@ class FirebaseAuthSystem {
       this.showSuccess('Login com Google realizado com sucesso!');
       
       setTimeout(() => {
-        window.location.href = 'dashboard.html';
+        window.location.href = 'painel.html';
       }, 1500);
 
     } catch (error) {
