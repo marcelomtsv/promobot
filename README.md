@@ -17,7 +17,7 @@ promobot/
 - **Node.js >= 20.0.0** ([Download](https://nodejs.org/))
 - **npm** (vem com Node.js)
 
-## ⚡ INÍCIO RÁPIDO - 3 PASSOS SIMPLES
+## ⚡ INÍCIO RÁPIDO
 
 ### 🎯 Método 1: Script Automático (MAIS FÁCIL)
 
@@ -34,19 +34,45 @@ chmod +x start.sh
 
 O script vai:
 - ✅ Verificar Node.js
-- ✅ Instalar dependências automaticamente
+- ✅ Instalar dependências automaticamente em cada serviço
 - ✅ Iniciar todos os serviços
 
-### 🎯 Método 2: Comando NPM (RECOMENDADO)
+### 🎯 Método 2: Manual (RECOMENDADO)
 
-**1. Instalar dependências:**
+Cada serviço roda de forma **independente** e deve ser iniciado em um terminal separado:
+
+**1. Instalar dependências em cada serviço:**
 ```bash
-npm run install:all
+cd website && npm install && cd ..
+cd botfather && npm install && cd ..
+cd deepseek && npm install && cd ..
+cd telegram && npm install && cd ..
 ```
 
-**2. Iniciar tudo:**
+**2. Iniciar cada serviço em terminais separados:**
+
+**Terminal 1 - Website:**
 ```bash
+cd website
 npm run dev
+```
+
+**Terminal 2 - BotFather API:**
+```bash
+cd botfather
+npm run dev
+```
+
+**Terminal 3 - DeepSeek API:**
+```bash
+cd deepseek
+npm run dev
+```
+
+**Terminal 4 - Telegram API:**
+```bash
+cd telegram
+npm start
 ```
 
 **Pronto!** Todos os serviços estarão rodando:
@@ -55,52 +81,37 @@ npm run dev
 - 🧠 **DeepSeek API**: http://localhost:3002
 - 📱 **Telegram API**: http://localhost:3003
 
-### 🎯 Método 3: Manual (Se os métodos acima não funcionarem)
-
-**Terminal 1 - Serviços principais:**
-```bash
-npm run dev
-```
-
-**Terminal 2 - API Telegram (opcional, mas recomendado):**
-```bash
-cd telegram
-npm start
-```
+**💡 Dica:** Você pode usar múltiplas abas do terminal ou um gerenciador de terminais como `tmux` ou `screen`.
 
 ## 📋 Iniciar Serviços Individualmente
 
-Se preferir iniciar cada serviço separadamente:
+Cada serviço deve ser iniciado **individualmente** em seu próprio diretório:
 
 ### Website (Frontend)
 ```bash
-npm run dev:website
-# ou
-cd website && npm run dev
+cd website
+npm run dev
 ```
 Acesse: http://localhost:3000
 
 ### BotFather API
 ```bash
-npm run dev:botfather
-# ou
-cd botfather && npm run dev
+cd botfather
+npm run dev
 ```
 API disponível em: http://localhost:3001
 
 ### DeepSeek API
 ```bash
-npm run dev:deepseek
-# ou
-cd deepseek && npm run dev
+cd deepseek
+npm run dev
 ```
 API disponível em: http://localhost:3002
 
 ### Telegram API
 ```bash
-npm run dev:telegram
-# ou
-cd telegram && npm start
+cd telegram
+npm start
 ```
 API disponível em: http://localhost:3003
 
@@ -110,14 +121,13 @@ A API do Telegram é **necessária** para usar as funcionalidades de Telegram no
 
 **Se você ver o erro "API do Telegram não está disponível":**
 
-1. **Abra um novo terminal** (mantenha o `npm run dev` rodando)
-2. Execute:
+1. **Abra um terminal** e execute:
    ```bash
    cd telegram
    npm start
    ```
-3. Aguarde a mensagem: `🚀 Servidor rodando em http://localhost:3003`
-4. Volte ao dashboard e clique em "Tentar Novamente"
+2. Aguarde a mensagem: `🚀 Servidor rodando em http://localhost:3003`
+3. Volte ao dashboard e clique em "Tentar Novamente"
 
 **Para verificar se está rodando:**
 ```bash
@@ -263,31 +273,34 @@ O modo desenvolvimento usa **nodemon** para recarregar automaticamente quando vo
 
 ## 📝 Scripts Disponíveis
 
-### Na Raiz do Projeto:
-
-```bash
-# Instalar todas as dependências
-npm run install:all
-
-# Rodar todos em modo desenvolvimento (hot reload)
-npm run dev
-
-# Rodar todos em modo produção
-npm start
-
-# Rodar serviços individualmente
-npm run dev:website      # Apenas website
-npm run dev:botfather    # Apenas BotFather API
-npm run dev:deepseek     # Apenas DeepSeek API
-npm run dev:telegram     # Apenas Telegram API
-```
+Cada serviço tem seus próprios scripts. **Não há scripts na raiz do projeto** - cada serviço roda de forma independente.
 
 ### Em Cada Serviço:
 
+**Website (`website/`):**
 ```bash
 npm run dev    # Modo desenvolvimento (hot reload)
 npm start      # Modo produção
 ```
+
+**BotFather API (`botfather/`):**
+```bash
+npm run dev    # Modo desenvolvimento (hot reload)
+npm start      # Modo produção
+```
+
+**DeepSeek API (`deepseek/`):**
+```bash
+npm run dev    # Modo desenvolvimento (hot reload)
+npm start      # Modo produção
+```
+
+**Telegram API (`telegram/`):**
+```bash
+npm start      # Modo produção (recomendado)
+```
+
+**💡 Nota:** Cada serviço deve ser iniciado em um terminal separado, navegando até o diretório do serviço antes de executar os comandos.
 
 ## 🐛 Solução de Problemas
 
