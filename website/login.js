@@ -115,7 +115,7 @@ class FirebaseAuthSystem {
       if (user) {
         // Usuário já está logado, redirecionar
         if (window.location.pathname.includes('login.html')) {
-          window.location.href = 'dashboard.html';
+          window.location.href = 'painel.html';
         }
       } else {
         // Usuário não está logado
@@ -797,7 +797,7 @@ class FirebaseAuthSystem {
         this.showSuccess('Email verificado com sucesso! Redirecionando...');
         
         setTimeout(() => {
-          window.location.href = 'dashboard.html';
+          window.location.href = 'painel.html';
         }, 1500);
       } else {
         this.hideLoading();
