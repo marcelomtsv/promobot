@@ -1688,6 +1688,42 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="firebase-config.js"></script>
   <script>
+    (function() {
+      function checkAuth() {
+        if (typeof firebase === 'undefined' || !window.firebaseAuth) {
+          window.location.replace('login.html');
+          return;
+        }
+        
+        window.firebaseAuth.onAuthStateChanged(function(user) {
+          if (!user) {
+            window.location.replace('login.html');
+            return;
+          }
+          document.body.style.display = '';
+        });
+      }
+      
+      if (window.firebaseAuth) {
+        checkAuth();
+      } else {
+        const checkInterval = setInterval(function() {
+          if (window.firebaseAuth) {
+            clearInterval(checkInterval);
+            checkAuth();
+          }
+        }, 50);
+        
+        setTimeout(function() {
+          clearInterval(checkInterval);
+          if (!window.firebaseAuth) {
+            window.location.replace('login.html');
+          }
+        }, 5000);
+      }
+    })();
+  </script>
+  <script>
     // Suprimir erros de conexão do Telegram API ANTES de qualquer script carregar
     (function() {
       // Interceptar fetch para suprimir erros de conexão do Telegram API
