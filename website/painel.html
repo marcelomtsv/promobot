@@ -1531,7 +1531,8 @@
       .btn-sm,
       .menu-item,
       .platform-card,
-      .mobile-menu-toggle {
+      .mobile-menu-toggle,
+      .user-menu-btn {
         min-height: 44px;
         min-width: 44px;
       }
@@ -1542,6 +1543,73 @@
 
       .menu-item {
         padding: 16px 2rem;
+      }
+    }
+
+    /* Responsividade Mobile */
+    @media (max-width: 768px) {
+      .top-bar {
+        padding: 12px 16px;
+        flex-wrap: wrap;
+      }
+
+      .user-info {
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .user-details h3 {
+        font-size: 14px;
+      }
+
+      .user-details p {
+        font-size: 12px;
+      }
+
+      .user-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+      }
+
+      .theme-toggle {
+        width: 40px;
+        height: 40px;
+      }
+
+      .main-content {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .sidebar {
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .top-bar {
+        gap: 12px;
+      }
+
+      .user-details {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .user-details h3 {
+        font-size: 13px;
+        max-width: 120px;
+      }
+
+      .user-details p {
+        font-size: 11px;
+        max-width: 120px;
+      }
+
+      .user-menu-dropdown {
+        right: -10px;
+        min-width: 200px;
       }
     }
 
