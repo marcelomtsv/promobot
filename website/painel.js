@@ -2912,6 +2912,7 @@ function toggleAutoScroll() {
 async function initTheme() {
   let savedTheme = 'light';
   
+  // Carregar do Firebase
   if (currentUser && currentUser.uid) {
     try {
       const userData = await loadUserDataFromFirebase();
@@ -2919,10 +2920,11 @@ async function initTheme() {
         savedTheme = userData.theme;
       }
     } catch (error) {
-      console.error('Erro ao carregar tema do Firebase:', error);
+      // Ignorar erros silenciosamente
     }
   }
   
+  // Aplicar tema
   await setTheme(savedTheme);
 }
 
@@ -2938,12 +2940,9 @@ async function setTheme(theme) {
     }
   }
   
+  // Salvar no Firebase
   if (currentUser && currentUser.uid) {
-    try {
-      await saveUserDataToFirebase({ theme });
-    } catch (error) {
-      console.error('Erro ao salvar tema no Firebase:', error);
-    }
+    await saveUserDataToFirebase({ theme });
   }
 }
 

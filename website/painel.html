@@ -25,8 +25,43 @@
   <link rel="stylesheet" href="style.css">
   <script>
     (function() {
-      const savedPanel = localStorage.getItem('activePanel') || 'overview';
+      // Tema padrão (será atualizado do Firebase quando disponível)
       document.documentElement.setAttribute('data-theme', 'light');
+      
+      // Carregar tema do Firebase assim que possível
+      function loadThemeFromFirebase() {
+        if (!window.firebaseAuth || !window.firebaseDb) {
+          setTimeout(loadThemeFromFirebase, 100);
+          return;
+        }
+        
+        const user = window.firebaseAuth.currentUser;
+        if (!user || !user.uid) {
+          return;
+        }
+        
+        window.firebaseDb.collection('users').doc(user.uid).get()
+          .then(doc => {
+            if (doc.exists) {
+              const userData = doc.data();
+              if (userData.theme) {
+                document.documentElement.setAttribute('data-theme', userData.theme);
+              }
+            }
+          })
+          .catch(() => {
+            // Ignorar erros silenciosamente
+          });
+      }
+      
+      // Tentar carregar tema imediatamente
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadThemeFromFirebase);
+      } else {
+        loadThemeFromFirebase();
+      }
+      
+      const savedPanel = localStorage.getItem('activePanel') || 'overview';
       
       // Aguardar DOM estar pronto para definir aba ativa
       if (document.readyState === 'loading') {
