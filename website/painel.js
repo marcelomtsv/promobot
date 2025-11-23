@@ -899,8 +899,8 @@ function showPanel(panelId) {
   }
 }
 
-// Abrir modal de configuração
-async function openPlatformConfig(platformId) {
+// Abrir modal de configuração (função interna)
+async function _openPlatformConfig(platformId) {
   const modal = document.getElementById('platformModal');
   const modalTitle = document.getElementById('modalTitle');
   const modalBody = document.getElementById('modalBody');
@@ -4333,14 +4333,23 @@ window.confirmarRemoverTelegramAccount = confirmarRemoverTelegramAccount;
 
 // Carregar cores personalizadas do Firebase
 async function loadColorCustomization() {
-  if (!currentUser || !currentUser.uid) return;
+  if (!currentUser || !currentUser.uid) {
+    return;
+  }
+  
+  if (!window.firebaseDb) {
+    // Firebase ainda não está pronto, tentar novamente depois
+    setTimeout(loadColorCustomization, 500);
+    return;
+  }
   
   try {
     const userData = await loadUserDataFromFirebase();
-    if (userData && userData.customColors) {
+    if (userData && userData.customColors && userData.customColors.primary && userData.customColors.secondary) {
+      // Aplicar cores salvas no Firebase
       applyCustomColors(userData.customColors.primary, userData.customColors.secondary);
       
-      // Atualizar inputs se estiverem na página
+      // Atualizar inputs se estiverem na página (painel de configurações)
       const primaryPicker = document.getElementById('primaryColorPicker');
       const primaryInput = document.getElementById('primaryColorInput');
       const secondaryPicker = document.getElementById('secondaryColorPicker');
@@ -4356,7 +4365,8 @@ async function loadColorCustomization() {
       }
     }
   } catch (error) {
-    console.error('Erro ao carregar cores:', error);
+    console.error('Erro ao carregar cores do Firebase:', error);
+    // Não mostrar erro ao usuário, apenas usar cores padrão
   }
 }
 
@@ -4394,7 +4404,7 @@ function applyCustomColors(primary, secondary) {
   document.head.appendChild(style);
 }
 
-// Salvar cores personalizadas
+// Salvar cores personalizadas no Firebase
 async function saveColorCustomization() {
   const primaryPicker = document.getElementById('primaryColorPicker');
   const primaryInput = document.getElementById('primaryColorInput');
@@ -4416,11 +4426,16 @@ async function saveColorCustomization() {
     return;
   }
   
+  if (!currentUser || !currentUser.uid) {
+    alert('Erro: Usuário não autenticado. Faça login para salvar cores.');
+    return;
+  }
+  
   try {
-    // Aplicar imediatamente
+    // Aplicar imediatamente para feedback visual
     applyCustomColors(primary, secondary);
     
-    // Salvar no Firebase
+    // Salvar no Firebase (usa saveUserDataToFirebase que salva na coleção 'users')
     await saveUserDataToFirebase({
       customColors: {
         primary: primary,
@@ -4428,18 +4443,23 @@ async function saveColorCustomization() {
       }
     });
     
-    // Mostrar feedback
-    const btn = event.target;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
-    btn.disabled = true;
-    
-    setTimeout(() => {
-      btn.innerHTML = originalText;
-      btn.disabled = false;
-    }, 2000);
+    // Mostrar feedback visual
+    const btn = event?.target || document.querySelector('#colorCustomization .btn-primary');
+    if (btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-check"></i> Salvo no Firebase!';
+      btn.disabled = true;
+      
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }, 2000);
+    }
   } catch (error) {
-    alert('Erro ao salvar cores: ' + error.message);
+    console.error('Erro ao salvar cores no Firebase:', error);
+    alert('Erro ao salvar cores no Firebase: ' + error.message);
+    // Tentar reverter para cores anteriores em caso de erro
+    loadColorCustomization();
   }
 }
 
