@@ -24,13 +24,10 @@
   <!-- CSS principal -->
   <link rel="stylesheet" href="style.css">
   <script>
-    // Definir aba ativa ANTES do DOM carregar para evitar flash
     (function() {
       const savedPanel = localStorage.getItem('activePanel') || 'overview';
-      const savedTheme = localStorage.getItem('theme') || 'light';
       
-      // Aplicar tema imediatamente
-      document.documentElement.setAttribute('data-theme', savedTheme);
+      document.documentElement.setAttribute('data-theme', 'light');
       
       // Aguardar DOM estar pronto para definir aba ativa
       if (document.readyState === 'loading') {

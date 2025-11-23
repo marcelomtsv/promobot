@@ -346,25 +346,14 @@ async function loadAllConfigsFromFirebase(forceRefresh = false) {
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
-  // Carregar tema salvo (já aplicado no script inline, apenas atualizar ícone)
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  const themeIcon = document.getElementById('themeIcon');
-  if (themeIcon) {
-    if (savedTheme === 'dark') {
-      themeIcon.className = 'fas fa-sun';
-    } else {
-      themeIcon.className = 'fas fa-moon';
-    }
-  }
-  
-  // Carregar dados do usuário PRIMEIRO para evitar flash
   await checkAuth();
   
-  // Carregar perfil imediatamente após autenticação
   if (currentUser) {
     loadUserProfile();
-    // Carregar todas as configurações do Firebase
     await loadAllConfigsFromFirebase();
+    await initTheme();
+  } else {
+    await setTheme('light');
   }
   
   // Configurar resto
@@ -3105,15 +3094,25 @@ function toggleAutoScroll() {
   }
 }
 
-// Sistema de Tema
-function initTheme() {
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  setTheme(savedTheme);
+async function initTheme() {
+  let savedTheme = 'light';
+  
+  if (currentUser && currentUser.uid) {
+    try {
+      const userData = await loadUserDataFromFirebase();
+      if (userData && userData.theme) {
+        savedTheme = userData.theme;
+      }
+    } catch (error) {
+      console.error('Erro ao carregar tema do Firebase:', error);
+    }
+  }
+  
+  await setTheme(savedTheme);
 }
 
-function setTheme(theme) {
+async function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('theme', theme);
   
   const themeIcon = document.getElementById('themeIcon');
   if (themeIcon) {
@@ -3121,6 +3120,14 @@ function setTheme(theme) {
       themeIcon.className = 'fas fa-sun';
     } else {
       themeIcon.className = 'fas fa-moon';
+    }
+  }
+  
+  if (currentUser && currentUser.uid) {
+    try {
+      await saveUserDataToFirebase({ theme });
+    } catch (error) {
+      console.error('Erro ao salvar tema no Firebase:', error);
     }
   }
 }
