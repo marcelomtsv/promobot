@@ -1698,14 +1698,19 @@
           return;
         }
         
+        if (typeof window.firebaseAuth.onAuthStateChanged !== 'function') {
+          return;
+        }
+        
         authChecked = true;
         
-        window.firebaseAuth.onAuthStateChanged(function(user) {
+        const unsubscribe = window.firebaseAuth.onAuthStateChanged(function(user) {
           if (!user) {
             window.location.replace('login.html');
             return;
           }
           document.body.style.visibility = 'visible';
+          if (unsubscribe) unsubscribe();
         });
       }
       
@@ -1714,7 +1719,7 @@
           clearInterval(checkInterval);
           checkAuth();
         }
-      }, 50);
+      }, 100);
       
       setTimeout(function() {
         clearInterval(checkInterval);
