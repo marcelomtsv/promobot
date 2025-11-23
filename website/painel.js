@@ -2910,26 +2910,34 @@ function toggleAutoScroll() {
 }
 
 async function initTheme() {
-  let savedTheme = 'light';
+  // Carregar do localStorage primeiro (rápido)
+  let savedTheme = localStorage.getItem('theme') || 'light';
   
-  // Carregar do Firebase
+  // Sincronizar com Firebase em background (atualiza se houver diferença)
   if (currentUser && currentUser.uid) {
     try {
       const userData = await loadUserDataFromFirebase();
       if (userData && userData.theme) {
-        savedTheme = userData.theme;
+        // Se Firebase tem tema diferente, usar o do Firebase (é a fonte da verdade)
+        if (userData.theme !== savedTheme) {
+          savedTheme = userData.theme;
+          localStorage.setItem('theme', savedTheme);
+        }
       }
     } catch (error) {
-      // Ignorar erros silenciosamente
+      // Ignorar erros silenciosamente, usar localStorage
     }
   }
   
-  // Aplicar tema
-  await setTheme(savedTheme);
+  // Aplicar tema (já está no localStorage, então próxima carga será instantânea)
+  setTheme(savedTheme);
 }
 
 async function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
+  
+  // Salvar no localStorage imediatamente (para próxima carga ser instantânea)
+  localStorage.setItem('theme', theme);
   
   const themeIcon = document.getElementById('themeIcon');
   if (themeIcon) {
@@ -2940,9 +2948,11 @@ async function setTheme(theme) {
     }
   }
   
-  // Salvar no Firebase
+  // Salvar no Firebase em background (não bloquear UI)
   if (currentUser && currentUser.uid) {
-    await saveUserDataToFirebase({ theme });
+    saveUserDataToFirebase({ theme }).catch(() => {
+      // Ignorar erros silenciosamente
+    });
   }
 }
 

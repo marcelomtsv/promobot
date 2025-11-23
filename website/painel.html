@@ -25,13 +25,14 @@
   <link rel="stylesheet" href="style.css">
   <script>
     (function() {
-      // Tema padrão (será atualizado do Firebase quando disponível)
-      document.documentElement.setAttribute('data-theme', 'light');
+      // Carregar tema do localStorage primeiro (instantâneo)
+      const cachedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', cachedTheme);
       
-      // Carregar tema do Firebase assim que possível
-      function loadThemeFromFirebase() {
+      // Sincronizar com Firebase em background (atualiza se houver diferença)
+      function syncThemeWithFirebase() {
         if (!window.firebaseAuth || !window.firebaseDb) {
-          setTimeout(loadThemeFromFirebase, 100);
+          setTimeout(syncThemeWithFirebase, 100);
           return;
         }
         
@@ -44,8 +45,13 @@
           .then(doc => {
             if (doc.exists) {
               const userData = doc.data();
-              if (userData.theme) {
+              if (userData.theme && userData.theme !== cachedTheme) {
+                // Firebase tem tema diferente, atualizar
                 document.documentElement.setAttribute('data-theme', userData.theme);
+                localStorage.setItem('theme', userData.theme);
+              } else if (userData.theme) {
+                // Garantir que localStorage está sincronizado
+                localStorage.setItem('theme', userData.theme);
               }
             }
           })
@@ -54,11 +60,11 @@
           });
       }
       
-      // Tentar carregar tema imediatamente
+      // Sincronizar em background
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', loadThemeFromFirebase);
+        document.addEventListener('DOMContentLoaded', syncThemeWithFirebase);
       } else {
-        loadThemeFromFirebase();
+        syncThemeWithFirebase();
       }
       
       const savedPanel = localStorage.getItem('activePanel') || 'overview';
