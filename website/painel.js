@@ -733,26 +733,35 @@ async function openPlatformConfig(platformId) {
         </div>
       `;
       
-      // Mostrar loading enquanto carrega dados
-      showApiLoadingModal(modalBody, 'telegram');
-      modal.classList.add('active');
-      
-      // Carregar dados ANTES de mostrar o conteúdo
+      // Verificar API ANTES de abrir o modal
       try {
-        // Verificar se API está disponível
         const isApiAvailable = await checkApiStatus('telegram');
         if (!isApiAvailable) {
+          // Só abrir modal para mostrar erro
+          showApiLoadingModal(modalBody, 'telegram');
+          modal.classList.add('active');
           showApiUnavailableModal(modalBody, 'telegram');
           return;
         }
         
-        // Carregar conta do Firebase ANTES de mostrar o HTML
+        // API disponível - abrir modal e carregar dados
+        showApiLoadingModal(modalBody, 'telegram');
+        modal.classList.add('active');
+        
+        // Carregar conta do Firebase
         await loadTelegramAccountFromFirebase();
         
-        // Agora sim, mostrar o conteúdo com os dados carregados
+        // Mostrar conteúdo
         modalBody.innerHTML = getTelegramConfigHTML();
       } catch (error) {
-        // Em caso de erro, mostrar formulário vazio
+        // Em caso de erro, verificar API novamente
+        const isApiAvailable = await checkApiStatus('telegram');
+        if (!isApiAvailable) {
+          showApiLoadingModal(modalBody, 'telegram');
+          modal.classList.add('active');
+          showApiUnavailableModal(modalBody, 'telegram');
+          return;
+        }
         modalBody.innerHTML = getTelegramConfigHTML();
       }
       
@@ -790,24 +799,30 @@ async function openPlatformConfig(platformId) {
         </div>
       `;
       
-      // Mostrar loading enquanto carrega dados
-      showApiLoadingModal(modalBody, 'deepseek');
-      modal.classList.add('active');
-      
-      // Carregar dados ANTES de mostrar o conteúdo
+      // Verificar API ANTES de abrir o modal
       try {
-        // Verificar se API está disponível
         const isApiAvailable = await checkApiStatus('deepseek');
         if (!isApiAvailable) {
+          showApiLoadingModal(modalBody, 'deepseek');
+          modal.classList.add('active');
           showApiUnavailableModal(modalBody, 'deepseek');
           return;
         }
         
-        // Sempre recarregar dados do Firebase antes de mostrar
+        // API disponível - abrir modal e carregar dados
+        showApiLoadingModal(modalBody, 'deepseek');
+        modal.classList.add('active');
+        
         await loadAllConfigsFromFirebase(true);
         modalBody.innerHTML = getDeepSeekConfigHTML();
       } catch (error) {
-        // Em caso de erro, mostrar formulário vazio
+        const isApiAvailable = await checkApiStatus('deepseek');
+        if (!isApiAvailable) {
+          showApiLoadingModal(modalBody, 'deepseek');
+          modal.classList.add('active');
+          showApiUnavailableModal(modalBody, 'deepseek');
+          return;
+        }
         modalBody.innerHTML = getDeepSeekConfigHTML();
       }
       
@@ -822,24 +837,30 @@ async function openPlatformConfig(platformId) {
         </div>
       `;
       
-      // Mostrar loading enquanto carrega dados
-      showApiLoadingModal(modalBody, 'botfather');
-      modal.classList.add('active');
-      
-      // Carregar dados ANTES de mostrar o conteúdo
+      // Verificar API ANTES de abrir o modal
       try {
-        // Verificar se API está disponível
         const isApiAvailable = await checkApiStatus('botfather');
         if (!isApiAvailable) {
+          showApiLoadingModal(modalBody, 'botfather');
+          modal.classList.add('active');
           showApiUnavailableModal(modalBody, 'botfather');
           return;
         }
         
-        // Sempre recarregar dados do Firebase antes de mostrar
+        // API disponível - abrir modal e carregar dados
+        showApiLoadingModal(modalBody, 'botfather');
+        modal.classList.add('active');
+        
         await loadAllConfigsFromFirebase(true);
         modalBody.innerHTML = getBotFatherConfigHTML();
       } catch (error) {
-        // Em caso de erro, mostrar formulário vazio
+        const isApiAvailable = await checkApiStatus('botfather');
+        if (!isApiAvailable) {
+          showApiLoadingModal(modalBody, 'botfather');
+          modal.classList.add('active');
+          showApiUnavailableModal(modalBody, 'botfather');
+          return;
+        }
         modalBody.innerHTML = getBotFatherConfigHTML();
       }
       return;
