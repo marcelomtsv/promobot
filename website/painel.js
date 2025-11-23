@@ -276,6 +276,10 @@ function loadUserProfile() {
   const avatar = document.getElementById('userAvatar');
   const userName = document.getElementById('userName');
   const userEmail = document.getElementById('userEmail');
+  const avatarSmall = document.getElementById('userAvatarSmall');
+  const avatarMenu = document.getElementById('userAvatarMenu');
+  const menuName = document.getElementById('userMenuName');
+  const menuEmail = document.getElementById('userMenuEmail');
 
   // Remover skeleton e mostrar dados reais com fade-in
   if (avatar) {
@@ -325,6 +329,48 @@ function loadUserProfile() {
     userEmail.textContent = currentUser.email || 'usuario@email.com';
     userEmail.style.transition = 'opacity 0.3s ease';
     userEmail.style.opacity = '1';
+  }
+
+  // Avatar pequeno no menu
+  if (avatarSmall) {
+    const skeleton = avatarSmall.querySelector('.skeleton-avatar-small');
+    if (skeleton) skeleton.remove();
+    
+    if (currentUser.photoURL) {
+      avatarSmall.style.backgroundImage = `url(${currentUser.photoURL})`;
+      avatarSmall.style.backgroundSize = 'cover';
+      avatarSmall.style.backgroundPosition = 'center';
+      avatarSmall.textContent = '';
+    } else {
+      const initial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 'U';
+      avatarSmall.textContent = initial;
+      avatarSmall.style.backgroundImage = 'none';
+    }
+  }
+
+  // Avatar e info no dropdown
+  if (avatarMenu) {
+    const skeleton = avatarMenu.querySelector('.skeleton-avatar-menu');
+    if (skeleton) skeleton.remove();
+    
+    if (currentUser.photoURL) {
+      avatarMenu.style.backgroundImage = `url(${currentUser.photoURL})`;
+      avatarMenu.style.backgroundSize = 'cover';
+      avatarMenu.style.backgroundPosition = 'center';
+      avatarMenu.textContent = '';
+    } else {
+      const initial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 'U';
+      avatarMenu.textContent = initial;
+      avatarMenu.style.backgroundImage = 'none';
+    }
+  }
+
+  if (menuName) {
+    menuName.textContent = currentUser.displayName || 'Usuário';
+  }
+
+  if (menuEmail) {
+    menuEmail.textContent = currentUser.email || 'usuario@email.com';
   }
 
   // Formulário (sem fade, já que está em outra seção)
@@ -2749,6 +2795,37 @@ function resetProfileForm() {
 function resetPasswordForm() {
   document.getElementById('passwordForm').reset();
 }
+
+// Toggle User Menu
+function toggleUserMenu() {
+  const menu = document.getElementById('userMenuDropdown');
+  const btn = document.getElementById('userMenuBtn');
+  if (menu && btn) {
+    const isActive = menu.classList.contains('active');
+    if (isActive) {
+      closeUserMenu();
+    } else {
+      menu.classList.add('active');
+      btn.classList.add('active');
+    }
+  }
+}
+
+function closeUserMenu() {
+  const menu = document.getElementById('userMenuDropdown');
+  const btn = document.getElementById('userMenuBtn');
+  if (menu) menu.classList.remove('active');
+  if (btn) btn.classList.remove('active');
+}
+
+// Fechar menu ao clicar fora
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('userMenuDropdown');
+  const btn = document.getElementById('userMenuBtn');
+  if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+    closeUserMenu();
+  }
+});
 
 // Logout
 async function logout() {
