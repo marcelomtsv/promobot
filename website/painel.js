@@ -3003,7 +3003,11 @@ function resetPasswordForm() {
 }
 
 // Toggle User Menu
-function toggleUserMenu() {
+function toggleUserMenu(e) {
+  if (e) {
+    e.stopPropagation();
+  }
+  
   const menu = document.getElementById('userMenuDropdown');
   const btn = document.getElementById('userMenuBtn');
   if (menu && btn) {
@@ -3011,16 +3015,52 @@ function toggleUserMenu() {
     if (isActive) {
       closeUserMenu();
     } else {
+      // Fechar outros menus abertos
+      document.querySelectorAll('.user-menu-dropdown.active').forEach(m => {
+        if (m !== menu) m.classList.remove('active');
+      });
+      
       // Calcular posição do dropdown baseado no botão
       const btnRect = btn.getBoundingClientRect();
-      menu.style.top = `${btnRect.bottom + 8}px`;
-      menu.style.right = `${window.innerWidth - btnRect.right}px`;
+      const menuHeight = 200; // altura aproximada do menu
+      const menuWidth = 260;
+      
+      // Verificar se há espaço abaixo, senão abrir acima
+      const spaceBelow = window.innerHeight - btnRect.bottom;
+      const spaceAbove = btnRect.top;
+      
+      if (spaceBelow >= menuHeight || spaceBelow > spaceAbove) {
+        // Abrir abaixo
+        menu.style.top = `${btnRect.bottom + 8}px`;
+      } else {
+        // Abrir acima
+        menu.style.top = `${btnRect.top - menuHeight - 8}px`;
+      }
+      
+      // Ajustar posição horizontal
+      const rightPos = window.innerWidth - btnRect.right;
+      if (rightPos + menuWidth > window.innerWidth) {
+        menu.style.right = '20px';
+      } else {
+        menu.style.right = `${rightPos}px`;
+      }
       
       menu.classList.add('active');
       btn.classList.add('active');
     }
   }
 }
+
+// Fechar menu ao clicar fora
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('userMenuDropdown');
+  const btn = document.getElementById('userMenuBtn');
+  if (menu && btn && menu.classList.contains('active')) {
+    if (!menu.contains(e.target) && !btn.contains(e.target)) {
+      closeUserMenu();
+    }
+  }
+});
 
 function closeUserMenu() {
   const menu = document.getElementById('userMenuDropdown');
