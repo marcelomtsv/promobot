@@ -3334,17 +3334,10 @@ async function checkApiStatus(apiKey) {
 }
 
 // Funções específicas para compatibilidade
-async function checkTelegramApiStatus() {
-  return checkApiStatus('telegram');
-}
-
-async function checkBotFatherApiStatus() {
-  return checkApiStatus('botfather');
-}
-
-async function checkDeepSeekApiStatus() {
-  return checkApiStatus('deepseek');
-}
+// Funções de compatibilidade (mantidas para não quebrar código existente)
+async function checkTelegramApiStatus() { return checkApiStatus('telegram'); }
+async function checkBotFatherApiStatus() { return checkApiStatus('botfather'); }
+async function checkDeepSeekApiStatus() { return checkApiStatus('deepseek'); }
 
 // Cores dos gradientes para cada API
 const API_GRADIENTS = {
@@ -3366,28 +3359,15 @@ function showApiLoadingModal(modalBody, apiKey) {
   `;
 }
 
-// Função genérica para mostrar modal de erro de API
+// Função genérica para mostrar modal de erro de API (simplificado)
 function showApiUnavailableModal(modalBody, apiKey) {
   const config = API_CONFIG[apiKey];
   if (!config) return;
   
   modalBody.innerHTML = `
-    <div style="text-align: center; padding: 2rem;">
-      <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-      <h3 style="color: var(--text-dark); margin-bottom: 1rem;">API ${config.name} não está disponível</h3>
-      <p style="color: var(--text-light); margin-bottom: 1.5rem;">
-        A API precisa estar rodando em: <strong>${config.url}</strong>
-      </p>
-      <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
-        <h4 style="color: var(--text-dark); margin-bottom: 0.75rem; font-size: 1rem;">Como iniciar:</h4>
-        <ol style="color: var(--text-light); font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
-          <li>Abra um terminal na pasta do projeto</li>
-          <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">cd ${config.folder}</code></li>
-          <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">npm start</code></li>
-          <li>Aguarde a mensagem: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">🚀 Servidor rodando em http://localhost:${config.port}</code></li>
-          <li>Feche este modal e tente novamente</li>
-        </ol>
-      </div>
+    <div style="text-align: center; padding: 3rem 2rem;">
+      <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1.5rem;">⚠️</div>
+      <h3 style="color: var(--text-dark); margin-bottom: 2rem; font-size: 1.25rem;">API ${config.name} não está disponível</h3>
       <div style="display: flex; gap: 0.75rem; justify-content: center;">
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
         <button type="button" class="btn btn-primary" onclick="openPlatformConfig('${apiKey}')">Tentar Novamente</button>
