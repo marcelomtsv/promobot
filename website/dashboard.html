@@ -1689,11 +1689,16 @@
   <script src="firebase-config.js"></script>
   <script>
     (function() {
+      let authChecked = false;
+      
       function checkAuth() {
+        if (authChecked) return;
+        
         if (typeof firebase === 'undefined' || !window.firebaseAuth) {
-          window.location.replace('login.html');
           return;
         }
+        
+        authChecked = true;
         
         window.firebaseAuth.onAuthStateChanged(function(user) {
           if (!user) {
@@ -1704,23 +1709,23 @@
         });
       }
       
-      if (window.firebaseAuth) {
-        checkAuth();
-      } else {
-        const checkInterval = setInterval(function() {
-          if (window.firebaseAuth) {
-            clearInterval(checkInterval);
-            checkAuth();
-          }
-        }, 50);
-        
-        setTimeout(function() {
+      const checkInterval = setInterval(function() {
+        if (window.firebaseAuth && typeof window.firebaseAuth.onAuthStateChanged === 'function') {
           clearInterval(checkInterval);
+          checkAuth();
+        }
+      }, 50);
+      
+      setTimeout(function() {
+        clearInterval(checkInterval);
+        if (!authChecked) {
           if (!window.firebaseAuth) {
             window.location.replace('login.html');
+          } else {
+            checkAuth();
           }
-        }, 5000);
-      }
+        }
+      }, 10000);
     })();
   </script>
   <script>
