@@ -23,10 +23,12 @@
   
   <!-- CSS principal -->
   <link rel="stylesheet" href="style.css">
+  <style>
+    body { display: none !important; }
+  </style>
   <script>
     (function() {
       const savedPanel = localStorage.getItem('activePanel') || 'overview';
-      
       document.documentElement.setAttribute('data-theme', 'light');
       
       // Aguardar DOM estar pronto para definir aba ativa
