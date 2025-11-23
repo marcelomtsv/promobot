@@ -8,6 +8,14 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Headers para permitir popups do Firebase Auth (resolver problema COOP)
+app.use((req, res, next) => {
+  // Permitir popups do Firebase Auth
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  next();
+});
+
 // Servir arquivos estáticos
 app.use(express.static(__dirname));
 

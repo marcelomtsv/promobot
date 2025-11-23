@@ -17,7 +17,39 @@ class FirebaseAuthSystem {
       this.checkAuthState();
       this.setupPasswordStrength();
       this.setupCodeInputs();
+      // Verificar se há resultado de redirect (após login com Google)
+      this.handleRedirectResult();
     });
+  }
+
+  async handleRedirectResult() {
+    // Verificar se há resultado de redirect do Google
+    if (this.auth && this.auth.getRedirectResult) {
+      try {
+        const result = await this.auth.getRedirectResult();
+        if (result.user) {
+          // Login bem-sucedido via redirect
+          const user = result.user;
+          const userData = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            emailVerified: user.emailVerified,
+            photoURL: user.photoURL,
+            provider: 'google'
+          };
+          localStorage.setItem('userData', JSON.stringify(userData));
+          // Redirecionar para dashboard
+          window.location.href = 'dashboard.html';
+        }
+      } catch (error) {
+        // Ignorar erros de redirect (usuário pode não ter vindo de um redirect)
+        if (error.code !== 'auth/operation-not-allowed' && 
+            !error.message.includes('no pending')) {
+          console.warn('Erro ao verificar redirect result:', error);
+        }
+      }
+    }
   }
 
   async waitForFirebase() {
@@ -508,8 +540,28 @@ class FirebaseAuthSystem {
         }
       }
 
-      const result = await this.auth.signInWithPopup(this.provider);
-      const user = result.user;
+      // Tentar popup primeiro, se falhar usar redirect
+      let result;
+      let user;
+      
+      try {
+        // Tentar popup (mais rápido, mas pode falhar com COOP)
+        result = await this.auth.signInWithPopup(this.provider);
+        user = result.user;
+      } catch (popupError) {
+        // Se popup falhar (ex: COOP policy), usar redirect
+        if (popupError.code === 'auth/popup-blocked' || 
+            popupError.message.includes('Cross-Origin-Opener-Policy') ||
+            popupError.message.includes('COOP')) {
+          console.log('Popup bloqueado, usando redirect...');
+          this.showLoading('Redirecionando para Google...');
+          
+          // Usar redirect como fallback
+          await this.auth.signInWithRedirect(this.provider);
+          return; // signInWithRedirect redireciona a página, então não precisa continuar
+        }
+        throw popupError; // Se for outro erro, relançar
+      }
 
       // Salvar dados do usuário
       const userData = {
