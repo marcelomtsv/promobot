@@ -24,7 +24,7 @@
   <!-- CSS principal -->
   <link rel="stylesheet" href="style.css">
   <style>
-    body { display: none !important; }
+    body { visibility: hidden; }
   </style>
   <script>
     (function() {
@@ -1705,7 +1705,7 @@
             window.location.replace('login.html');
             return;
           }
-          document.body.style.display = '';
+          document.body.style.visibility = 'visible';
         });
       }
       
