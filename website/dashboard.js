@@ -345,29 +345,34 @@ async function loadAllConfigsFromFirebase(forceRefresh = false) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  setupEventListeners();
+  
   try {
-    await checkAuth();
+    const authResult = await Promise.race([
+      checkAuth(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 3000))
+    ]);
     
     if (!currentUser || !currentUser.uid) {
       window.location.href = 'login.html';
       return;
     }
     
-    loadUserProfile();
-    await loadAllConfigsFromFirebase();
-    await initTheme();
-    
-    setupEventListeners();
-    await loadPlatforms();
-    initMonitoring();
-    
     const savedPanel = localStorage.getItem('activePanel') || 'overview';
-    const activePanel = document.querySelector('.content-panel.active');
-    if (!activePanel || activePanel.id !== savedPanel + 'Panel') {
-      showPanel(savedPanel);
-    }
+    showPanel(savedPanel);
+    
+    Promise.allSettled([
+      loadUserProfile(),
+      loadAllConfigsFromFirebase(),
+      initTheme(),
+      loadPlatforms()
+    ]).then(() => {
+      initMonitoring();
+    });
   } catch (error) {
-    window.location.href = 'login.html';
+    if (!currentUser || !currentUser.uid) {
+      window.location.href = 'login.html';
+    }
   }
 });
 
@@ -379,14 +384,17 @@ async function checkAuth() {
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      window.location.href = 'login.html';
+      if (!currentUser) {
+        window.location.href = 'login.html';
+      }
       reject(new Error('Timeout na autenticação'));
-    }, 5000);
+    }, 2000);
 
-    window.firebaseAuth.onAuthStateChanged(async (user) => {
+    const unsubscribe = window.firebaseAuth.onAuthStateChanged((user) => {
       clearTimeout(timeout);
       
       if (!user) {
+        unsubscribe();
         window.location.href = 'login.html';
         return;
       }
@@ -399,6 +407,7 @@ async function checkAuth() {
         photoURL: user.photoURL
       };
       localStorage.setItem('userData', JSON.stringify(currentUser));
+      unsubscribe();
       resolve();
     });
   });
