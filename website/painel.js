@@ -2852,6 +2852,11 @@ function toggleUserMenu() {
     if (isActive) {
       closeUserMenu();
     } else {
+      // Calcular posição do dropdown baseado no botão
+      const btnRect = btn.getBoundingClientRect();
+      menu.style.top = `${btnRect.bottom + 8}px`;
+      menu.style.right = `${window.innerWidth - btnRect.right}px`;
+      
       menu.classList.add('active');
       btn.classList.add('active');
     }
