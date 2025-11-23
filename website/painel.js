@@ -340,7 +340,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Carregar dados não críticos em paralelo
     const nonCriticalLoad = Promise.allSettled([
       initTheme(),
-      loadPlatforms()
+      loadPlatforms(),
+      loadColorCustomization()
     ]);
     
     // Iniciar monitoramento após carregamento crítico
