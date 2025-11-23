@@ -183,17 +183,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Carregar perfil imediatamente após autenticação
     try {
+      // Sempre tentar carregar o perfil (mesmo se currentUser não estiver definido ainda)
+      loadUserProfile();
+      
       if (currentUser) {
-        loadUserProfile();
         // Carregar todas as configurações do Firebase
         await loadAllConfigsFromFirebase();
-      } else {
-        // Tentar carregar do localStorage
-        loadUserProfile();
+      }
+      
+      // Se ainda não tiver currentUser, tentar novamente após um delay
+      if (!currentUser) {
+        setTimeout(() => {
+          loadUserProfile();
+        }, 1000);
       }
     } catch (error) {
       console.error('Erro ao carregar perfil:', error);
       // Continuar mesmo se houver erro
+      // Tentar carregar novamente após um delay
+      setTimeout(() => {
+        loadUserProfile();
+      }, 2000);
     }
     
     // Carregar plataformas (OTIMIZADO - não precisa mais carregar sessões separadamente)
@@ -310,12 +320,45 @@ async function checkAuth() {
 
 // Configurar event listeners
 function setupEventListeners() {
-  // Menu navigation
-  document.querySelectorAll('.menu-item[data-panel]').forEach(item => {
-    item.addEventListener('click', (e) => {
+  // Menu navigation - garantir que os listeners sejam adicionados corretamente
+  const menuItems = document.querySelectorAll('.menu-item[data-panel]');
+  if (menuItems.length === 0) {
+    console.warn('Menu items não encontrados, tentando novamente...');
+    // Tentar novamente após um pequeno delay
+    setTimeout(() => {
+      const retryItems = document.querySelectorAll('.menu-item[data-panel]');
+      retryItems.forEach(item => {
+        // Remover listeners antigos se existirem
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        // Adicionar novo listener
+        newItem.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const panel = newItem.getAttribute('data-panel');
+          if (panel) {
+            console.log('Navegando para painel:', panel);
+            showPanel(panel);
+          }
+        });
+      });
+    }, 100);
+    return;
+  }
+  
+  menuItems.forEach(item => {
+    // Remover listeners antigos se existirem
+    const newItem = item.cloneNode(true);
+    item.parentNode.replaceChild(newItem, item);
+    // Adicionar novo listener
+    newItem.addEventListener('click', (e) => {
       e.preventDefault();
-      const panel = item.getAttribute('data-panel');
-      showPanel(panel);
+      e.stopPropagation();
+      const panel = newItem.getAttribute('data-panel');
+      if (panel) {
+        console.log('Navegando para painel:', panel);
+        showPanel(panel);
+      }
     });
   });
 
@@ -335,9 +378,21 @@ function setupEventListeners() {
 
 // Carregar perfil do usuário
 function loadUserProfile() {
+  // Tentar carregar do localStorage se currentUser não estiver definido
   if (!currentUser) {
-    // Se não houver usuário, manter skeleton visível
-    return;
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      try {
+        currentUser = JSON.parse(userData);
+      } catch (error) {
+        console.error('Erro ao parsear userData:', error);
+        // Se não houver usuário, manter skeleton visível
+        return;
+      }
+    } else {
+      // Se não houver usuário, manter skeleton visível
+      return;
+    }
   }
 
   const avatar = document.getElementById('userAvatar');
@@ -747,54 +802,90 @@ async function createPlatformCard(platform) {
 
 // Mostrar painel
 function showPanel(panelId) {
-  // Mapear 'platforms' para 'tools' para compatibilidade
-  if (panelId === 'platforms') {
-    panelId = 'tools';
-  }
-  
-  // Esconder todos os painéis
-  document.querySelectorAll('.content-panel').forEach(panel => {
-    panel.classList.remove('active');
-  });
-  
-  // Mostrar o painel selecionado
-  const panel = document.getElementById(panelId + 'Panel');
-  if (panel) {
-    panel.classList.add('active');
-  }
-  
-  // Atualizar menu ativo - garantir que o item correto fique destacado
-  document.querySelectorAll('.menu-item').forEach(item => {
-    item.classList.remove('active');
-    const itemPanel = item.getAttribute('data-panel');
-    if (itemPanel === panelId) {
-      item.classList.add('active');
+  try {
+    // Validar panelId
+    if (!panelId || typeof panelId !== 'string') {
+      console.error('showPanel: panelId inválido:', panelId);
+      return;
     }
-  });
-  
-  // Salvar aba ativa no localStorage
-  localStorage.setItem('activePanel', panelId);
-  
-  // Fechar sidebar no mobile após seleção
-  if (window.innerWidth <= 768) {
-    setTimeout(() => {
-      const sidebar = document.querySelector('.sidebar');
-      const overlay = document.querySelector('.sidebar-overlay');
-      const mobileToggle = document.getElementById('mobileMenuToggle');
-      const body = document.body;
-      
-      if (sidebar) sidebar.classList.remove('active');
-      if (overlay) overlay.classList.remove('active');
-      if (body) body.style.overflow = '';
-      
-      if (mobileToggle) {
-        mobileToggle.classList.remove('active');
-        const icon = mobileToggle.querySelector('i');
-        if (icon) icon.className = 'fas fa-bars';
+    
+    // Mapear 'platforms' para 'tools' para compatibilidade
+    if (panelId === 'platforms') {
+      panelId = 'tools';
+    }
+    
+    console.log('showPanel chamado com:', panelId);
+    
+    // Esconder todos os painéis
+    const allPanels = document.querySelectorAll('.content-panel');
+    if (allPanels.length === 0) {
+      console.warn('showPanel: Nenhum painel encontrado');
+      return;
+    }
+    
+    allPanels.forEach(panel => {
+      panel.classList.remove('active');
+    });
+    
+    // Mostrar o painel selecionado
+    const panel = document.getElementById(panelId + 'Panel');
+    if (!panel) {
+      console.error('showPanel: Painel não encontrado:', panelId + 'Panel');
+      // Tentar mostrar o painel overview como fallback
+      const overviewPanel = document.getElementById('overviewPanel');
+      if (overviewPanel) {
+        overviewPanel.classList.add('active');
       }
-    }, 300);
+      return;
+    }
+    
+    panel.classList.add('active');
+    console.log('Painel ativado:', panelId + 'Panel');
+    
+    // Atualizar menu ativo - garantir que o item correto fique destacado
+    const menuItems = document.querySelectorAll('.menu-item');
+    menuItems.forEach(item => {
+      item.classList.remove('active');
+      const itemPanel = item.getAttribute('data-panel');
+      if (itemPanel === panelId) {
+        item.classList.add('active');
+        console.log('Menu item ativado:', itemPanel);
+      }
+    });
+    
+    // Salvar aba ativa no localStorage
+    try {
+      localStorage.setItem('activePanel', panelId);
+    } catch (e) {
+      console.warn('Erro ao salvar activePanel no localStorage:', e);
+    }
+    
+    // Fechar sidebar no mobile após seleção
+    if (window.innerWidth <= 768) {
+      setTimeout(() => {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        const mobileToggle = document.getElementById('mobileMenuToggle');
+        const body = document.body;
+        
+        if (sidebar) sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+        if (body) body.style.overflow = '';
+        
+        if (mobileToggle) {
+          mobileToggle.classList.remove('active');
+          const icon = mobileToggle.querySelector('i');
+          if (icon) icon.className = 'fas fa-bars';
+        }
+      }, 300);
+    }
+  } catch (error) {
+    console.error('Erro em showPanel:', error);
   }
 }
+
+// Exportar showPanel para uso global
+window.showPanel = showPanel;
 
 // Abrir modal de configuração
 async function openPlatformConfig(platformId) {
