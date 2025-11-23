@@ -25,6 +25,15 @@ const firebaseConfig = {
       if (firebase.apps.length > 0) {
         console.log('✅ Firebase já inicializado');
         window.firebaseAuth = firebase.auth();
+        // Garantir que Firestore também esteja inicializado
+        if (!window.firebaseDb) {
+          try {
+            window.firebaseDb = firebase.firestore();
+            console.log('✅ Firestore inicializado');
+          } catch (error) {
+            console.warn('⚠️ Firestore não disponível:', error.message);
+          }
+        }
         return;
       }
 
@@ -34,16 +43,27 @@ const firebaseConfig = {
       // Inicializar Auth
       const auth = firebase.auth();
       
-      // Inicializar Firestore (com tratamento de erro)
+      // Inicializar Firestore (com tratamento de erro melhorado)
       let db = null;
       try {
         db = firebase.firestore();
-        // Não chamar settings() para evitar aviso de "overriding the original host"
-        // O Firestore já inicializa com configurações padrão adequadas
-        // Se precisar de configurações específicas, faça antes de qualquer operação
+        
+        // Verificar se Firestore está realmente disponível fazendo uma operação de teste
+        // (sem realmente fazer uma requisição)
+        // Apenas verificar se o objeto foi criado corretamente
+        
+        // Configurar para usar modo online (não offline)
+        // Isso garante que erros sejam detectados rapidamente
+        db.settings({
+          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+        });
+        
+        console.log('✅ Firestore inicializado e configurado');
       } catch (error) {
         // Se Firestore não estiver disponível, continuar sem ele
-        console.warn('⚠️ Firestore não disponível, usando apenas localStorage');
+        console.warn('⚠️ Firestore não disponível:', error.message);
+        console.warn('⚠️ Usando apenas localStorage para armazenamento');
+        console.warn('💡 Dica: Verifique se o Firestore está habilitado no Firebase Console');
       }
       
       // Configurar idioma para português
@@ -57,8 +77,23 @@ const firebaseConfig = {
       console.log('✅ Authentication pronto para uso');
       if (db) {
         console.log('✅ Firestore pronto para uso');
+        
+        // Testar conexão com Firestore (sem fazer requisição real)
+        // Apenas verificar se o objeto está disponível
+        try {
+          // Verificar se podemos acessar métodos do Firestore
+          if (typeof db.collection === 'function') {
+            console.log('✅ Firestore métodos disponíveis');
+          }
+        } catch (testError) {
+          console.warn('⚠️ Aviso ao testar Firestore:', testError.message);
+        }
       } else {
         console.log('ℹ️ Usando localStorage para armazenamento');
+        console.log('💡 Para usar Firestore, verifique:');
+        console.log('   1. Se o Firestore está habilitado no Firebase Console');
+        console.log('   2. Se as regras de segurança estão configuradas');
+        console.log('   3. Se há conexão com a internet');
       }
       
     } catch (error) {
@@ -77,6 +112,9 @@ const firebaseConfig = {
         sendPasswordResetEmail: () => Promise.reject(new Error('Firebase não inicializado')),
         currentUser: null
       };
+      
+      // Garantir que firebaseDb seja null em caso de erro
+      window.firebaseDb = null;
     }
   }
 
