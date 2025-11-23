@@ -1832,25 +1832,34 @@ async function handlePasswordChange(e) {
   }
 }
 
-// Salvar configuração de plataforma
-function handlePlatformConfig(platformId, e) {
+async function handlePlatformConfig(platformId, e) {
+  e.preventDefault();
+  
+  if (!currentUser || !currentUser.uid) {
+    alert('Usuário não autenticado. Faça login para salvar dados.');
+    return;
+  }
+  
   const enabled = document.getElementById('platformEnabled').value === 'true';
   const interval = document.getElementById('checkInterval').value;
   const minDiscount = document.getElementById('minDiscount').value;
   const keywords = document.getElementById('keywords').value;
 
-  // Salvar no localStorage (simulação)
-  const configs = JSON.parse(localStorage.getItem('platformConfigs') || '{}');
-  configs[platformId] = {
+  const config = {
     enabled,
     interval: parseInt(interval),
     minDiscount: parseInt(minDiscount),
     keywords: keywords.split(',').map(k => k.trim())
   };
-  localStorage.setItem('platformConfigs', JSON.stringify(configs));
 
-  alert('Configuração salva com sucesso!');
-  closeModal();
+  try {
+    await saveIntegrationConfigToFirebase(platformId, config);
+    alert('Configuração salva com sucesso!');
+    closeModal();
+    loadPlatforms();
+  } catch (error) {
+    alert('Erro ao salvar configuração: ' + error.message);
+  }
 }
 
 // Alternar visibilidade da API Key
@@ -3018,7 +3027,7 @@ function simulateMonitoringCycle() {
         setTimeout(() => {
           // Etapa 4: Enviando notificação
           const notificationMethods = [];
-          const notificationConfigs = JSON.parse(localStorage.getItem('notificationConfigs') || '{}');
+          const notificationConfigs = window.notificationConfigsCache || {};
           
           if (notificationConfigs.telegram) notificationMethods.push('Telegram');
           if (notificationConfigs.whatsapp) notificationMethods.push('WhatsApp');
