@@ -344,66 +344,62 @@ async function loadAllConfigsFromFirebase(forceRefresh = false) {
   }
 }
 
-// Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
-  await checkAuth();
-  
-  if (currentUser) {
-    loadUserProfile();
-    await loadAllConfigsFromFirebase();
-    await initTheme();
-  } else {
-    await setTheme('light');
-  }
-  
-  // Configurar resto
-  setupEventListeners();
-  // Carregar plataformas (OTIMIZADO - não precisa mais carregar sessões separadamente)
-  await loadPlatforms();
-  initMonitoring();
-  
-  // Restaurar aba ativa salva (já aplicada no script inline, apenas garantir sincronização)
-  const savedPanel = localStorage.getItem('activePanel') || 'overview';
-  // Verificar se já está ativa (aplicada pelo script inline)
-  const activePanel = document.querySelector('.content-panel.active');
-  if (!activePanel || activePanel.id !== savedPanel + 'Panel') {
-    showPanel(savedPanel);
-  }
-});
-
-// Verificar autenticação
-async function checkAuth() {
-  if (!window.firebaseAuth) {
-    const userData = localStorage.getItem('userData');
-    if (!userData) {
+  try {
+    await checkAuth();
+    
+    if (!currentUser || !currentUser.uid) {
       window.location.href = 'login.html';
       return;
     }
-    currentUser = JSON.parse(userData);
+    
+    loadUserProfile();
+    await loadAllConfigsFromFirebase();
+    await initTheme();
+    
+    setupEventListeners();
+    await loadPlatforms();
+    initMonitoring();
+    
+    const savedPanel = localStorage.getItem('activePanel') || 'overview';
+    const activePanel = document.querySelector('.content-panel.active');
+    if (!activePanel || activePanel.id !== savedPanel + 'Panel') {
+      showPanel(savedPanel);
+    }
+  } catch (error) {
+    window.location.href = 'login.html';
+  }
+});
+
+async function checkAuth() {
+  if (!window.firebaseAuth) {
+    window.location.href = 'login.html';
     return;
   }
 
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      window.location.href = 'login.html';
+      reject(new Error('Timeout na autenticação'));
+    }, 5000);
+
     window.firebaseAuth.onAuthStateChanged(async (user) => {
-      if (user) {
-        currentUser = {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName || user.email.split('@')[0],
-          emailVerified: user.emailVerified,
-          photoURL: user.photoURL
-        };
-        localStorage.setItem('userData', JSON.stringify(currentUser));
-        resolve();
-      } else {
-        const userData = localStorage.getItem('userData');
-        if (userData) {
-          currentUser = JSON.parse(userData);
-          resolve();
-        } else {
-          window.location.href = 'login.html';
-        }
+      clearTimeout(timeout);
+      
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
       }
+
+      currentUser = {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || user.email.split('@')[0],
+        emailVerified: user.emailVerified,
+        photoURL: user.photoURL
+      };
+      localStorage.setItem('userData', JSON.stringify(currentUser));
+      resolve();
     });
   });
 }
