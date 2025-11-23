@@ -320,47 +320,68 @@ async function checkAuth() {
 
 // Configurar event listeners
 function setupEventListeners() {
+  console.log('Configurando event listeners...');
+  
   // Menu navigation - garantir que os listeners sejam adicionados corretamente
   const menuItems = document.querySelectorAll('.menu-item[data-panel]');
+  console.log('Menu items encontrados:', menuItems.length);
+  
   if (menuItems.length === 0) {
     console.warn('Menu items não encontrados, tentando novamente...');
     // Tentar novamente após um pequeno delay
     setTimeout(() => {
-      const retryItems = document.querySelectorAll('.menu-item[data-panel]');
-      retryItems.forEach(item => {
-        // Remover listeners antigos se existirem
-        const newItem = item.cloneNode(true);
-        item.parentNode.replaceChild(newItem, item);
-        // Adicionar novo listener
-        newItem.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const panel = newItem.getAttribute('data-panel');
-          if (panel) {
-            console.log('Navegando para painel:', panel);
-            showPanel(panel);
-          }
-        });
-      });
-    }, 100);
+      setupEventListeners();
+    }, 200);
     return;
   }
   
-  menuItems.forEach(item => {
-    // Remover listeners antigos se existirem
+  menuItems.forEach((item, index) => {
+    const panel = item.getAttribute('data-panel');
+    console.log(`Configurando listener para item ${index}:`, panel);
+    
+    // Remover todos os listeners antigos
     const newItem = item.cloneNode(true);
     item.parentNode.replaceChild(newItem, item);
-    // Adicionar novo listener
-    newItem.addEventListener('click', (e) => {
+    
+    // Adicionar novo listener com múltiplas formas de garantir que funcione
+    newItem.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      const panel = newItem.getAttribute('data-panel');
-      if (panel) {
-        console.log('Navegando para painel:', panel);
-        showPanel(panel);
+      e.stopImmediatePropagation();
+      
+      const panelId = this.getAttribute('data-panel');
+      console.log('Clique detectado no menu item:', panelId);
+      
+      if (panelId) {
+        console.log('Chamando showPanel com:', panelId);
+        // Garantir que showPanel está disponível
+        if (typeof showPanel === 'function') {
+          showPanel(panelId);
+        } else if (typeof window.showPanel === 'function') {
+          window.showPanel(panelId);
+        } else {
+          console.error('showPanel não está disponível!');
+        }
       }
-    });
+    }, true); // Usar capture phase para garantir que seja executado
+    
+    // Também adicionar onclick como fallback
+    newItem.onclick = function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const panelId = this.getAttribute('data-panel');
+      if (panelId) {
+        console.log('onclick fallback chamado para:', panelId);
+        if (typeof showPanel === 'function') {
+          showPanel(panelId);
+        } else if (typeof window.showPanel === 'function') {
+          window.showPanel(panelId);
+        }
+      }
+    };
   });
+  
+  console.log('Event listeners configurados com sucesso!');
 
   // Profile form
   document.getElementById('profileForm').addEventListener('submit', handleProfileUpdate);

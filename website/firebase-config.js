@@ -48,15 +48,9 @@ const firebaseConfig = {
       try {
         db = firebase.firestore();
         
-        // Verificar se Firestore está realmente disponível fazendo uma operação de teste
-        // (sem realmente fazer uma requisição)
-        // Apenas verificar se o objeto foi criado corretamente
-        
-        // Configurar para usar modo online (não offline)
-        // Isso garante que erros sejam detectados rapidamente
-        db.settings({
-          cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-        });
+        // Verificar se Firestore está realmente disponível
+        // Não chamar settings() para evitar aviso de "overriding the original host"
+        // O Firestore já inicializa com configurações padrão adequadas
         
         console.log('✅ Firestore inicializado e configurado');
       } catch (error) {
@@ -89,11 +83,16 @@ const firebaseConfig = {
           console.warn('⚠️ Aviso ao testar Firestore:', testError.message);
         }
       } else {
-        console.log('ℹ️ Usando localStorage para armazenamento');
-        console.log('💡 Para usar Firestore, verifique:');
-        console.log('   1. Se o Firestore está habilitado no Firebase Console');
-        console.log('   2. Se as regras de segurança estão configuradas');
-        console.log('   3. Se há conexão com a internet');
+        console.warn('⚠️ Firestore não está disponível!');
+        console.warn('💡 Para usar Firestore, você precisa:');
+        console.warn('   1. Criar o Firestore Database no Firebase Console');
+        console.warn('      → https://console.firebase.google.com/project/promobot-bbb55/firestore');
+        console.warn('   2. Configurar as regras de segurança');
+        console.warn('      → https://console.firebase.google.com/project/promobot-bbb55/firestore/rules');
+        console.warn('   3. Verificar se há conexão com a internet');
+        console.warn('');
+        console.warn('📖 Veja o arquivo VERIFICACAO_FIREBASE.md para instruções detalhadas');
+        console.log('ℹ️ Usando localStorage para armazenamento (dados locais apenas)');
       }
       
     } catch (error) {
