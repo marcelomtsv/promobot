@@ -289,17 +289,35 @@ function loadUserProfile() {
       skeleton.remove();
     }
     
-    // Configurar avatar
-    if (currentUser.photoURL) {
-      avatar.style.backgroundImage = `url(${currentUser.photoURL})`;
-      avatar.style.backgroundSize = 'cover';
-      avatar.style.backgroundPosition = 'center';
-      avatar.textContent = '';
-    } else {
-      const initial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 'U';
-      avatar.textContent = initial;
-      avatar.style.backgroundImage = 'none';
-    }
+    // Função auxiliar para carregar avatar com tratamento de erro
+    const loadAvatarWithFallback = (element, photoURL, displayName) => {
+      if (!element) return;
+      
+      if (photoURL) {
+        const img = new Image();
+        img.onload = () => {
+          element.style.backgroundImage = `url(${photoURL})`;
+          element.style.backgroundSize = 'cover';
+          element.style.backgroundPosition = 'center';
+          element.textContent = '';
+          element.style.backgroundColor = 'transparent';
+        };
+        img.onerror = () => {
+          const initial = displayName ? displayName.charAt(0).toUpperCase() : 'U';
+          element.textContent = initial;
+          element.style.backgroundImage = 'none';
+          element.style.backgroundColor = '';
+        };
+        img.src = photoURL;
+      } else {
+        const initial = displayName ? displayName.charAt(0).toUpperCase() : 'U';
+        element.textContent = initial;
+        element.style.backgroundImage = 'none';
+        element.style.backgroundColor = '';
+      }
+    };
+    
+    loadAvatarWithFallback(avatar, currentUser.photoURL, currentUser.displayName);
     
     // Fade in
     avatar.style.transition = 'opacity 0.3s ease';
@@ -331,38 +349,46 @@ function loadUserProfile() {
     userEmail.style.opacity = '1';
   }
 
+  // Função auxiliar para carregar avatar com tratamento de erro
+  const loadAvatarWithFallback = (element, photoURL, displayName) => {
+    if (!element) return;
+    
+    if (photoURL) {
+      const img = new Image();
+      img.onload = () => {
+        element.style.backgroundImage = `url(${photoURL})`;
+        element.style.backgroundSize = 'cover';
+        element.style.backgroundPosition = 'center';
+        element.textContent = '';
+        element.style.backgroundColor = 'transparent';
+      };
+      img.onerror = () => {
+        const initial = displayName ? displayName.charAt(0).toUpperCase() : 'U';
+        element.textContent = initial;
+        element.style.backgroundImage = 'none';
+        element.style.backgroundColor = '';
+      };
+      img.src = photoURL;
+    } else {
+      const initial = displayName ? displayName.charAt(0).toUpperCase() : 'U';
+      element.textContent = initial;
+      element.style.backgroundImage = 'none';
+      element.style.backgroundColor = '';
+    }
+  };
+
   // Avatar pequeno no menu
   if (avatarSmall) {
     const skeleton = avatarSmall.querySelector('.skeleton-avatar-small');
     if (skeleton) skeleton.remove();
-    
-    if (currentUser.photoURL) {
-      avatarSmall.style.backgroundImage = `url(${currentUser.photoURL})`;
-      avatarSmall.style.backgroundSize = 'cover';
-      avatarSmall.style.backgroundPosition = 'center';
-      avatarSmall.textContent = '';
-    } else {
-      const initial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 'U';
-      avatarSmall.textContent = initial;
-      avatarSmall.style.backgroundImage = 'none';
-    }
+    loadAvatarWithFallback(avatarSmall, currentUser.photoURL, currentUser.displayName);
   }
 
   // Avatar e info no dropdown
   if (avatarMenu) {
     const skeleton = avatarMenu.querySelector('.skeleton-avatar-menu');
     if (skeleton) skeleton.remove();
-    
-    if (currentUser.photoURL) {
-      avatarMenu.style.backgroundImage = `url(${currentUser.photoURL})`;
-      avatarMenu.style.backgroundSize = 'cover';
-      avatarMenu.style.backgroundPosition = 'center';
-      avatarMenu.textContent = '';
-    } else {
-      const initial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 'U';
-      avatarMenu.textContent = initial;
-      avatarMenu.style.backgroundImage = 'none';
-    }
+    loadAvatarWithFallback(avatarMenu, currentUser.photoURL, currentUser.displayName);
   }
 
   if (menuName) {
