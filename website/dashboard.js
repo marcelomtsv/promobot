@@ -881,44 +881,15 @@ async function openPlatformConfig(platformId) {
       `;
       
       // Mostrar loading enquanto carrega dados
-      modalBody.innerHTML = `
-        <div style="text-align: center; padding: 3rem 2rem;">
-          <div style="width: 60px; height: 60px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3);">
-            <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: white;"></i>
-          </div>
-          <p style="color: var(--text-light); font-size: 0.9rem; margin: 0;">Carregando configurações...</p>
-        </div>
-      `;
+      showApiLoadingModal(modalBody, 'telegram');
       modal.classList.add('active');
       
       // Carregar dados ANTES de mostrar o conteúdo
       try {
         // Verificar se API está disponível
-        const isApiAvailable = await checkTelegramApiStatus();
+        const isApiAvailable = await checkApiStatus('telegram');
         if (!isApiAvailable) {
-          modalBody.innerHTML = `
-            <div style="text-align: center; padding: 2rem;">
-              <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-              <h3 style="color: var(--text-dark); margin-bottom: 1rem;">API do Telegram não está disponível</h3>
-              <p style="color: var(--text-light); margin-bottom: 1.5rem;">
-                A API precisa estar rodando em: <strong>${TELEGRAM_API_URL}</strong>
-              </p>
-              <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
-                <h4 style="color: var(--text-dark); margin-bottom: 0.75rem; font-size: 1rem;">Como iniciar:</h4>
-                <ol style="color: var(--text-light); font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
-                  <li>Abra um terminal na pasta do projeto</li>
-                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">cd telegram</code></li>
-                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">npm start</code></li>
-                  <li>Aguarde a mensagem: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">🚀 Servidor rodando em http://localhost:3003</code></li>
-                  <li>Feche este modal e tente novamente</li>
-                </ol>
-              </div>
-              <div style="display: flex; gap: 0.75rem; justify-content: center;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
-                <button type="button" class="btn btn-primary" onclick="openPlatformConfig('telegram')">Tentar Novamente</button>
-              </div>
-            </div>
-          `;
+          showApiUnavailableModal(modalBody, 'telegram');
           return;
         }
         
@@ -967,44 +938,15 @@ async function openPlatformConfig(platformId) {
       `;
       
       // Mostrar loading enquanto carrega dados
-      modalBody.innerHTML = `
-        <div style="text-align: center; padding: 3rem 2rem;">
-          <div style="width: 60px; height: 60px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);">
-            <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: white;"></i>
-          </div>
-          <p style="color: var(--text-light); font-size: 0.9rem; margin: 0;">Carregando configurações...</p>
-        </div>
-      `;
+      showApiLoadingModal(modalBody, 'deepseek');
       modal.classList.add('active');
       
       // Carregar dados ANTES de mostrar o conteúdo
       try {
         // Verificar se API está disponível
-        const isApiAvailable = await checkDeepSeekApiStatus();
+        const isApiAvailable = await checkApiStatus('deepseek');
         if (!isApiAvailable) {
-          modalBody.innerHTML = `
-            <div style="text-align: center; padding: 2rem;">
-              <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-              <h3 style="color: var(--text-dark); margin-bottom: 1rem;">API do DeepSeek não está disponível</h3>
-              <p style="color: var(--text-light); margin-bottom: 1.5rem;">
-                A API precisa estar rodando em: <strong>${DEEPSEEK_API_URL}</strong>
-              </p>
-              <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
-                <h4 style="color: var(--text-dark); margin-bottom: 0.75rem; font-size: 1rem;">Como iniciar:</h4>
-                <ol style="color: var(--text-light); font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
-                  <li>Abra um terminal na pasta do projeto</li>
-                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">cd deepseek</code></li>
-                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">npm start</code></li>
-                  <li>Aguarde a mensagem: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">🚀 Servidor rodando em http://localhost:3002</code></li>
-                  <li>Feche este modal e tente novamente</li>
-                </ol>
-              </div>
-              <div style="display: flex; gap: 0.75rem; justify-content: center;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
-                <button type="button" class="btn btn-primary" onclick="openPlatformConfig('deepseek')">Tentar Novamente</button>
-              </div>
-            </div>
-          `;
+          showApiUnavailableModal(modalBody, 'deepseek');
           return;
         }
         
@@ -1028,44 +970,15 @@ async function openPlatformConfig(platformId) {
       `;
       
       // Mostrar loading enquanto carrega dados
-      modalBody.innerHTML = `
-        <div style="text-align: center; padding: 3rem 2rem;">
-          <div style="width: 60px; height: 60px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #0088cc 0%, #0066aa 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3);">
-            <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: white;"></i>
-          </div>
-          <p style="color: var(--text-light); font-size: 0.9rem; margin: 0;">Carregando configurações...</p>
-        </div>
-      `;
+      showApiLoadingModal(modalBody, 'botfather');
       modal.classList.add('active');
       
       // Carregar dados ANTES de mostrar o conteúdo
       try {
         // Verificar se API está disponível
-        const isApiAvailable = await checkBotFatherApiStatus();
+        const isApiAvailable = await checkApiStatus('botfather');
         if (!isApiAvailable) {
-          modalBody.innerHTML = `
-            <div style="text-align: center; padding: 2rem;">
-              <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-              <h3 style="color: var(--text-dark); margin-bottom: 1rem;">API do BotFather não está disponível</h3>
-              <p style="color: var(--text-light); margin-bottom: 1.5rem;">
-                A API precisa estar rodando em: <strong>${BOTFATHER_API_URL}</strong>
-              </p>
-              <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
-                <h4 style="color: var(--text-dark); margin-bottom: 0.75rem; font-size: 1rem;">Como iniciar:</h4>
-                <ol style="color: var(--text-light); font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
-                  <li>Abra um terminal na pasta do projeto</li>
-                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">cd botfather</code></li>
-                  <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">npm start</code></li>
-                  <li>Aguarde a mensagem: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">🚀 Servidor rodando em http://localhost:3001</code></li>
-                  <li>Feche este modal e tente novamente</li>
-                </ol>
-              </div>
-              <div style="display: flex; gap: 0.75rem; justify-content: center;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
-                <button type="button" class="btn btn-primary" onclick="openPlatformConfig('botfather')">Tentar Novamente</button>
-              </div>
-            </div>
-          `;
+          showApiUnavailableModal(modalBody, 'botfather');
           return;
         }
         
@@ -3337,30 +3250,56 @@ function createTimeoutSignal(ms) {
   return controller.signal;
 }
 
+// Configuração das APIs
+const API_CONFIG = {
+  telegram: {
+    url: TELEGRAM_API_URL,
+    name: 'Telegram',
+    folder: 'telegram',
+    port: '3003',
+    endpoints: ['/health', '/']
+  },
+  botfather: {
+    url: BOTFATHER_API_URL,
+    name: 'BotFather',
+    folder: 'botfather',
+    port: '3001',
+    endpoints: ['/health', '/']
+  },
+  deepseek: {
+    url: DEEPSEEK_API_URL,
+    name: 'DeepSeek',
+    folder: 'deepseek',
+    port: '3002',
+    endpoints: ['/']
+  }
+};
+
 // Cache para evitar múltiplas tentativas quando API não está disponível
-let telegramApiUnavailable = false;
-let lastTelegramApiCheck = 0;
-let botfatherApiUnavailable = false;
-let lastBotFatherApiCheck = 0;
-let deepseekApiUnavailable = false;
-let lastDeepSeekApiCheck = 0;
+const apiCache = {};
 const API_CHECK_INTERVAL = 30000; // Verificar novamente após 30 segundos
 
-// Verificar se a API do Telegram está disponível
-async function checkTelegramApiStatus() {
+// Função genérica para verificar status de qualquer API
+async function checkApiStatus(apiKey) {
+  const config = API_CONFIG[apiKey];
+  if (!config) return false;
+  
+  const now = Date.now();
+  const cacheKey = `${apiKey}Unavailable`;
+  const lastCheckKey = `last${apiKey}Check`;
+  
   // Se já sabemos que a API não está disponível e foi verificado recentemente, não tentar novamente
-  const now = Date.now();
-  if (telegramApiUnavailable && (now - lastTelegramApiCheck) < API_CHECK_INTERVAL) {
+  if (apiCache[cacheKey] && (now - (apiCache[lastCheckKey] || 0)) < API_CHECK_INTERVAL) {
     return false;
   }
   
-  try {
-    // Tentar primeiro o endpoint /health que é mais leve
+  // Tentar cada endpoint configurado
+  for (const endpoint of config.endpoints) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000); // Timeout mais curto
+      const timeoutId = setTimeout(() => controller.abort(), 1000);
       
-      const response = await fetch(`${TELEGRAM_API_URL}/health`, {
+      const response = await fetch(`${config.url}${endpoint}`, {
         method: 'GET',
         mode: 'cors',
         credentials: 'omit',
@@ -3375,173 +3314,86 @@ async function checkTelegramApiStatus() {
       
       if (response && response.ok) {
         const data = await response.json().catch(() => ({}));
-        if (data.status === 'ok' || response.status === 200) {
-          telegramApiUnavailable = false;
-          lastTelegramApiCheck = now;
+        // Verificar se a resposta indica sucesso
+        if (data.status === 'ok' || data.success === true || response.status === 200) {
+          apiCache[cacheKey] = false;
+          apiCache[lastCheckKey] = now;
           return true;
         }
       }
-    } catch (healthError) {
-      // Erro silencioso - API não disponível
+    } catch (error) {
+      // Erro silencioso - tentar próximo endpoint
+      continue;
     }
-    
-    // Fallback para endpoint raiz (só se /health falhou)
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
-      
-      const rootResponse = await fetch(`${TELEGRAM_API_URL}/`, {
-        method: 'GET',
-        mode: 'cors',
-        credentials: 'omit',
-        signal: controller.signal,
-        cache: 'no-cache'
-      }).catch(() => {
-        clearTimeout(timeoutId);
-        return null;
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (rootResponse && rootResponse.ok) {
-        const data = await rootResponse.json().catch(() => ({}));
-        if (data.success === true || rootResponse.status === 200) {
-          telegramApiUnavailable = false;
-          lastTelegramApiCheck = now;
-          return true;
-        }
-      }
-    } catch (rootError) {
-      // Erro silencioso - API não disponível
-    }
-    
-    // Marcar como indisponível
-    telegramApiUnavailable = true;
-    lastTelegramApiCheck = now;
-    return false;
-  } catch (error) {
-    telegramApiUnavailable = true;
-    lastTelegramApiCheck = now;
-    return false;
   }
+  
+  // Marcar como indisponível
+  apiCache[cacheKey] = true;
+  apiCache[lastCheckKey] = now;
+  return false;
 }
 
-// Verificar se a API do BotFather está disponível
+// Funções específicas para compatibilidade
+async function checkTelegramApiStatus() {
+  return checkApiStatus('telegram');
+}
+
 async function checkBotFatherApiStatus() {
-  const now = Date.now();
-  if (botfatherApiUnavailable && (now - lastBotFatherApiCheck) < API_CHECK_INTERVAL) {
-    return false;
-  }
-  
-  try {
-    // Tentar primeiro o endpoint /health
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
-      
-      const response = await fetch(`${BOTFATHER_API_URL}/health`, {
-        method: 'GET',
-        mode: 'cors',
-        credentials: 'omit',
-        signal: controller.signal,
-        cache: 'no-cache'
-      }).catch(() => {
-        clearTimeout(timeoutId);
-        return null;
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (response && response.ok) {
-        const data = await response.json().catch(() => ({}));
-        if (data.status === 'ok' || response.status === 200) {
-          botfatherApiUnavailable = false;
-          lastBotFatherApiCheck = now;
-          return true;
-        }
-      }
-    } catch (healthError) {
-      // Erro silencioso - API não disponível
-    }
-    
-    // Fallback para endpoint raiz
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1000);
-      
-      const rootResponse = await fetch(`${BOTFATHER_API_URL}/`, {
-        method: 'GET',
-        mode: 'cors',
-        credentials: 'omit',
-        signal: controller.signal,
-        cache: 'no-cache'
-      }).catch(() => {
-        clearTimeout(timeoutId);
-        return null;
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (rootResponse && rootResponse.ok) {
-        botfatherApiUnavailable = false;
-        lastBotFatherApiCheck = now;
-        return true;
-      }
-    } catch (rootError) {
-      // Erro silencioso - API não disponível
-    }
-    
-    // Marcar como indisponível
-    botfatherApiUnavailable = true;
-    lastBotFatherApiCheck = now;
-    return false;
-  } catch (error) {
-    botfatherApiUnavailable = true;
-    lastBotFatherApiCheck = now;
-    return false;
-  }
+  return checkApiStatus('botfather');
 }
 
-// Verificar se a API do DeepSeek está disponível
 async function checkDeepSeekApiStatus() {
-  const now = Date.now();
-  if (deepseekApiUnavailable && (now - lastDeepSeekApiCheck) < API_CHECK_INTERVAL) {
-    return false;
-  }
+  return checkApiStatus('deepseek');
+}
+
+// Cores dos gradientes para cada API
+const API_GRADIENTS = {
+  telegram: 'linear-gradient(135deg, #0088cc 0%, #229ED9 100%)',
+  botfather: 'linear-gradient(135deg, #0088cc 0%, #0066aa 100%)',
+  deepseek: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
+};
+
+// Função genérica para mostrar loading
+function showApiLoadingModal(modalBody, apiKey) {
+  const gradient = API_GRADIENTS[apiKey] || API_GRADIENTS.telegram;
+  modalBody.innerHTML = `
+    <div style="text-align: center; padding: 3rem 2rem;">
+      <div style="width: 60px; height: 60px; margin: 0 auto 1.5rem; background: ${gradient}; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+        <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; color: white;"></i>
+      </div>
+      <p style="color: var(--text-light); font-size: 0.9rem; margin: 0;">Carregando configurações...</p>
+    </div>
+  `;
+}
+
+// Função genérica para mostrar modal de erro de API
+function showApiUnavailableModal(modalBody, apiKey) {
+  const config = API_CONFIG[apiKey];
+  if (!config) return;
   
-  try {
-    // Tentar o endpoint raiz
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1000);
-    
-    const response = await fetch(`${DEEPSEEK_API_URL}/`, {
-      method: 'GET',
-      mode: 'cors',
-      credentials: 'omit',
-      signal: controller.signal,
-      cache: 'no-cache'
-    }).catch(() => {
-      clearTimeout(timeoutId);
-      return null;
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (response && response.ok) {
-      deepseekApiUnavailable = false;
-      lastDeepSeekApiCheck = now;
-      return true;
-    }
-    
-    // Marcar como indisponível
-    deepseekApiUnavailable = true;
-    lastDeepSeekApiCheck = now;
-    return false;
-  } catch (error) {
-    deepseekApiUnavailable = true;
-    lastDeepSeekApiCheck = now;
-    return false;
-  }
+  modalBody.innerHTML = `
+    <div style="text-align: center; padding: 2rem;">
+      <div style="color: var(--accent-color); font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+      <h3 style="color: var(--text-dark); margin-bottom: 1rem;">API ${config.name} não está disponível</h3>
+      <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+        A API precisa estar rodando em: <strong>${config.url}</strong>
+      </p>
+      <div style="background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
+        <h4 style="color: var(--text-dark); margin-bottom: 0.75rem; font-size: 1rem;">Como iniciar:</h4>
+        <ol style="color: var(--text-light); font-size: 0.9rem; line-height: 1.8; margin: 0; padding-left: 1.5rem;">
+          <li>Abra um terminal na pasta do projeto</li>
+          <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">cd ${config.folder}</code></li>
+          <li>Execute: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">npm start</code></li>
+          <li>Aguarde a mensagem: <code style="background: var(--bg-white); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem;">🚀 Servidor rodando em http://localhost:${config.port}</code></li>
+          <li>Feche este modal e tente novamente</li>
+        </ol>
+      </div>
+      <div style="display: flex; gap: 0.75rem; justify-content: center;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+        <button type="button" class="btn btn-primary" onclick="openPlatformConfig('${apiKey}')">Tentar Novamente</button>
+      </div>
+    </div>
+  `;
 }
 
 
