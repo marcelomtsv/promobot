@@ -17,37 +17,71 @@ promobot/
 - **Node.js >= 20.0.0** ([Download](https://nodejs.org/))
 - **npm** (vem com Node.js)
 
-## ⚡ INÍCIO RÁPIDO - 3 PASSOS SIMPLES
+## ⚡ INÍCIO RÁPIDO
 
-### 🎯 Método 1: Script Automático (MAIS FÁCIL)
+Cada serviço é **independente** e deve ser iniciado separadamente. Cada um tem seu próprio `package.json` e `node_modules`.
 
-**Windows:**
+### 📦 1. Instalar Dependências
+
+Instale as dependências de cada serviço:
+
 ```bash
-start.bat
+# Website
+cd website
+npm install
+
+# BotFather API
+cd ../botfather
+npm install
+
+# DeepSeek API
+cd ../deepseek
+npm install
+
+# Telegram API
+cd ../telegram
+npm install
 ```
 
-**Linux/Mac:**
+### 🚀 2. Iniciar os Serviços
+
+Abra **terminais separados** para cada serviço:
+
+**Terminal 1 - Website:**
 ```bash
-chmod +x start.sh
-./start.sh
-```
-
-O script vai:
-- ✅ Verificar Node.js
-- ✅ Instalar dependências automaticamente
-- ✅ Iniciar todos os serviços
-
-### 🎯 Método 2: Comando NPM (RECOMENDADO)
-
-**1. Instalar dependências:**
-```bash
-npm run install:all
-```
-
-**2. Iniciar tudo:**
-```bash
+cd website
+npm start
+# ou para desenvolvimento com hot reload:
 npm run dev
 ```
+Acesse: http://localhost:3000
+
+**Terminal 2 - BotFather API:**
+```bash
+cd botfather
+npm start
+# ou para desenvolvimento:
+npm run dev
+```
+API disponível em: http://localhost:3001
+
+**Terminal 3 - DeepSeek API:**
+```bash
+cd deepseek
+npm start
+# ou para desenvolvimento:
+npm run dev
+```
+API disponível em: http://localhost:3002
+
+**Terminal 4 - Telegram API:**
+```bash
+cd telegram
+npm start
+# ou para desenvolvimento:
+npm run dev
+```
+API disponível em: http://localhost:3003
 
 **Pronto!** Todos os serviços estarão rodando:
 - 🌐 **Website**: http://localhost:3000
@@ -55,52 +89,37 @@ npm run dev
 - 🧠 **DeepSeek API**: http://localhost:3002
 - 📱 **Telegram API**: http://localhost:3003
 
-### 🎯 Método 3: Manual (Se os métodos acima não funcionarem)
-
-**Terminal 1 - Serviços principais:**
-```bash
-npm run dev
-```
-
-**Terminal 2 - API Telegram (opcional, mas recomendado):**
-```bash
-cd telegram
-npm start
-```
-
-## 📋 Iniciar Serviços Individualmente
-
-Se preferir iniciar cada serviço separadamente:
+## 📋 Comandos de Inicialização
 
 ### Website (Frontend)
 ```bash
-npm run dev:website
-# ou
-cd website && npm run dev
+cd website
+npm start        # Modo produção
+npm run dev      # Modo desenvolvimento (hot reload)
 ```
 Acesse: http://localhost:3000
 
 ### BotFather API
 ```bash
-npm run dev:botfather
-# ou
-cd botfather && npm run dev
+cd botfather
+npm start        # Modo produção
+npm run dev      # Modo desenvolvimento (hot reload)
 ```
 API disponível em: http://localhost:3001
 
 ### DeepSeek API
 ```bash
-npm run dev:deepseek
-# ou
-cd deepseek && npm run dev
+cd deepseek
+npm start        # Modo produção
+npm run dev      # Modo desenvolvimento (hot reload)
 ```
 API disponível em: http://localhost:3002
 
 ### Telegram API
 ```bash
-npm run dev:telegram
-# ou
-cd telegram && npm start
+cd telegram
+npm start        # Modo produção
+npm run dev      # Modo desenvolvimento (hot reload)
 ```
 API disponível em: http://localhost:3003
 
@@ -263,31 +282,14 @@ O modo desenvolvimento usa **nodemon** para recarregar automaticamente quando vo
 
 ## 📝 Scripts Disponíveis
 
-### Na Raiz do Projeto:
+Cada serviço tem seus próprios scripts. Entre no diretório do serviço e execute:
 
 ```bash
-# Instalar todas as dependências
-npm run install:all
-
-# Rodar todos em modo desenvolvimento (hot reload)
-npm run dev
-
-# Rodar todos em modo produção
-npm start
-
-# Rodar serviços individualmente
-npm run dev:website      # Apenas website
-npm run dev:botfather    # Apenas BotFather API
-npm run dev:deepseek     # Apenas DeepSeek API
-npm run dev:telegram     # Apenas Telegram API
-```
-
-### Em Cada Serviço:
-
-```bash
-npm run dev    # Modo desenvolvimento (hot reload)
 npm start      # Modo produção
+npm run dev    # Modo desenvolvimento (hot reload com nodemon)
 ```
+
+**Nota:** Cada serviço é independente e deve ser iniciado em um terminal separado.
 
 ## 🐛 Solução de Problemas
 
@@ -309,9 +311,10 @@ Se uma porta estiver ocupada, você pode:
 
 ### Erro: "Module not found"
 
-Execute novamente:
+Instale as dependências do serviço específico:
 ```bash
-npm run install:all
+cd <nome-do-servico>  # website, botfather, deepseek ou telegram
+npm install
 ```
 
 ### Erro: "API do Telegram não está disponível"
@@ -389,16 +392,20 @@ git remote -v
 Use este checklist toda vez que for iniciar o projeto:
 
 - [ ] Node.js >= 20.0.0 instalado
-- [ ] Dependências instaladas (`npm run install:all`)
-- [ ] Serviços principais iniciados (`npm run dev`)
-- [ ] **API Telegram iniciada** (`cd telegram && npm start`) - **IMPORTANTE**
+- [ ] Dependências instaladas em cada serviço (`cd <servico> && npm install`)
+- [ ] **Website iniciado** (`cd website && npm start`)
+- [ ] **BotFather API iniciada** (`cd botfather && npm start`)
+- [ ] **DeepSeek API iniciada** (`cd deepseek && npm start`)
+- [ ] **Telegram API iniciada** (`cd telegram && npm start`) - **IMPORTANTE**
 - [ ] Website acessível em http://localhost:3000
-- [ ] API Telegram respondendo em http://localhost:3003/health
+- [ ] APIs respondendo nas respectivas portas
 - [ ] Sem erros críticos no console do navegador
 
-**💡 Dica:** Mantenha 2 terminais abertos:
-- **Terminal 1:** `npm run dev` (serviços principais)
-- **Terminal 2:** `cd telegram && npm start` (API Telegram)
+**💡 Dica:** Abra 4 terminais separados, um para cada serviço:
+- **Terminal 1:** `cd website && npm start`
+- **Terminal 2:** `cd botfather && npm start`
+- **Terminal 3:** `cd deepseek && npm start`
+- **Terminal 4:** `cd telegram && npm start`
 
 ## 🚀 Deploy no EasyPanel
 
