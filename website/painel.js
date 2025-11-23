@@ -173,14 +173,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     const savedPanel = localStorage.getItem('activePanel') || 'overview';
     showPanel(savedPanel);
     
-    Promise.allSettled([
+    // Carregar dados críticos primeiro (paralelo)
+    const criticalLoad = Promise.allSettled([
       loadUserProfile(),
-      loadAllConfigsFromFirebase(),
+      loadAllConfigsFromFirebase()
+    ]);
+    
+    // Carregar dados não críticos em paralelo
+    const nonCriticalLoad = Promise.allSettled([
       initTheme(),
       loadPlatforms()
-    ]).then(() => {
-      initMonitoring();
+    ]);
+    
+    // Iniciar monitoramento após carregamento crítico
+    criticalLoad.then(() => {
+      // Usar requestIdleCallback para não bloquear UI
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => initMonitoring(), { timeout: 2000 });
+      } else {
+        setTimeout(() => initMonitoring(), 100);
+      }
     });
+    
+    // Aguardar tudo carregar silenciosamente
+    Promise.allSettled([criticalLoad, nonCriticalLoad]).catch(() => {});
   } catch (error) {
     if (!currentUser || !currentUser.uid) {
       window.location.href = 'login.html';
