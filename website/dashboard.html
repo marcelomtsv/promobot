@@ -1690,19 +1690,24 @@
   <script>
     (function() {
       let authChecked = false;
+      let checkInterval = null;
       
       function checkAuth() {
         if (authChecked) return;
         
         if (typeof firebase === 'undefined' || !window.firebaseAuth) {
-          return;
+          return false;
         }
         
         if (typeof window.firebaseAuth.onAuthStateChanged !== 'function') {
-          return;
+          return false;
         }
         
         authChecked = true;
+        if (checkInterval) {
+          clearInterval(checkInterval);
+          checkInterval = null;
+        }
         
         const unsubscribe = window.firebaseAuth.onAuthStateChanged(function(user) {
           if (!user) {
@@ -1710,19 +1715,26 @@
             return;
           }
           document.body.style.visibility = 'visible';
-          if (unsubscribe) unsubscribe();
+          if (unsubscribe && typeof unsubscribe === 'function') {
+            unsubscribe();
+          }
         });
+        
+        return true;
       }
       
-      const checkInterval = setInterval(function() {
-        if (window.firebaseAuth && typeof window.firebaseAuth.onAuthStateChanged === 'function') {
+      checkInterval = setInterval(function() {
+        if (checkAuth()) {
           clearInterval(checkInterval);
-          checkAuth();
+          checkInterval = null;
         }
       }, 100);
       
       setTimeout(function() {
-        clearInterval(checkInterval);
+        if (checkInterval) {
+          clearInterval(checkInterval);
+          checkInterval = null;
+        }
         if (!authChecked) {
           if (!window.firebaseAuth) {
             window.location.replace('login.html');
