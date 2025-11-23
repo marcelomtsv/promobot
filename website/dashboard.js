@@ -138,58 +138,148 @@ async function loadAllConfigsFromFirebase(forceRefresh = false) {
   }
 }
 
+// Aguardar Firebase inicializar
+function waitForFirebase(maxWait = 5000) {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    const checkFirebase = () => {
+      if (window.firebaseAuth || Date.now() - startTime > maxWait) {
+        resolve();
+      } else {
+        setTimeout(checkFirebase, 100);
+      }
+    };
+    checkFirebase();
+  });
+}
+
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
-  // Carregar tema salvo (já aplicado no script inline, apenas atualizar ícone)
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  const themeIcon = document.getElementById('themeIcon');
-  if (themeIcon) {
-    if (savedTheme === 'dark') {
-      themeIcon.className = 'fas fa-sun';
-    } else {
-      themeIcon.className = 'fas fa-moon';
+  try {
+    // Aguardar Firebase inicializar (se ainda não estiver)
+    await waitForFirebase();
+    
+    // Carregar tema salvo (já aplicado no script inline, apenas atualizar ícone)
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    const themeIcon = document.getElementById('themeIcon');
+    if (themeIcon) {
+      if (savedTheme === 'dark') {
+        themeIcon.className = 'fas fa-sun';
+      } else {
+        themeIcon.className = 'fas fa-moon';
+      }
     }
-  }
-  
-  // Carregar dados do usuário PRIMEIRO para evitar flash
-  await checkAuth();
-  
-  // Carregar perfil imediatamente após autenticação
-  if (currentUser) {
-    loadUserProfile();
-    // Carregar todas as configurações do Firebase
-    await loadAllConfigsFromFirebase();
-  }
-  
-  // Configurar resto
-  setupEventListeners();
-  // Carregar plataformas (OTIMIZADO - não precisa mais carregar sessões separadamente)
-  await loadPlatforms();
-  initMonitoring();
-  
-  // Restaurar aba ativa salva (já aplicada no script inline, apenas garantir sincronização)
-  const savedPanel = localStorage.getItem('activePanel') || 'overview';
-  // Verificar se já está ativa (aplicada pelo script inline)
-  const activePanel = document.querySelector('.content-panel.active');
-  if (!activePanel || activePanel.id !== savedPanel + 'Panel') {
-    showPanel(savedPanel);
+    
+    // Configurar event listeners PRIMEIRO para garantir que a navegação funcione
+    setupEventListeners();
+    
+    // Carregar dados do usuário
+    try {
+      await checkAuth();
+    } catch (error) {
+      console.error('Erro ao verificar autenticação:', error);
+      // Continuar mesmo se houver erro na autenticação
+    }
+    
+    // Carregar perfil imediatamente após autenticação
+    try {
+      if (currentUser) {
+        loadUserProfile();
+        // Carregar todas as configurações do Firebase
+        await loadAllConfigsFromFirebase();
+      } else {
+        // Tentar carregar do localStorage
+        loadUserProfile();
+      }
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+      // Continuar mesmo se houver erro
+    }
+    
+    // Carregar plataformas (OTIMIZADO - não precisa mais carregar sessões separadamente)
+    try {
+      await loadPlatforms();
+    } catch (error) {
+      console.error('Erro ao carregar plataformas:', error);
+    }
+    
+    try {
+      initMonitoring();
+    } catch (error) {
+      console.error('Erro ao inicializar monitoramento:', error);
+    }
+    
+    // Restaurar aba ativa salva (já aplicada no script inline, apenas garantir sincronização)
+    const savedPanel = localStorage.getItem('activePanel') || 'overview';
+    // Verificar se já está ativa (aplicada pelo script inline)
+    const activePanel = document.querySelector('.content-panel.active');
+    if (!activePanel || activePanel.id !== savedPanel + 'Panel') {
+      showPanel(savedPanel);
+    }
+  } catch (error) {
+    console.error('Erro na inicialização do dashboard:', error);
+    // Garantir que os event listeners estejam configurados mesmo se houver erro
+    setupEventListeners();
   }
 });
 
 // Verificar autenticação
 async function checkAuth() {
+  // Primeiro, tentar carregar do localStorage (mais rápido e não depende do Firebase)
+  const userData = localStorage.getItem('userData');
+  if (userData) {
+    try {
+      currentUser = JSON.parse(userData);
+      // Se temos dados do localStorage, usar eles e verificar Firebase em background
+      if (window.firebaseAuth) {
+        // Verificar Firebase em background (não bloquear)
+        window.firebaseAuth.onAuthStateChanged(async (user) => {
+          if (user) {
+            currentUser = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName || user.email.split('@')[0],
+              emailVerified: user.emailVerified,
+              photoURL: user.photoURL
+            };
+            localStorage.setItem('userData', JSON.stringify(currentUser));
+          }
+        });
+      }
+      return; // Retornar imediatamente com dados do localStorage
+    } catch (error) {
+      console.error('Erro ao parsear userData:', error);
+      // Continuar para verificar Firebase
+    }
+  }
+  
+  // Se não há dados no localStorage, verificar Firebase
   if (!window.firebaseAuth) {
-    const userData = localStorage.getItem('userData');
+    // Se não há Firebase e não há dados no localStorage, redirecionar para login
     if (!userData) {
       window.location.href = 'login.html';
       return;
     }
-    currentUser = JSON.parse(userData);
+    // Se há dados no localStorage mas erro ao parsear, continuar sem Firebase
     return;
   }
 
   return new Promise((resolve) => {
+    // Timeout para evitar espera infinita
+    const timeout = setTimeout(() => {
+      // Se timeout, usar dados do localStorage se disponível
+      if (userData) {
+        try {
+          currentUser = JSON.parse(userData);
+        } catch (e) {
+          // Ignorar erro
+        }
+      }
+      resolve();
+    }, 3000);
+    
     window.firebaseAuth.onAuthStateChanged(async (user) => {
+      clearTimeout(timeout);
       if (user) {
         currentUser = {
           uid: user.uid,
@@ -201,10 +291,15 @@ async function checkAuth() {
         localStorage.setItem('userData', JSON.stringify(currentUser));
         resolve();
       } else {
-        const userData = localStorage.getItem('userData');
+        // Se não há usuário no Firebase, verificar localStorage
         if (userData) {
-          currentUser = JSON.parse(userData);
-          resolve();
+          try {
+            currentUser = JSON.parse(userData);
+            resolve();
+          } catch (e) {
+            // Se não consegue parsear, redirecionar para login
+            window.location.href = 'login.html';
+          }
         } else {
           window.location.href = 'login.html';
         }
