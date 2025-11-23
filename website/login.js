@@ -120,7 +120,7 @@ class FirebaseAuthSystem {
       } else {
         // Usuário não está logado
         const sessionData = localStorage.getItem('userData');
-        if (sessionData && window.location.pathname.includes('dashboard.html')) {
+        if (sessionData && window.location.pathname.includes('painel.html')) {
           // Sessão expirada, redirecionar para login
           localStorage.removeItem('userData');
           window.location.href = 'login.html';

@@ -1,4 +1,4 @@
-// Dashboard JavaScript - PromoBOT
+// Painel JavaScript - PromoBOT
 
 // Integrações destacadas (não são plataformas de e-commerce)
 const integrations = [
@@ -96,196 +96,21 @@ const BOTFATHER_API_URL = getApiUrl('botfatherApiUrl', 3001);
  */
 
 // Estrutura de cache centralizada
-const CacheManager = {
-  // Cache de dados
-  data: {
-    integrationConfigs: {},
-    notificationConfigs: {},
-    telegramAccount: {},
-    userData: null
-  },
-  
-  // Timestamps de cache (para TTL)
-  timestamps: {
-    integrationConfigs: 0,
-    notificationConfigs: 0,
-    telegramAccount: 0,
-    userData: 0
-  },
-  
-  // TTLs configuráveis por tipo (em milissegundos)
-  ttls: {
-    integrationConfigs: 120000,      // 2 minutos - dados mudam pouco
-    notificationConfigs: 120000,     // 2 minutos - dados mudam pouco
-    telegramAccount: 60000,          // 1 minuto - pode mudar mais frequentemente
-    userData: 60000                   // 1 minuto - dados do usuário
-  },
-  
-  // Locks para prevenir race conditions
-  loadingLocks: {
-    integrationConfigs: null,
-    notificationConfigs: null,
-    telegramAccount: null,
-    userData: null
-  },
-  
-  /**
-   * Verifica se o cache está válido para uma chave específica
-   */
-  isValid(key) {
-    const timestamp = this.timestamps[key] || 0;
-    const ttl = this.ttls[key] || 60000;
-    return timestamp > 0 && (Date.now() - timestamp) < ttl;
-  },
-  
-  /**
-   * Obtém dados do cache (se válido) ou retorna null
-   */
-  get(key) {
-    if (this.isValid(key)) {
-      return this.data[key];
-    }
-    return null;
-  },
-  
-  /**
-   * Define dados no cache e atualiza timestamp
-   */
-  set(key, value) {
-    this.data[key] = value;
-    this.timestamps[key] = Date.now();
-  },
-  
-  /**
-   * Invalida cache específico ou todos
-   */
-  invalidate(key = null) {
-    if (key) {
-      this.timestamps[key] = 0;
-      // Invalidar caches relacionados
-      if (key === 'userData') {
-        // userData invalida todos os outros
-        this.timestamps.integrationConfigs = 0;
-        this.timestamps.notificationConfigs = 0;
-        this.timestamps.telegramAccount = 0;
-      } else if (key === 'integrationConfigs') {
-        // integrationConfigs pode afetar userData
-        this.timestamps.userData = 0;
-      }
-    } else {
-      // Invalidar todos
-      Object.keys(this.timestamps).forEach(k => {
-        this.timestamps[k] = 0;
-      });
-    }
-  },
-  
-  /**
-   * Carrega dados do Firebase com cache inteligente e prevenção de race conditions
-   */
-  async load(key, loaderFn, forceRefresh = false) {
-    // Verificar cache primeiro (se não forçar refresh)
-    if (!forceRefresh && this.isValid(key)) {
-      return this.get(key);
-    }
-    
-    // Verificar se já está carregando (prevenir race conditions)
-    if (this.loadingLocks[key]) {
-      // Aguardar o carregamento em andamento
-      return await this.loadingLocks[key];
-    }
-    
-    // Criar lock para este carregamento
-    const loadPromise = (async () => {
-      try {
-        const data = await loaderFn();
-        this.set(key, data);
-        return data;
-      } catch (error) {
-        console.error(`Erro ao carregar ${key}:`, error);
-        // Em caso de erro, retornar cache existente (se houver)
-        return this.get(key) || null;
-      } finally {
-        // Remover lock
-        this.loadingLocks[key] = null;
-      }
-    })();
-    
-    this.loadingLocks[key] = loadPromise;
-    return await loadPromise;
-  },
-  
-  /**
-   * Salva dados no Firebase E atualiza cache imediatamente (write-through)
-   */
-  async save(key, value, saverFn) {
-    try {
-      // Salvar no Firebase primeiro
-      await saverFn(value);
-      
-      // Atualizar cache imediatamente (write-through)
-      this.set(key, value);
-      
-      // Invalidar caches relacionados
-      if (key === 'integrationConfigs') {
-        this.invalidate('userData');
-      } else if (key === 'telegramAccount') {
-        this.invalidate('userData');
-      } else if (key === 'notificationConfigs') {
-        this.invalidate('userData');
-      }
-      
-      return true;
-    } catch (error) {
-      console.error(`Erro ao salvar ${key}:`, error);
-      throw error;
-    }
-  },
-  
-  /**
-   * Remove dados do cache e do Firebase
-   */
-  async remove(key, removerFn) {
-    try {
-      await removerFn();
-      this.data[key] = key === 'userData' ? null : (key.includes('Configs') ? {} : {});
-      this.invalidate(key);
-      return true;
-    } catch (error) {
-      console.error(`Erro ao remover ${key}:`, error);
-      throw error;
-    }
-  }
+// Cache simples em memória (apenas para evitar múltiplas chamadas simultâneas)
+const dataCache = {
+  integrationConfigs: null,
+  notificationConfigs: null,
+  telegramAccount: null,
+  userData: null
 };
 
-// Compatibilidade com código existente (mantém window.* para não quebrar)
-Object.defineProperty(window, 'integrationConfigsCache', {
-  get: () => CacheManager.data.integrationConfigs,
-  set: (value) => CacheManager.set('integrationConfigs', value)
-});
-
-Object.defineProperty(window, 'notificationConfigsCache', {
-  get: () => CacheManager.data.notificationConfigs,
-  set: (value) => CacheManager.set('notificationConfigs', value)
-});
-
-Object.defineProperty(window, 'telegramConfigCache', {
-  get: () => CacheManager.data.telegramAccount,
-  set: (value) => CacheManager.set('telegramAccount', value)
-});
-
-Object.defineProperty(window, 'cacheTimestamps', {
-  get: () => CacheManager.timestamps
-});
-
-// Funções de compatibilidade
-function isCacheValid(key) {
-  return CacheManager.isValid(key);
-}
-
-function invalidateCache(key) {
-  CacheManager.invalidate(key);
-}
+// Locks para prevenir race conditions
+const loadingLocks = {
+  integrationConfigs: null,
+  notificationConfigs: null,
+  telegramAccount: null,
+  userData: null
+};
 
 // Debounce function - evita chamadas excessivas
 function debounce(func, wait) {
@@ -312,35 +137,22 @@ function throttle(func, limit) {
   };
 }
 
-// Carregar todas as configurações do Firebase (com cache profissional)
-async function loadAllConfigsFromFirebase(forceRefresh = false) {
-  if (!currentUser || !currentUser.uid) {
+// Carregar todas as configurações do Firebase
+async function loadAllConfigsFromFirebase() {
+  if (!currentUser || !currentUser.uid || !window.firebaseDb) {
     return;
   }
   
   try {
-    // Carregar userData com cache inteligente
-    const userData = await CacheManager.load(
-      'userData',
-      async () => await loadUserDataFromFirebase(),
-      forceRefresh
-    );
-    
+    const userData = await loadUserDataFromFirebase();
     if (userData) {
-      // Atualizar caches específicos
-      if (userData.integrationConfigs) {
-        CacheManager.set('integrationConfigs', userData.integrationConfigs);
-      }
-      if (userData.notificationConfigs) {
-        CacheManager.set('notificationConfigs', userData.notificationConfigs);
-      }
-      if (userData.telegramAccount) {
-        CacheManager.set('telegramAccount', userData.telegramAccount);
-      }
+      dataCache.integrationConfigs = userData.integrationConfigs || {};
+      dataCache.notificationConfigs = userData.notificationConfigs || {};
+      dataCache.telegramAccount = userData.telegramAccount || {};
+      dataCache.userData = userData;
     }
   } catch (error) {
-    console.error('Erro ao carregar configurações:', error);
-    // Em caso de erro, manter cache existente
+    // Silenciar erros
   }
 }
 
@@ -583,11 +395,10 @@ async function loadPlatforms() {
   if (currentUser && currentUser.uid) {
     try {
       const accountStatus = await checkTelegramAccountFromFirebase();
-      // Atualizar cache
       if (accountStatus.hasAccount && accountStatus.firebaseAccount) {
-        CacheManager.set('telegramAccount', accountStatus.firebaseAccount);
+        dataCache.telegramAccount = accountStatus.firebaseAccount;
       } else {
-        CacheManager.set('telegramAccount', {});
+        dataCache.telegramAccount = {};
       }
     } catch (error) {
       // Ignorar erros
@@ -618,7 +429,7 @@ async function loadPlatforms() {
   if (activePreview) {
     platforms.forEach(platform => {
       // Verificar se há configuração salva no Firebase para esta loja
-      const integrationConfigs = CacheManager.get('integrationConfigs') || {};
+      const integrationConfigs = dataCache.integrationConfigs || {};
       const platformConfig = integrationConfigs[platform.id] || {};
       const hasConfig = platformConfig && Object.keys(platformConfig).length > 0 && 
                         Object.values(platformConfig).some(val => val && val.toString().trim() !== '');
@@ -641,13 +452,13 @@ function createIntegrationCard(integration) {
   card.className = 'platform-card integration-card';
   
   // Verificar se está configurado (usar cache do Firebase)
-  const notificationConfigs = window.notificationConfigsCache || {};
+  const notificationConfigs = dataCache.notificationConfigs || {};
   let statusText = 'Não configurado';
   let statusClass = 'soon';
   
   if (integration.id === 'telegram') {
     // Verificar apenas Firebase (muito mais leve) - conta ativa se tiver sessionString (verificada)
-    const telegramConfig = window.telegramConfigCache || {};
+    const telegramConfig = dataCache.telegramAccount || {};
     const hasAccount = telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash;
     const isActive = hasAccount && telegramConfig.sessionString; // Ativo apenas se tiver sessionString (conta verificada)
     
@@ -667,7 +478,7 @@ function createIntegrationCard(integration) {
     statusClass = 'soon';
   } else if (integration.id === 'deepseek') {
     // Verificar configuração do DeepSeek
-    const integrationConfigs = CacheManager.get('integrationConfigs') || {};
+    const integrationConfigs = dataCache.integrationConfigs || {};
     const deepseekConfig = integrationConfigs.deepseek || {};
     
     if (deepseekConfig.apiKey) {
@@ -679,7 +490,7 @@ function createIntegrationCard(integration) {
     }
   } else if (integration.id === 'botfather') {
     // Verificar configuração do BotFather
-    const integrationConfigs = CacheManager.get('integrationConfigs') || {};
+    const integrationConfigs = dataCache.integrationConfigs || {};
     const botfatherConfig = integrationConfigs.botfather || {};
     const hasConfig = botfatherConfig.botToken && botfatherConfig.channel && botfatherConfig.group;
     
@@ -1184,8 +995,7 @@ function getTelegramConfigHTML() {
 
 // HTML de configuração do DeepSeek
 function getDeepSeekConfigHTML(forceForm = false) {
-  // Usar CacheManager para obter dados atualizados (não cache antigo)
-  const integrationConfigs = CacheManager.get('integrationConfigs') || {};
+  const integrationConfigs = dataCache.integrationConfigs || {};
   const deepseekConfig = integrationConfigs.deepseek || {};
   const hasApiKey = !forceForm && !!deepseekConfig.apiKey;
   
@@ -1656,7 +1466,7 @@ function getNotificationConfigHTML(type) {
       </div>
     `;
   } else if (type === 'whatsapp') {
-    const integrationConfigs = CacheManager.get('integrationConfigs') || {};
+    const integrationConfigs = dataCache.integrationConfigs || {};
     const whatsappConfig = integrationConfigs.whatsapp || {};
     const hasConfig = !!whatsappConfig.number;
     
@@ -2150,7 +1960,7 @@ async function confirmarRemoverDeepSeek() {
   
   try {
     // Carregar dados do cache primeiro (mais rápido)
-    let integrationConfigs = CacheManager.get('integrationConfigs');
+    let integrationConfigs = dataCache.integrationConfigs || {};
     if (!integrationConfigs) {
       const userData = await loadUserDataFromFirebase() || {};
       integrationConfigs = userData.integrationConfigs || {};
@@ -2168,10 +1978,10 @@ async function confirmarRemoverDeepSeek() {
     await docRef.set(userData, { merge: true });
     
     // Invalidar cache completamente para forçar recarregamento
-    CacheManager.invalidate('integrationConfigs');
-    CacheManager.invalidate('userData');
+    dataCache.integrationConfigs = null;
+    dataCache.userData = null;
     // Atualizar cache com dados limpos
-    CacheManager.set('integrationConfigs', integrationConfigs);
+    dataCache.integrationConfigs = integrationConfigs;
     
     // Atualizar plataformas (com debounce para evitar múltiplas chamadas)
     loadPlatformsDebounced();
@@ -2238,7 +2048,7 @@ async function showDeepSeekApiKeyInput() {
     const deepseekConfig = integrationConfigs.deepseek || {};
     
     // Atualizar cache com dados atuais
-    CacheManager.set('integrationConfigs', integrationConfigs);
+    dataCache.integrationConfigs = integrationConfigs;
     
     // Forçar mostrar formulário mesmo se tiver configuração
     // Passar true para forceForm para sempre mostrar o formulário
@@ -2436,7 +2246,7 @@ async function confirmarRemoverBotFather() {
   
   try {
     // Carregar dados do cache primeiro (mais rápido)
-    let integrationConfigs = CacheManager.get('integrationConfigs');
+    let integrationConfigs = dataCache.integrationConfigs || {};
     if (!integrationConfigs) {
       const userData = await loadUserDataFromFirebase() || {};
       integrationConfigs = userData.integrationConfigs || {};
@@ -2451,8 +2261,8 @@ async function confirmarRemoverBotFather() {
     });
     
     // Atualizar cache imediatamente (sem esperar)
-    CacheManager.set('integrationConfigs', integrationConfigs);
-    CacheManager.invalidate('integrationConfigs');
+    dataCache.integrationConfigs = integrationConfigs;
+    dataCache.integrationConfigs = null;
     
     // Mostrar mensagem de sucesso
     if (modalBody) {
@@ -2517,7 +2327,7 @@ function showBotFatherConfigInput() {
     
     // Restaurar valores atuais nos campos como placeholder (se existirem)
     setTimeout(() => {
-      const integrationConfigs = CacheManager.get('integrationConfigs') || {};
+      const integrationConfigs = dataCache.integrationConfigs || {};
       const botfatherConfig = integrationConfigs.botfather || {};
       const botTokenInput = document.getElementById('botfatherBotToken');
       const channelInput = document.getElementById('botfatherChannel');
@@ -2867,7 +2677,7 @@ async function removeWhatsAppConfig() {
     
     // Atualizar cache (já atualizado automaticamente pelo saveUserDataToFirebase via write-through)
     // Mas garantir que está sincronizado
-    CacheManager.set('integrationConfigs', integrationConfigs);
+    dataCache.integrationConfigs = integrationConfigs;
     
     // Recarregar modal
     const modalBody = document.getElementById('modalBody');
@@ -2896,7 +2706,7 @@ function showWhatsAppConfigInput() {
   const integrationConfigs = CacheManager.get('integrationConfigs') || {};
   if (integrationConfigs.whatsapp) {
     delete integrationConfigs.whatsapp;
-    CacheManager.set('integrationConfigs', integrationConfigs);
+    dataCache.integrationConfigs = integrationConfigs;
   }
   
   // Recarregar modal
@@ -3021,7 +2831,7 @@ function simulateMonitoringCycle() {
         setTimeout(() => {
           // Etapa 4: Enviando notificação
           const notificationMethods = [];
-          const notificationConfigs = window.notificationConfigsCache || {};
+          const notificationConfigs = dataCache.notificationConfigs || {};
           
           if (notificationConfigs.telegram) notificationMethods.push('Telegram');
           if (notificationConfigs.whatsapp) notificationMethods.push('WhatsApp');
@@ -3475,7 +3285,7 @@ async function handleVerifyTelegramCode(e) {
     if (verifyData.success) {
       // Conta verificada com sucesso - salvar no Firebase
       // Buscar dados da conta do cache ou Firebase
-      const telegramConfig = window.telegramConfigCache || {};
+      const telegramConfig = dataCache.telegramAccount || {};
       if (telegramConfig.phone && telegramConfig.apiId && telegramConfig.apiHash) {
         // Preparar dados da conta verificada (OTIMIZADO - apenas campos essenciais)
         const verifiedAccountData = {
@@ -3612,33 +3422,19 @@ async function checkTelegramAccountSync(forceRefresh = false) {
   let hasFirebaseAccount = false;
   let firebaseAccount = null;
   
-  // Verificar apenas Firebase (muito mais leve e rápido) - usando CacheManager
+  // Verificar apenas Firebase
   if (currentUser && currentUser.uid && window.firebaseDb) {
     try {
-      // Tentar obter do cache primeiro
-      const cachedAccount = CacheManager.get('telegramAccount');
+      const cachedAccount = dataCache.telegramAccount;
       if (!forceRefresh && cachedAccount && Object.keys(cachedAccount).length > 0) {
         firebaseAccount = cachedAccount;
         hasFirebaseAccount = !!(firebaseAccount.phone && firebaseAccount.apiId && firebaseAccount.sessionString);
       } else {
-        // Carregar do Firebase usando CacheManager
-        const accountData = await CacheManager.load(
-          'telegramAccount',
-          async () => {
-            const docRef = window.firebaseDb.collection('users').doc(currentUser.uid);
-            const doc = await docRef.get();
-            if (doc.exists) {
-              const userData = doc.data();
-              return userData.telegramAccount || {};
-            }
-            return {};
-          },
-          forceRefresh
-        );
-        
-        if (accountData && accountData.phone && accountData.apiId && accountData.sessionString) {
-          hasFirebaseAccount = true;
+        const accountData = await loadUserDataFromFirebase().then(data => data?.telegramAccount || null);
+        if (accountData) {
+          dataCache.telegramAccount = accountData;
           firebaseAccount = accountData;
+          hasFirebaseAccount = !!(firebaseAccount.phone && firebaseAccount.apiId && firebaseAccount.sessionString);
         }
       }
     } catch (error) {
@@ -3675,8 +3471,7 @@ async function loadTelegramAccountFromFirebase(forceRefresh = false) {
     return;
   }
   
-  // Verificar cache (só se não forçar refresh) - usando CacheManager
-  const cachedAccount = CacheManager.get('telegramAccount');
+  const cachedAccount = dataCache.telegramAccount;
   if (!forceRefresh && cachedAccount && Object.keys(cachedAccount).length > 0) {
     // Usar cache - apenas atualizar HTML se necessário
     const container = document.getElementById('telegramConfigContainer');
@@ -3691,11 +3486,10 @@ async function loadTelegramAccountFromFirebase(forceRefresh = false) {
     const accountStatus = await checkTelegramAccountFromFirebase(forceRefresh);
     
     if (accountStatus.hasAccount && accountStatus.firebaseAccount) {
-      CacheManager.set('telegramAccount', accountStatus.firebaseAccount);
+      dataCache.telegramAccount = accountStatus.firebaseAccount;
     } else {
       // Limpar cache se não tiver conta
-      CacheManager.set('telegramAccount', {});
-      CacheManager.invalidate('telegramAccount');
+      dataCache.telegramAccount = {};
     }
     
     // Recarregar o HTML do modal
@@ -3705,8 +3499,7 @@ async function loadTelegramAccountFromFirebase(forceRefresh = false) {
     }
   } catch (error) {
     // Se der erro, limpar cache e mostrar formulário vazio
-    CacheManager.set('telegramAccount', {});
-    CacheManager.invalidate('telegramAccount');
+    dataCache.telegramAccount = {};
     const container = document.getElementById('telegramConfigContainer');
     if (container) {
       container.innerHTML = getTelegramConfigHTML().match(/<div id="telegramConfigContainer">([\s\S]*)<\/div>/)?.[1] || '';
@@ -3781,15 +3574,10 @@ async function loadUserDataFromFirebase() {
 
 // Salvar conta do Telegram no Firebase (com write-through cache)
 async function saveTelegramAccountToFirebase(accountData) {
-  await CacheManager.save(
-    'telegramAccount',
-    accountData,
-    async (data) => {
-      await saveUserDataToFirebase({
-        telegramAccount: data
-      });
-    }
-  );
+  await saveUserDataToFirebase({
+    telegramAccount: accountData
+  });
+  dataCache.telegramAccount = accountData;
   // Invalidar cache de sincronização
   syncCache = null;
   syncCacheTime = 0;
@@ -3797,26 +3585,15 @@ async function saveTelegramAccountToFirebase(accountData) {
 
 // Salvar configuração de integração (DeepSeek, WhatsApp, etc.) - com write-through cache
 async function saveIntegrationConfigToFirebase(integrationId, config) {
-  // Obter configurações atuais (do cache ou Firebase)
-  let integrationConfigs = CacheManager.get('integrationConfigs');
-  if (!integrationConfigs) {
+  let integrationConfigs = dataCache.integrationConfigs || {};
+  if (!integrationConfigs || Object.keys(integrationConfigs).length === 0) {
     const userData = await loadUserDataFromFirebase() || {};
     integrationConfigs = userData.integrationConfigs || {};
   }
   
-  // Atualizar configuração específica
   integrationConfigs[integrationId] = config;
-  
-  // Salvar com write-through
-  await CacheManager.save(
-    'integrationConfigs',
-    integrationConfigs,
-    async (data) => {
-      await saveUserDataToFirebase({
-        integrationConfigs: data
-      });
-    }
-  );
+  await saveUserDataToFirebase({ integrationConfigs });
+  dataCache.integrationConfigs = integrationConfigs;
 }
 
 // Carregar configuração de integração
@@ -3839,26 +3616,15 @@ async function loadAllIntegrationConfigsFromFirebase() {
 
 // Salvar configuração de notificação - com write-through cache
 async function saveNotificationConfigToFirebase(type, config) {
-  // Obter configurações atuais (do cache ou Firebase)
-  let notificationConfigs = CacheManager.get('notificationConfigs');
-  if (!notificationConfigs) {
+  let notificationConfigs = dataCache.notificationConfigs || {};
+  if (!notificationConfigs || Object.keys(notificationConfigs).length === 0) {
     const userData = await loadUserDataFromFirebase() || {};
     notificationConfigs = userData.notificationConfigs || {};
   }
   
-  // Atualizar configuração específica
   notificationConfigs[type] = config;
-  
-  // Salvar com write-through
-  await CacheManager.save(
-    'notificationConfigs',
-    notificationConfigs,
-    async (data) => {
-      await saveUserDataToFirebase({
-        notificationConfigs: data
-      });
-    }
-  );
+  await saveUserDataToFirebase({ notificationConfigs });
+  dataCache.notificationConfigs = notificationConfigs;
 }
 
 // Carregar configuração de notificação
@@ -3937,8 +3703,7 @@ async function confirmarRemoverTelegramAccount() {
     });
     
     // Limpar cache imediatamente (sem esperar)
-    CacheManager.set('telegramAccount', {});
-    CacheManager.invalidate('telegramAccount');
+    dataCache.telegramAccount = {};
     
     // Mostrar mensagem de sucesso
     if (modalBody) {
@@ -4106,8 +3871,7 @@ async function addTelegramAccount() {
           // Ignorar
         }
       }
-      CacheManager.set('telegramAccount', {});
-      CacheManager.invalidate('telegramAccount');
+      dataCache.telegramAccount = {};
       
       // Remover da API também (só quando for adicionar nova conta) - deletar apenas deste cliente
       try {
@@ -4162,7 +3926,7 @@ async function addTelegramAccount() {
       };
       
       // Salvar no cache primeiro (para uso durante verificação)
-      CacheManager.set('telegramAccount', accountData);
+      dataCache.telegramAccount = accountData;
       
       // Salvar dados no Firebase (sem sessionString ainda, será salvo após verificação)
       // Usar email como identificador único

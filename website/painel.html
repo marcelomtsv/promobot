@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <meta name="description" content="Dashboard PromoBOT - Gerencie suas integrações e ferramentas">
+  <meta name="description" content="Painel PromoBOT - Gerencie suas integrações e ferramentas">
   <meta name="theme-color" content="#0052d4">
-  <title>Dashboard - PromoBOT</title>
+  <title>Painel - PromoBOT</title>
   
   <!-- Preconnect para melhor performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1740,7 +1740,7 @@
             message.includes('operate in offline mode') ||
             message.includes('firestore backend') ||
             stack.includes('checktelegramapistatus') ||
-            stack.includes('dashboard.js')) {
+            stack.includes('painel.js')) {
           return; // Suprimir silenciosamente
         }
         originalError.apply(console, args);
@@ -1781,7 +1781,7 @@
             message.includes(':3003') ||
             message.includes('err_connection_refused') ||
             message.includes('net::err_connection_refused') ||
-            source.includes('dashboard.js') ||
+            source.includes('painel.js') ||
             source.includes('requests.js') ||
             source.includes('traffic.js') ||
             errorString.includes('localhost:3003') ||
@@ -1869,6 +1869,6 @@
     // Exportar para window imediatamente
     window.toggleSidebar = toggleSidebar;
   </script>
-  <script src="dashboard.js" defer></script>
+  <script src="painel.js" defer></script>
 </body>
 </html>

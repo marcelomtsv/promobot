@@ -82,7 +82,7 @@ function setupAuthButtons() {
     if (userData) {
       showNotification('Redirecionando para compra de créditos...', 'info');
       setTimeout(() => {
-        window.location.href = 'dashboard.html';
+        window.location.href = 'painel.html';
       }, 1000);
     } else {
       showNotification('Faça login para comprar créditos', 'info');

@@ -11,7 +11,16 @@ const PORT = process.env.PORT || 3000;
 // Servir arquivos estáticos
 app.use(express.static(__dirname));
 
-// SPA - todas as rotas vão para index.html
+// Rotas específicas
+app.get('/painel', (req, res) => {
+  res.sendFile(join(__dirname, 'painel.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+  res.redirect('/painel');
+});
+
+// SPA - outras rotas vão para index.html
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, 'index.html'));
 });
