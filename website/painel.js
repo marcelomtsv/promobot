@@ -200,7 +200,7 @@ async function checkAuth() {
         window.location.href = 'login.html';
       }
       reject(new Error('Timeout na autenticação'));
-    }, 2000);
+    }, 1500);
 
     const unsubscribe = window.firebaseAuth.onAuthStateChanged((user) => {
       clearTimeout(timeout);
@@ -3568,7 +3568,7 @@ async function loadUserDataFromFirebase() {
     // Usar getSource para melhor performance (não recarrega se já estiver em cache)
     const doc = await Promise.race([
       docRef.get(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
     ]);
     if (doc.exists) {
       return doc.data();
@@ -3576,7 +3576,7 @@ async function loadUserDataFromFirebase() {
     return null;
   } catch (error) {
     // Em caso de erro, retornar null silenciosamente (cache será usado)
-    console.warn('Erro ao carregar do Firebase (usando cache):', error.message);
+    // Ignorar erros silenciosamente
     return null;
   }
 }

@@ -17,8 +17,8 @@
   <!-- CSS com font-display: swap para melhor performance -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Font Awesome com defer -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+  <!-- Font Awesome - lazy load -->
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
   
   <!-- CSS principal -->
@@ -29,38 +29,43 @@
       const cachedTheme = localStorage.getItem('theme') || 'light';
       document.documentElement.setAttribute('data-theme', cachedTheme);
       
-      // Sincronizar com Firebase em background (atualiza se houver diferença)
+      // Sincronizar com Firebase em background (não bloqueia renderização)
       function syncThemeWithFirebase() {
         if (!window.firebaseAuth || !window.firebaseDb) {
-          setTimeout(syncThemeWithFirebase, 100);
+          if (document.readyState !== 'complete') {
+            setTimeout(syncThemeWithFirebase, 50);
+          }
           return;
         }
         
         const user = window.firebaseAuth.currentUser;
-        if (!user || !user.uid) {
-          return;
-        }
+        if (!user || !user.uid) return;
         
-        window.firebaseDb.collection('users').doc(user.uid).get()
-          .then(doc => {
-            if (doc.exists) {
-              const userData = doc.data();
-              if (userData.theme && userData.theme !== cachedTheme) {
-                // Firebase tem tema diferente, atualizar
-                document.documentElement.setAttribute('data-theme', userData.theme);
-                localStorage.setItem('theme', userData.theme);
-              } else if (userData.theme) {
-                // Garantir que localStorage está sincronizado
-                localStorage.setItem('theme', userData.theme);
+        // Usar requestIdleCallback para não bloquear UI
+        const sync = () => {
+          window.firebaseDb.collection('users').doc(user.uid).get()
+            .then(doc => {
+              if (doc.exists) {
+                const userData = doc.data();
+                if (userData.theme) {
+                  if (userData.theme !== cachedTheme) {
+                    document.documentElement.setAttribute('data-theme', userData.theme);
+                  }
+                  localStorage.setItem('theme', userData.theme);
+                }
               }
-            }
-          })
-          .catch(() => {
-            // Ignorar erros silenciosamente
-          });
+            })
+            .catch(() => {});
+        };
+        
+        if ('requestIdleCallback' in window) {
+          requestIdleCallback(sync, { timeout: 1000 });
+        } else {
+          setTimeout(sync, 100);
+        }
       }
       
-      // Sincronizar em background
+      // Sincronizar após DOM estar pronto
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', syncThemeWithFirebase);
       } else {
