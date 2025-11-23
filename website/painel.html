@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <meta name="description" content="Painel PromoBOT - Gerencie suas integrações e ferramentas">
-  <meta name="theme-color" content="#0052d4">
-  <title>Painel - PromoBOT</title>
+  <meta name="description" content="Painel - Gerencie suas integrações e ferramentas">
+  <meta name="theme-color" content="#667eea">
+  <title>Painel</title>
   
   <!-- Preconnect para melhor performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -109,9 +109,15 @@
       box-sizing: border-box;
     }
 
+    :root {
+      --primary-color: #667eea;
+      --primary-color-dark: #764ba2;
+      --accent-color: #667eea;
+    }
+
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-dark) 100%);
       background-attachment: fixed;
       color: var(--text-dark);
       -webkit-font-smoothing: antialiased;
@@ -124,26 +130,6 @@
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     }
 
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: 
-        radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    [data-theme="dark"] body::before {
-      background: 
-        radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 50%);
-    }
-
     .dashboard-wrapper {
       display: flex;
       min-height: 100vh;
@@ -151,25 +137,23 @@
       z-index: 1;
     }
 
-    /* Sidebar - Design Moderno Glassmorphism */
+    /* Sidebar - Design Minimalista */
     .sidebar {
       width: 280px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      box-shadow: 2px 0 30px rgba(0, 0, 0, 0.1);
+      background: var(--bg-white);
+      box-shadow: 2px 0 20px rgba(0, 0, 0, 0.08);
       position: fixed;
       height: 100vh;
       overflow-y: auto;
       overflow-x: hidden;
       z-index: 2000;
-      border-right: 1px solid rgba(255, 255, 255, 0.2);
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border-right: 1px solid var(--border-color);
+      transition: transform 0.3s ease;
     }
 
     [data-theme="dark"] .sidebar {
-      background: rgba(26, 26, 46, 0.95);
-      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--bg-dark);
+      border-right: 1px solid var(--border-color);
     }
 
     .sidebar::-webkit-scrollbar {
@@ -190,43 +174,22 @@
     }
 
     .sidebar-header {
-      padding: 2rem;
-      border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
       gap: 12px;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .sidebar-header::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
-      opacity: 0.5;
-      z-index: -1;
     }
 
     .sidebar-header .logo {
       font-size: 1.5rem;
-      font-weight: 800;
-      background: var(--gradient-primary);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-weight: 700;
+      color: var(--primary-color);
     }
 
     .sidebar-header i {
-      font-size: 1.75rem;
-      background: var(--gradient-primary);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 1.5rem;
+      color: var(--primary-color);
     }
 
     .sidebar-menu {
@@ -253,11 +216,11 @@
       left: 0;
       top: 50%;
       transform: translateY(-50%);
-      width: 4px;
+      width: 3px;
       height: 0;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: var(--primary-color);
       border-radius: 0 4px 4px 0;
-      transition: height 0.3s ease;
+      transition: height 0.2s ease;
     }
 
     .menu-item:hover {
@@ -2013,7 +1976,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <i class="fas fa-robot"></i>
-        <span class="logo">PromoBOT</span>
+        <span class="logo">Painel</span>
       </div>
       <nav class="sidebar-menu">
         <a href="#" class="menu-item active" data-panel="overview">
@@ -2247,6 +2210,36 @@
               <button type="submit" class="btn btn-primary">Salvar Alterações</button>
             </div>
           </form>
+        </div>
+
+        <div class="content-section" style="margin-top: 2rem;">
+          <div class="section-header">
+            <h2>Personalização de Cores</h2>
+            <p style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.5rem;">Personalize as cores do painel</p>
+          </div>
+          <div id="colorCustomization">
+            <div class="form-group">
+              <label>Cor Primária</label>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <input type="color" id="primaryColorPicker" value="#667eea" style="width: 60px; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+                <input type="text" id="primaryColorInput" value="#667eea" placeholder="#667eea" style="flex: 1; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark);">
+                <button type="button" class="btn btn-secondary" onclick="resetPrimaryColor()">Padrão</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Cor Secundária</label>
+              <div style="display: flex; gap: 12px; align-items: center;">
+                <input type="color" id="secondaryColorPicker" value="#764ba2" style="width: 60px; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">
+                <input type="text" id="secondaryColorInput" value="#764ba2" placeholder="#764ba2" style="flex: 1; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); color: var(--text-dark);">
+                <button type="button" class="btn btn-secondary" onclick="resetSecondaryColor()">Padrão</button>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-primary" onclick="saveColorCustomization()">
+                <i class="fas fa-save"></i> Salvar Cores
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="content-section" style="margin-top: 2rem;">

@@ -31,6 +31,164 @@ let isMonitoring = false;
 let autoScrollEnabled = true;
 
 // ===== FUNÇÕES GLOBAIS (exportadas imediatamente para uso no HTML) =====
+// Exportar openPlatformConfig para uso no HTML
+window.openPlatformConfig = async function(platformId) {
+  const modal = document.getElementById('platformModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalBody = document.getElementById('modalBody');
+  
+  // Verificar se é integração
+  const integration = integrations.find(i => i.id === platformId);
+  if (integration) {
+    if (platformId === 'telegram') {
+      // Verificar status da API antes de abrir o modal
+      const apiStatus = await checkApiStatus('telegram');
+      if (!apiStatus.available) {
+        showApiUnavailableModal(modalBody, 'telegram');
+        modalTitle.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);">
+              <i class="fab fa-telegram-plane" style="font-size: 1.25rem; color: white;"></i>
+            </div>
+            <span>Cadastrar Telegram</span>
+          </div>
+        `;
+        modal.classList.add('active');
+        return;
+      }
+
+      modalTitle.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);">
+            <i class="fab fa-telegram-plane" style="font-size: 1.25rem; color: white;"></i>
+          </div>
+          <span>Cadastrar Telegram</span>
+        </div>
+      `;
+      modalBody.innerHTML = getTelegramConfigHTML();
+      modal.classList.add('active');
+      
+      // Adicionar listener do formulário
+      setTimeout(() => {
+        const form = document.getElementById('telegramConfigForm');
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleTelegramConfig();
+          });
+        }
+      }, 100);
+      
+      return;
+    } else if (platformId === 'whatsapp') {
+      modalTitle.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #25d366 0%, #128c7e 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+            <i class="fab fa-whatsapp" style="font-size: 1.25rem; color: white;"></i>
+          </div>
+          <span>Adicionar WhatsApp</span>
+        </div>
+      `;
+      modalBody.innerHTML = getNotificationConfigHTML(platformId);
+      modal.classList.add('active');
+      
+      // Para WhatsApp, apenas adicionar listener do formulário
+      setTimeout(() => {
+        const form = document.getElementById('notificationConfigForm');
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleNotificationConfig('whatsapp');
+          });
+        }
+      }, 100);
+      return;
+    } else if (platformId === 'deepseek') {
+      // Verificar status da API antes de abrir o modal
+      const apiStatus = await checkApiStatus('deepseek');
+      if (!apiStatus.available) {
+        showApiUnavailableModal(modalBody, 'deepseek');
+        modalTitle.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+              <i class="fas fa-brain" style="font-size: 1.25rem; color: white;"></i>
+            </div>
+            <span>Configurar DeepSeek</span>
+          </div>
+        `;
+        modal.classList.add('active');
+        return;
+      }
+
+      modalTitle.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);">
+            <i class="fas fa-brain" style="font-size: 1.25rem; color: white;"></i>
+          </div>
+          <span>Configurar DeepSeek</span>
+        </div>
+      `;
+      modalBody.innerHTML = getDeepSeekConfigHTML();
+      modal.classList.add('active');
+      
+      // Adicionar listener do formulário
+      setTimeout(() => {
+        const form = document.getElementById('deepseekConfigForm');
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleDeepSeekConfig();
+          });
+        }
+      }, 100);
+      return;
+    } else if (platformId === 'botfather') {
+      // Verificar status da API antes de abrir o modal
+      const apiStatus = await checkApiStatus('botfather');
+      if (!apiStatus.available) {
+        showApiUnavailableModal(modalBody, 'botfather');
+        modalTitle.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);">
+              <i class="fas fa-robot" style="font-size: 1.25rem; color: white;"></i>
+            </div>
+            <span>Configurar Bot Father</span>
+          </div>
+        `;
+        modal.classList.add('active');
+        return;
+      }
+
+      modalTitle.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; background: linear-gradient(135deg, #0088cc 0%, #229ED9 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.3);">
+            <i class="fas fa-robot" style="font-size: 1.25rem; color: white;"></i>
+          </div>
+          <span>Configurar Bot Father</span>
+        </div>
+      `;
+      modalBody.innerHTML = getBotFatherConfigHTML();
+      modal.classList.add('active');
+      
+      // Adicionar listener do formulário
+      setTimeout(() => {
+        const form = document.getElementById('botfatherConfigForm');
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleBotFatherConfig();
+          });
+        }
+      }, 100);
+      return;
+    }
+  }
+  
+  // Se não for integração, tratar como plataforma de e-commerce
+  modalTitle.textContent = `Configurar ${platformId}`;
+  modalBody.innerHTML = `<p>Configuração para ${platformId} em breve.</p>`;
+  modal.classList.add('active');
+};
 // Toggle Sidebar (Mobile) - Exportado imediatamente para uso no HTML
 function toggleSidebar() {
   const sidebar = document.querySelector('.sidebar');
@@ -4169,4 +4327,181 @@ window.confirmarRemoverBotFather = confirmarRemoverBotFather;
 window.abrirConfirmacaoRemoverTelegram = abrirConfirmacaoRemoverTelegram;
 window.voltarTelegramConfig = voltarTelegramConfig;
 window.confirmarRemoverTelegramAccount = confirmarRemoverTelegramAccount;
+
+// ===== PERSONALIZAÇÃO DE CORES =====
+
+// Carregar cores personalizadas do Firebase
+async function loadColorCustomization() {
+  if (!currentUser || !currentUser.uid) return;
+  
+  try {
+    const userData = await loadUserDataFromFirebase();
+    if (userData && userData.customColors) {
+      applyCustomColors(userData.customColors.primary, userData.customColors.secondary);
+      
+      // Atualizar inputs se estiverem na página
+      const primaryPicker = document.getElementById('primaryColorPicker');
+      const primaryInput = document.getElementById('primaryColorInput');
+      const secondaryPicker = document.getElementById('secondaryColorPicker');
+      const secondaryInput = document.getElementById('secondaryColorInput');
+      
+      if (primaryPicker && primaryInput) {
+        primaryPicker.value = userData.customColors.primary;
+        primaryInput.value = userData.customColors.primary;
+      }
+      if (secondaryPicker && secondaryInput) {
+        secondaryPicker.value = userData.customColors.secondary;
+        secondaryInput.value = userData.customColors.secondary;
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao carregar cores:', error);
+  }
+}
+
+// Aplicar cores personalizadas
+function applyCustomColors(primary, secondary) {
+  if (!primary || !secondary) return;
+  
+  document.documentElement.style.setProperty('--primary-color', primary);
+  document.documentElement.style.setProperty('--primary-color-dark', secondary);
+  document.documentElement.style.setProperty('--accent-color', primary);
+  
+  // Atualizar gradientes
+  const style = document.createElement('style');
+  style.id = 'custom-colors-style';
+  style.textContent = `
+    body {
+      background: linear-gradient(135deg, ${primary} 0%, ${secondary} 100%) !important;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, ${primary} 0%, ${secondary} 100%) !important;
+    }
+    .menu-item.active::before {
+      background: linear-gradient(135deg, ${primary} 0%, ${secondary} 100%) !important;
+    }
+    .sidebar-header .logo,
+    .sidebar-header i {
+      color: ${primary} !important;
+    }
+  `;
+  
+  // Remover estilo anterior se existir
+  const oldStyle = document.getElementById('custom-colors-style');
+  if (oldStyle) oldStyle.remove();
+  
+  document.head.appendChild(style);
+}
+
+// Salvar cores personalizadas
+async function saveColorCustomization() {
+  const primaryPicker = document.getElementById('primaryColorPicker');
+  const primaryInput = document.getElementById('primaryColorInput');
+  const secondaryPicker = document.getElementById('secondaryColorPicker');
+  const secondaryInput = document.getElementById('secondaryColorInput');
+  
+  if (!primaryPicker || !primaryInput || !secondaryPicker || !secondaryInput) {
+    alert('Erro: Elementos de cor não encontrados.');
+    return;
+  }
+  
+  const primary = primaryPicker.value || primaryInput.value;
+  const secondary = secondaryPicker.value || secondaryInput.value;
+  
+  // Validar cores hex
+  const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+  if (!hexRegex.test(primary) || !hexRegex.test(secondary)) {
+    alert('Por favor, insira cores válidas no formato hexadecimal (ex: #667eea)');
+    return;
+  }
+  
+  try {
+    // Aplicar imediatamente
+    applyCustomColors(primary, secondary);
+    
+    // Salvar no Firebase
+    await saveUserDataToFirebase({
+      customColors: {
+        primary: primary,
+        secondary: secondary
+      }
+    });
+    
+    // Mostrar feedback
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }, 2000);
+  } catch (error) {
+    alert('Erro ao salvar cores: ' + error.message);
+  }
+}
+
+// Resetar cor primária
+function resetPrimaryColor() {
+  const defaultColor = '#667eea';
+  const primaryPicker = document.getElementById('primaryColorPicker');
+  const primaryInput = document.getElementById('primaryColorInput');
+  
+  if (primaryPicker) primaryPicker.value = defaultColor;
+  if (primaryInput) primaryInput.value = defaultColor;
+}
+
+// Resetar cor secundária
+function resetSecondaryColor() {
+  const defaultColor = '#764ba2';
+  const secondaryPicker = document.getElementById('secondaryColorPicker');
+  const secondaryInput = document.getElementById('secondaryColorInput');
+  
+  if (secondaryPicker) secondaryPicker.value = defaultColor;
+  if (secondaryInput) secondaryInput.value = defaultColor;
+}
+
+// Sincronizar color picker com input
+document.addEventListener('DOMContentLoaded', () => {
+  // Aguardar elementos estarem prontos
+  setTimeout(() => {
+    const primaryPicker = document.getElementById('primaryColorPicker');
+    const primaryInput = document.getElementById('primaryColorInput');
+    const secondaryPicker = document.getElementById('secondaryColorPicker');
+    const secondaryInput = document.getElementById('secondaryColorInput');
+    
+    if (primaryPicker && primaryInput) {
+      primaryPicker.addEventListener('input', (e) => {
+        primaryInput.value = e.target.value;
+      });
+      primaryInput.addEventListener('input', (e) => {
+        const value = e.target.value;
+        if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
+          primaryPicker.value = value;
+        }
+      });
+    }
+    
+    if (secondaryPicker && secondaryInput) {
+      secondaryPicker.addEventListener('input', (e) => {
+        secondaryInput.value = e.target.value;
+      });
+      secondaryInput.addEventListener('input', (e) => {
+        const value = e.target.value;
+        if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(value)) {
+          secondaryPicker.value = value;
+        }
+      });
+    }
+    
+    // Carregar cores salvas
+    loadColorCustomization();
+  }, 500);
+});
+
+// Exportar funções globais
+window.saveColorCustomization = saveColorCustomization;
+window.resetPrimaryColor = resetPrimaryColor;
+window.resetSecondaryColor = resetSecondaryColor;
 
