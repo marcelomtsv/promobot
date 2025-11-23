@@ -73,27 +73,13 @@ function toggleSidebar() {
 window.toggleSidebar = toggleSidebar;
 
 // ===== CONFIGURAÇÃO DA API =====
-// URL da API do Telegram (localhost para desenvolvimento - porta 3003)
-const TELEGRAM_API_URL = localStorage.getItem('telegramApiUrl') || 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:3003' 
-    : 'http://localhost:3003');
-const TELEGRAM_WS_URL = localStorage.getItem('telegramWsUrl') || 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'ws://localhost:3003' 
-    : 'ws://localhost:3003');
+// Helper para obter URL da API
+const getApiUrl = (key, port) => localStorage.getItem(key) || `http://localhost:${port}`;
 
-// URL da API do DeepSeek (localhost para desenvolvimento)
-const DEEPSEEK_API_URL = localStorage.getItem('deepseekApiUrl') || 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:3002' 
-    : 'http://localhost:3002');
-
-// URL da API do Bot Father (localhost para desenvolvimento)
-const BOTFATHER_API_URL = localStorage.getItem('botfatherApiUrl') || 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-    ? 'http://localhost:3001' 
-    : 'http://localhost:3001');
+const TELEGRAM_API_URL = getApiUrl('telegramApiUrl', 3003);
+const TELEGRAM_WS_URL = localStorage.getItem('telegramWsUrl') || 'ws://localhost:3003';
+const DEEPSEEK_API_URL = getApiUrl('deepseekApiUrl', 3002);
+const BOTFATHER_API_URL = getApiUrl('botfatherApiUrl', 3001);
 // ==========================================
 
 // ===== SISTEMA DE CACHE PROFISSIONAL =====
@@ -1883,10 +1869,10 @@ function toggleApiKeyVisibility() {
   }
 }
 
-// Alternar visibilidade do Bot Token
-function toggleBotTokenVisibility() {
-  const input = document.getElementById('botfatherBotToken');
-  const icon = document.getElementById('botTokenToggleIcon');
+// Função genérica para toggle de visibilidade de senha
+function togglePasswordVisibility(inputId, iconId) {
+  const input = document.getElementById(inputId);
+  const icon = document.getElementById(iconId);
   
   if (!input || !icon) return;
   
@@ -1897,6 +1883,15 @@ function toggleBotTokenVisibility() {
     input.type = 'password';
     icon.className = 'fas fa-eye';
   }
+}
+
+// Funções específicas (compatibilidade)
+function toggleApiKeyVisibility() {
+  togglePasswordVisibility('deepseekApiKey', 'apiKeyToggleIcon');
+}
+
+function toggleBotTokenVisibility() {
+  togglePasswordVisibility('botfatherBotToken', 'botTokenToggleIcon');
 }
 
 // Cadastrar DeepSeek (com tela de verificação)
@@ -2042,51 +2037,43 @@ function voltarFormularioDeepSeek() {
   }
 }
 
-// Abrir modal de confirmação para remover DeepSeek
-function abrirConfirmacaoRemoverDeepSeek() {
+// Função genérica para modal de confirmação de remoção
+function showRemoveConfirmationModal(message, onCancel, onConfirm) {
   const modalBody = document.getElementById('modalBody');
   if (!modalBody) return;
   
   modalBody.innerHTML = `
     <div style="text-align: center; padding: 2.5rem 1.5rem;">
-      <!-- Ícone de Aviso -->
       <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25); position: relative; animation: scaleIn 0.5s ease-out;">
         <i class="fas fa-exclamation-triangle" style="font-size: 2.5rem; color: white;"></i>
       </div>
-      
-      <!-- Título e Descrição -->
       <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.5rem; font-weight: 600;">Confirmar Remoção</h3>
-      <p style="color: var(--text-light); margin: 0 0 2.5rem 0; font-size: 0.95rem; line-height: 1.5;">
-        Tem certeza que deseja remover a API Key do DeepSeek?<br>
-        Esta ação desativará a integração e não pode ser desfeita.
-      </p>
-      
-      <!-- Botões de Ação -->
+      <p style="color: var(--text-light); margin: 0 0 2.5rem 0; font-size: 0.95rem; line-height: 1.5;">${message}</p>
       <div style="display: flex; gap: 0.75rem; justify-content: center;">
-        <button type="button" class="btn btn-secondary" onclick="voltarDeepSeekConfig()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500;">
-          <i class="fas fa-times" style="margin-right: 0.5rem;"></i> 
-          Cancelar
+        <button type="button" class="btn btn-secondary" onclick="${onCancel}" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500;">
+          <i class="fas fa-times" style="margin-right: 0.5rem;"></i> Cancelar
         </button>
-        <button type="button" class="btn btn-primary" onclick="confirmarRemoverDeepSeek()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
-          <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
-          Confirmar Remoção
+        <button type="button" class="btn btn-primary" onclick="${onConfirm}" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
+          <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> Confirmar Remoção
         </button>
       </div>
     </div>
-    
     <style>
       @keyframes scaleIn {
-        from {
-          transform: scale(0.8);
-          opacity: 0;
-        }
-        to {
-          transform: scale(1);
-          opacity: 1;
-        }
+        from { transform: scale(0.8); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
       }
     </style>
   `;
+}
+
+// Abrir modal de confirmação para remover DeepSeek
+function abrirConfirmacaoRemoverDeepSeek() {
+  showRemoveConfirmationModal(
+    'Tem certeza que deseja remover a API Key do DeepSeek?<br>Esta ação desativará a integração e não pode ser desfeita.',
+    'voltarDeepSeekConfig()',
+    'confirmarRemoverDeepSeek()'
+  );
 }
 
 // Função genérica para mostrar loading animado (otimizada para performance)
@@ -2126,15 +2113,18 @@ function showLoadingAnimation(message = 'Processando...', color = '#6366f1') {
   `;
 }
 
-// Voltar para a tela de configuração do DeepSeek
-function voltarDeepSeekConfig() {
+// Função genérica para voltar à configuração
+function voltarParaConfig(getConfigHTML) {
   const modalBody = document.getElementById('modalBody');
   if (!modalBody) return;
-  
-  // Recarregar dados do Firebase e mostrar tela de configurado
   loadAllConfigsFromFirebase(true).then(() => {
-    modalBody.innerHTML = getDeepSeekConfigHTML();
+    modalBody.innerHTML = getConfigHTML();
   });
+}
+
+// Funções específicas (compatibilidade)
+function voltarDeepSeekConfig() {
+  voltarParaConfig(getDeepSeekConfigHTML);
 }
 
 // Confirmar remoção da API Key do DeepSeek
@@ -2412,60 +2402,15 @@ async function addBotFatherConfig() {
 
 // Abrir modal de confirmação para remover BotFather
 function abrirConfirmacaoRemoverBotFather() {
-  const modalBody = document.getElementById('modalBody');
-  if (!modalBody) return;
-  
-  modalBody.innerHTML = `
-    <div style="text-align: center; padding: 2.5rem 1.5rem;">
-      <!-- Ícone de Aviso -->
-      <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25); position: relative; animation: scaleIn 0.5s ease-out;">
-        <i class="fas fa-exclamation-triangle" style="font-size: 2.5rem; color: white;"></i>
-      </div>
-      
-      <!-- Título e Descrição -->
-      <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.5rem; font-weight: 600;">Confirmar Remoção</h3>
-      <p style="color: var(--text-light); margin: 0 0 2.5rem 0; font-size: 0.95rem; line-height: 1.5;">
-        Tem certeza que deseja remover a configuração do Bot Father?<br>
-        Esta ação desativará a integração e não pode ser desfeita.
-      </p>
-      
-      <!-- Botões de Ação -->
-      <div style="display: flex; gap: 0.75rem; justify-content: center;">
-        <button type="button" class="btn btn-secondary" onclick="voltarBotFatherConfig()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500;">
-          <i class="fas fa-times" style="margin-right: 0.5rem;"></i> 
-          Cancelar
-        </button>
-        <button type="button" class="btn btn-primary" onclick="confirmarRemoverBotFather()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
-          <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
-          Confirmar Remoção
-        </button>
-      </div>
-    </div>
-    
-    <style>
-      @keyframes scaleIn {
-        from {
-          transform: scale(0.8);
-          opacity: 0;
-        }
-        to {
-          transform: scale(1);
-          opacity: 1;
-        }
-      }
-    </style>
-  `;
+  showRemoveConfirmationModal(
+    'Tem certeza que deseja remover a configuração do Bot Father?<br>Esta ação desativará a integração e não pode ser desfeita.',
+    'voltarBotFatherConfig()',
+    'confirmarRemoverBotFather()'
+  );
 }
 
-// Voltar para a tela de configuração do BotFather
 function voltarBotFatherConfig() {
-  const modalBody = document.getElementById('modalBody');
-  if (!modalBody) return;
-  
-  // Recarregar dados do Firebase e mostrar tela de configurado
-  loadAllConfigsFromFirebase(true).then(() => {
-    modalBody.innerHTML = getBotFatherConfigHTML();
-  });
+  voltarParaConfig(getBotFatherConfigHTML);
 }
 
 // Confirmar remoção da configuração do BotFather
@@ -3915,57 +3860,16 @@ async function loadAllNotificationConfigsFromFirebase() {
 
 // Abrir modal de confirmação para remover Telegram
 function abrirConfirmacaoRemoverTelegram() {
-  const modalBody = document.getElementById('modalBody');
-  if (!modalBody) return;
-  
-  modalBody.innerHTML = `
-    <div style="text-align: center; padding: 2.5rem 1.5rem;">
-      <!-- Ícone de Aviso -->
-      <div style="width: 100px; height: 100px; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25); position: relative; animation: scaleIn 0.5s ease-out;">
-        <i class="fas fa-exclamation-triangle" style="font-size: 2.5rem; color: white;"></i>
-      </div>
-      
-      <!-- Título e Descrição -->
-      <h3 style="margin: 0 0 0.5rem 0; color: var(--text-dark); font-size: 1.5rem; font-weight: 600;">Confirmar Remoção</h3>
-      <p style="color: var(--text-light); margin: 0 0 2.5rem 0; font-size: 0.95rem; line-height: 1.5;">
-        Tem certeza que deseja remover a conta do Telegram?<br>
-        Esta ação desativará a integração e não pode ser desfeita.
-      </p>
-      
-      <!-- Botões de Ação -->
-      <div style="display: flex; gap: 0.75rem; justify-content: center;">
-        <button type="button" class="btn btn-secondary" onclick="voltarTelegramConfig()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500;">
-          <i class="fas fa-times" style="margin-right: 0.5rem;"></i> 
-          Cancelar
-        </button>
-        <button type="button" class="btn btn-primary" onclick="confirmarRemoverTelegramAccount()" style="flex: 1; padding: 0.875rem 1.25rem; font-weight: 500; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">
-          <i class="fas fa-trash-alt" style="margin-right: 0.5rem;"></i> 
-          Confirmar Remoção
-        </button>
-      </div>
-    </div>
-    
-    <style>
-      @keyframes scaleIn {
-        from {
-          transform: scale(0.8);
-          opacity: 0;
-        }
-        to {
-          transform: scale(1);
-          opacity: 1;
-        }
-      }
-    </style>
-  `;
+  showRemoveConfirmationModal(
+    'Tem certeza que deseja remover a conta do Telegram?<br>Esta ação desativará a integração e não pode ser desfeita.',
+    'voltarTelegramConfig()',
+    'confirmarRemoverTelegramAccount()'
+  );
 }
 
-// Voltar para a tela de configuração do Telegram
 function voltarTelegramConfig() {
   const modalBody = document.getElementById('modalBody');
   if (!modalBody) return;
-  
-  // Recarregar dados do Firebase e mostrar tela de configurado
   loadTelegramAccountFromFirebase(true).then(() => {
     modalBody.innerHTML = getTelegramConfigHTML();
   });
