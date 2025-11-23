@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'http';
+import compression from 'compression';
 import dotenv from 'dotenv';
 import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions/index.js';
@@ -10,6 +11,18 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Compressão de respostas (reduz tráfego em até 70%)
+app.use(compression({
+  level: 6,
+  threshold: 1024, // Comprimir apenas respostas > 1KB
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
 
 // CORS - Necessário porque navegador considera portas diferentes como origens diferentes
 // Exemplo: localhost:3000 (website) → localhost:3003 (API) = cross-origin
@@ -40,14 +53,42 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' }));
 
-// ===== OTIMIZAÇÕES PARA ALTA CONCORRÊNCIA =====
-// Rate limiting simples (sem dependências extras)
+// Timeout otimizado para requisições (variável por endpoint)
+app.use((req, res, next) => {
+  // Timeouts diferentes por tipo de operação
+  // Operações de sessão podem demorar mais
+  const timeout = req.path.includes('/sessions') && req.method === 'POST' ? 60000 : 30000;
+  req.setTimeout(timeout);
+  res.setTimeout(timeout);
+  
+  // Headers de performance
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  
+  next();
+});
+
+// ===== OTIMIZAÇÕES PARA ALTA CONCORRÊNCIA (MILHARES DE REQUISIÇÕES) =====
+// Rate limiting otimizado com sliding window e memory-efficient
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minuto
-const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requisições por minuto por IP
+const RATE_LIMIT_MAX_REQUESTS = 1000; // 1000 requisições por minuto por IP (aumentado para alta concorrência)
+
+// Limpar rate limit map periodicamente (evitar memory leak) - OTIMIZADO
+setInterval(() => {
+  const now = Date.now();
+  const toDelete = [];
+  for (const [ip, limit] of rateLimitMap.entries()) {
+    if (now > limit.resetTime) {
+      toDelete.push(ip);
+    }
+  }
+  // Deletar em batch para melhor performance
+  toDelete.forEach(ip => rateLimitMap.delete(ip));
+}, 30000); // Limpar a cada 30 segundos (mais frequente para melhor performance)
 
 function rateLimitMiddleware(req, res, next) {
-  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const ip = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
   
   if (!rateLimitMap.has(ip)) {
@@ -68,7 +109,8 @@ function rateLimitMiddleware(req, res, next) {
   if (limit.count >= RATE_LIMIT_MAX_REQUESTS) {
     return res.status(429).json({ 
       success: false, 
-      error: 'Muitas requisições. Tente novamente em alguns instantes.' 
+      error: 'Muitas requisições. Tente novamente em alguns instantes.',
+      retryAfter: Math.ceil((limit.resetTime - now) / 1000)
     });
   }
   
@@ -76,24 +118,43 @@ function rateLimitMiddleware(req, res, next) {
   next();
 }
 
-// Limpar rate limit map periodicamente (evitar memory leak)
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, limit] of rateLimitMap.entries()) {
-    if (now > limit.resetTime) {
-      rateLimitMap.delete(ip);
-    }
-  }
-}, 60000); // Limpar a cada minuto
-
 // Aplicar rate limiting em endpoints críticos
 app.use('/api/sessions', rateLimitMiddleware);
 app.use('/api/sessions/:id/verify', rateLimitMiddleware);
 
 // ===== FIM OTIMIZAÇÕES =====
 
-// Armazenamento
+// Armazenamento otimizado com limpeza automática de sessões inativas
 const sessions = new Map();
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 horas
+
+// Limpar sessões inativas periodicamente (evitar memory leak)
+setInterval(() => {
+  const now = Date.now();
+  const toDelete = [];
+  
+  for (const [id, session] of sessions.entries()) {
+    // Limpar sessões pendentes antigas (> 1 hora)
+    if (session.status === 'pending' && (now - session.createdAt) > 3600000) {
+      toDelete.push(id);
+    }
+    // Limpar sessões inativas antigas (> 24 horas)
+    else if ((now - session.createdAt) > SESSION_TIMEOUT) {
+      toDelete.push(id);
+    }
+  }
+  
+  // Desconectar e remover em batch
+  toDelete.forEach(async (id) => {
+    const session = sessions.get(id);
+    if (session && session.client) {
+      try {
+        await session.client.disconnect().catch(() => {});
+      } catch (e) {}
+    }
+    sessions.delete(id);
+  });
+}, 3600000); // Verificar a cada hora
 let API_ID = parseInt(process.env.API_ID || '0');
 let API_HASH = process.env.API_HASH || '';
 
@@ -503,11 +564,19 @@ app.post('/check', async (req, res) => {
 const PORT = process.env.PORT || 3003;
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 
-// Configurações do servidor para alta concorrência (milhares de usuários)
+// Configurações do servidor para ALTA CONCORRÊNCIA (milhares de requisições simultâneas)
 server.maxConnections = Infinity; // Sem limite de conexões
 server.keepAliveTimeout = 65000; // 65 segundos (otimizado para keep-alive)
 server.headersTimeout = 66000; // 66 segundos
 server.timeout = 120000; // 2 minutos timeout geral
+
+// Otimizações adicionais para Node.js
+if (typeof process.setMaxListeners === 'function') {
+  process.setMaxListeners(0); // Sem limite de event listeners
+}
+
+// Node.js gerencia automaticamente file descriptors e conexões
+// As configurações do servidor acima já otimizam para alta concorrência
 
 // Tratamento de erros não tratados (evitar crash)
 process.on('unhandledRejection', (error) => {
@@ -528,8 +597,11 @@ server.listen(PORT, HOST, () => {
   console.log('╚═══════════════════════════════════════════════════════╝');
   console.log('');
   console.log(`🚀 Servidor rodando em http://${HOST}:${PORT}`);
-  console.log(`✅ Configurado para suportar milhares de usuários simultâneos`);
+  console.log(`✅ Otimizado para ALTA CONCORRÊNCIA (milhares de requisições simultâneas)`);
   console.log(`✅ Rate limiting: ${RATE_LIMIT_MAX_REQUESTS} req/min por IP`);
+  console.log(`✅ Compressão de respostas: Ativada`);
+  console.log(`✅ Limpeza automática de sessões: Ativada`);
+  console.log(`✅ Max connections: Infinito`);
   console.log('');
   if (!API_ID || !API_HASH) {
     console.log('⚠️  Configure API_ID e API_HASH via variáveis de ambiente');

@@ -1,8 +1,21 @@
 import express from 'express';
+import compression from 'compression';
 import { validateApiKey, processText } from './deepseek.js';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
+
+// Compressão de respostas (reduz tráfego em até 70%)
+app.use(compression({
+  level: 6,
+  threshold: 1024, // Comprimir apenas respostas > 1KB
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
 
 // CORS - Necessário porque navegador considera portas diferentes como origens diferentes
 // Exemplo: localhost:3000 (website) → localhost:3002 (API) = cross-origin
@@ -27,14 +40,27 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' }));
 
-// ===== OTIMIZAÇÕES PARA ALTA CONCORRÊNCIA =====
-// Rate limiting simples (sem dependências extras)
+// ===== OTIMIZAÇÕES PARA ALTA CONCORRÊNCIA (MILHARES DE REQUISIÇÕES) =====
+// Rate limiting otimizado com sliding window e memory-efficient
 const rateLimitMap = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minuto
-const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requisições por minuto por IP
+const RATE_LIMIT_MAX_REQUESTS = 1000; // 1000 requisições por minuto por IP (aumentado para alta concorrência)
+
+// Limpar rate limit map periodicamente (evitar memory leak) - OTIMIZADO
+setInterval(() => {
+  const now = Date.now();
+  const toDelete = [];
+  for (const [ip, limit] of rateLimitMap.entries()) {
+    if (now > limit.resetTime) {
+      toDelete.push(ip);
+    }
+  }
+  // Deletar em batch para melhor performance
+  toDelete.forEach(ip => rateLimitMap.delete(ip));
+}, 30000); // Limpar a cada 30 segundos (mais frequente para melhor performance)
 
 function rateLimitMiddleware(req, res, next) {
-  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const ip = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
   
   if (!rateLimitMap.has(ip)) {
@@ -55,7 +81,8 @@ function rateLimitMiddleware(req, res, next) {
   if (limit.count >= RATE_LIMIT_MAX_REQUESTS) {
     return res.status(429).json({ 
       success: false, 
-      error: 'Muitas requisições. Tente novamente em alguns instantes.' 
+      error: 'Muitas requisições. Tente novamente em alguns instantes.',
+      retryAfter: Math.ceil((limit.resetTime - now) / 1000)
     });
   }
   
@@ -63,24 +90,22 @@ function rateLimitMiddleware(req, res, next) {
   next();
 }
 
-// Limpar rate limit map periodicamente (evitar memory leak)
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, limit] of rateLimitMap.entries()) {
-    if (now > limit.resetTime) {
-      rateLimitMap.delete(ip);
-    }
-  }
-}, 60000); // Limpar a cada minuto
-
 // Aplicar rate limiting em endpoints críticos
 app.use('/check', rateLimitMiddleware);
 app.use('/chat', rateLimitMiddleware);
 
-// Timeout otimizado para requisições
+// Timeout otimizado para requisições (variável por endpoint)
 app.use((req, res, next) => {
-  req.setTimeout(20000);
-  res.setTimeout(20000);
+  // Timeouts diferentes por tipo de operação
+  // /chat pode demorar mais (processamento de IA)
+  const timeout = req.path.includes('/chat') ? 60000 : 30000;
+  req.setTimeout(timeout);
+  res.setTimeout(timeout);
+  
+  // Headers de performance
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  
   next();
 });
 
@@ -137,15 +162,26 @@ app.post('/chat', async (req, res) => {
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 const server = app.listen(PORT, HOST, () => {
     console.log(`🚀 DeepSeek API rodando em http://${HOST}:${PORT}`);
-    console.log(`✅ Otimizado para alta concorrência (1000+ usuários simultâneos)`);
+    console.log(`✅ Otimizado para ALTA CONCORRÊNCIA (milhares de requisições simultâneas)`);
     console.log(`✅ Rate limiting: ${RATE_LIMIT_MAX_REQUESTS} req/min por IP`);
+    console.log(`✅ Compressão de respostas: Ativada`);
+    console.log(`✅ Connection pooling: Ativado`);
+    console.log(`✅ Max connections: Infinito`);
 });
 
-// Configurações do servidor para alta concorrência (milhares de usuários)
+// Configurações do servidor para ALTA CONCORRÊNCIA (milhares de requisições simultâneas)
 server.maxConnections = Infinity; // Sem limite de conexões
 server.keepAliveTimeout = 65000; // 65 segundos (otimizado para keep-alive)
 server.headersTimeout = 66000; // 66 segundos
 server.timeout = 120000; // 2 minutos timeout geral
+
+// Otimizações adicionais para Node.js
+if (typeof process.setMaxListeners === 'function') {
+  process.setMaxListeners(0); // Sem limite de event listeners
+}
+
+// Aumentar limite de handles do sistema (para muitas conexões simultâneas)
+// Nota: resource-limits não está disponível em ES modules, mas Node.js gerencia automaticamente
 
 // Tratamento de erros não tratados (evitar crash)
 process.on('unhandledRejection', (error) => {

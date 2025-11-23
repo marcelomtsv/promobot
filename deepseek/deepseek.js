@@ -1,12 +1,52 @@
 import fetch from 'node-fetch';
+import http from 'http';
+import https from 'https';
 
 const API_URL = 'https://api.deepseek.com/v1/chat/completions';
 const MODELS_URL = 'https://api.deepseek.com/models';
 
+// Agent HTTP/HTTPS otimizado para connection pooling (reutiliza conexões)
+const httpAgent = new http.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 30000,
+  maxSockets: 256, // Múltiplas conexões simultâneas
+  maxFreeSockets: 256,
+  timeout: 30000
+});
+
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 30000,
+  maxSockets: 256,
+  maxFreeSockets: 256,
+  timeout: 30000
+});
+
+// Função fetch otimizada com connection pooling
+const optimizedFetch = (url, options = {}) => {
+  const isHttps = url.startsWith('https://');
+  const agent = isHttps ? httpsAgent : httpAgent;
+  
+  return fetch(url, {
+    ...options,
+    agent,
+    headers: {
+      'Connection': 'keep-alive',
+      'Accept-Encoding': 'gzip, deflate, br',
+      ...options.headers
+    }
+  });
+};
+
 export async function validateApiKey(apiKey) {
     try {
-        const response = await fetch(MODELS_URL, {
-            headers: { 'Authorization': `Bearer ${apiKey}` }
+        const response = await optimizedFetch(MODELS_URL, {
+            method: 'GET',
+            headers: { 
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000 // 10 segundos para validação
         });
         return response.ok;
     } catch {
@@ -28,7 +68,7 @@ function cleanResponseText(text) {
 }
 
 export async function processText(messages, apiKey, temperature = 0.3) {
-    const response = await fetch(API_URL, {
+    const response = await optimizedFetch(API_URL, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -38,7 +78,8 @@ export async function processText(messages, apiKey, temperature = 0.3) {
             model: 'deepseek-chat',
             messages,
             temperature
-        })
+        }),
+        timeout: 60000 // 60 segundos para processamento de IA
     });
     
     if (!response.ok) {

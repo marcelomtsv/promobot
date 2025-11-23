@@ -3,10 +3,30 @@ const axios = require("axios");
 const API_URL = "https://api.telegram.org/bot";
 const DEFAULT_TIMEOUT = 15000; // 15 segundos - otimizado
 
-// Instância do axios com configuração padrão
+// Instância do axios otimizada para alta concorrência
 const apiClient = axios.create({
   timeout: DEFAULT_TIMEOUT,
-  validateStatus: (status) => status < 500
+  validateStatus: (status) => status < 500,
+  // Connection pooling otimizado
+  httpAgent: new (require('http').Agent)({
+    keepAlive: true,
+    keepAliveMsecs: 30000,
+    maxSockets: 256, // Múltiplas conexões simultâneas
+    maxFreeSockets: 256,
+    timeout: 30000
+  }),
+  httpsAgent: new (require('https').Agent)({
+    keepAlive: true,
+    keepAliveMsecs: 30000,
+    maxSockets: 256,
+    maxFreeSockets: 256,
+    timeout: 30000
+  }),
+  // Headers otimizados
+  headers: {
+    'Connection': 'keep-alive',
+    'Accept-Encoding': 'gzip, deflate, br'
+  }
 });
 
 // Função auxiliar para escapar texto Markdown
