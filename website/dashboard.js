@@ -3359,6 +3359,31 @@ function showApiLoadingModal(modalBody, apiKey) {
   `;
 }
 
+// Função para tentar novamente com loading
+async function retryApiCheck(apiKey) {
+  const modal = document.getElementById('platformModal');
+  const modalBody = document.getElementById('modalBody');
+  if (!modal || !modalBody) return;
+  
+  // Mostrar loading
+  showApiLoadingModal(modalBody, apiKey);
+  
+  // Limpar cache da API para forçar nova verificação
+  const cacheKey = `${apiKey}Unavailable`;
+  const lastCheckKey = `last${apiKey}Check`;
+  apiCache[cacheKey] = false;
+  apiCache[lastCheckKey] = 0;
+  
+  // Aguardar um pouco antes de verificar (para dar tempo do servidor iniciar)
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Verificar novamente
+  await openPlatformConfig(apiKey);
+}
+
+// Exportar para uso no HTML
+window.retryApiCheck = retryApiCheck;
+
 // Função genérica para mostrar modal de erro de API (simplificado)
 function showApiUnavailableModal(modalBody, apiKey) {
   const config = API_CONFIG[apiKey];
@@ -3370,7 +3395,7 @@ function showApiUnavailableModal(modalBody, apiKey) {
       <h3 style="color: var(--text-dark); margin-bottom: 2rem; font-size: 1.25rem;">API ${config.name} não está disponível</h3>
       <div style="display: flex; gap: 0.75rem; justify-content: center;">
         <button type="button" class="btn btn-secondary" onclick="closeModal()">Fechar</button>
-        <button type="button" class="btn btn-primary" onclick="openPlatformConfig('${apiKey}')">Tentar Novamente</button>
+        <button type="button" class="btn btn-primary" onclick="retryApiCheck('${apiKey}')">Tentar Novamente</button>
       </div>
     </div>
   `;
